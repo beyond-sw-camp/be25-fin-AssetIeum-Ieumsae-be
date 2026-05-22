@@ -132,7 +132,8 @@
 
 ### 프로젝트 문서
 
-- [WBS 및 요구사항 명세서](https://docs.google.com/spreadsheets/d/1z-TKzG4AP284DwpEWPyhNDyRp2_YIFeRTpRxHoSSBkk/edit?gid=0#gid=0)
+- [WBS](https://docs.google.com/spreadsheets/d/1z-TKzG4AP284DwpEWPyhNDyRp2_YIFeRTpRxHoSSBkk/edit?gid=0#gid=0)
+- [요구사항 명세서](https://docs.google.com/spreadsheets/d/1z-TKzG4AP284DwpEWPyhNDyRp2_YIFeRTpRxHoSSBkk/edit?gid=73162709#gid=73162709)
 - [기획서](https://www.notion.so/playdatacademy/35ad943bcac280848df6cb8597934daf)
 
 
