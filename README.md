@@ -6,28 +6,28 @@
 <table align="center">
   <tr>
     <td align="center">
-      <img src="picture/second.png" width="100" height="100" alt="양준석" /><br />
+      <img src="images/레드.jpg" width="130" height="130" alt="양준석" /><br />
       <b>양준석</b><br />
       <a href="https://github.com/YJunSuk">
       <img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white"/>
       </a>
     </td>
     <td align="center">
-      <img src="picture/qudra.png" width="100" height="100" alt="모희주" /><br />
+      <img src="images/블루.jpg" width="130" height="130" alt="모희주" /><br />
       <b>모희주</b><br />
       <a href="https://github.com/heejudy">
       <img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white"/>
       </a>
     </td>
     <td align="center">
-      <img src="picture/first.png" width="100" height="100" alt="이애은" /><br />
+      <img src="images/핑크.jpg" width="130" height="130" alt="이애은" /><br />
       <b>이애은</b><br />
       <a href="https://github.com/nueeaeel">
       <img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white"/>
       </a>
     </td>
     <td align="center">
-      <img src="picture/third.png" width="100" height="100" alt="이민경" /><br />
+      <img src="images/옐로우.jpg" width="130" height="130" alt="이민경" /><br />
       <b>이민경</b><br />
       <a href="https://github.com/alskung1101">
       <img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white"/>
