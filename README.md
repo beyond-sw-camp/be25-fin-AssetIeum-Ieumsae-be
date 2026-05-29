@@ -146,6 +146,6 @@
 
 
 ### ERD
-
+<img width="4560" height="2742" alt="Image" src="https://github.com/user-attachments/assets/1b96e13d-618d-4e05-8445-135687220591" />
 - [ERD](https://www.erdcloud.com/d/jHtNFPTxxwohPjgER)
 
