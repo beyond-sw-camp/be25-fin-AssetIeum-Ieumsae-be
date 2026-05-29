@@ -64,7 +64,7 @@
 <br>
 
 ## 3. 시스템 아키텍처
-
+<img width="1356" height="651" alt="Image" src="https://github.com/user-attachments/assets/657f6915-42b7-4d41-8bbb-8aca7a5255f3" />
 
 ---
 
