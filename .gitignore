@@ -1,0 +1,35 @@
+.gradle/
+build/
+out/
+
+### IntelliJ IDEA ###
+.idea/
+*.iws
+*.iml
+*.ipr
+
+### VS Code ###
+.vscode/
+
+### OS ###
+.DS_Store
+Thumbs.db
+
+### Logs ###
+*.log
+
+### Environment ###
+.env
+.env.*
+!.env.example
+
+### Spring Boot ###
+application-dev.yaml
+application-dev.yml
+application-prod.yaml
+application-prod.yml
+application-secret.yaml
+application-secret.yml
+
+### Generated ###
+generated/

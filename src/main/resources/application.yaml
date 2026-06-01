@@ -1,0 +1,6 @@
+spring:
+  application:
+    name: assetieum-be
+
+  profiles:
+    default: local
