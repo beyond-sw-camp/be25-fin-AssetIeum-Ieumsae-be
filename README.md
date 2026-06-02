@@ -144,7 +144,7 @@
 - [요구사항 명세서](https://docs.google.com/spreadsheets/d/1z-TKzG4AP284DwpEWPyhNDyRp2_YIFeRTpRxHoSSBkk/edit?gid=73162709#gid=73162709)
 - [기획서](./docs/자산이음%20기획서.pdf)
 - [프로그램 사양서](https://rp3hgdqcg2.apidog.io/)
-
+- [테이블 명세서](https://docs.google.com/spreadsheets/d/1z-TKzG4AP284DwpEWPyhNDyRp2_YIFeRTpRxHoSSBkk/edit?gid=2140880264#gid=2140880264)
 
 ### ERD
 <img width="4560" height="2742" alt="Image" src="https://github.com/user-attachments/assets/1b96e13d-618d-4e05-8445-135687220591" />
