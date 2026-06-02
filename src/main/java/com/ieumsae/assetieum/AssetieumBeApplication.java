@@ -1,4 +1,4 @@
-package com.ieumsae.assetieum_be;
+package com.ieumsae.assetieum;
 
 import java.io.IOException;
 import java.io.File;

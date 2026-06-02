@@ -1,6 +1,6 @@
-package com.ieumsae.assetieum_be.global.exception;
+package com.ieumsae.assetieum.global.exception;
 
-import com.ieumsae.assetieum_be.global.response.ApiResponse;
+import com.ieumsae.assetieum.global.response.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;

@@ -1,4 +1,4 @@
-package com.ieumsae.assetieum_be.global.response;
+package com.ieumsae.assetieum.global.response;
 
 import org.springframework.http.HttpStatus;
 

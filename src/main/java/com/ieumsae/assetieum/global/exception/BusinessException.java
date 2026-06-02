@@ -1,4 +1,4 @@
-package com.ieumsae.assetieum_be.global.exception;
+package com.ieumsae.assetieum.global.exception;
 
 public class BusinessException extends RuntimeException {
 
