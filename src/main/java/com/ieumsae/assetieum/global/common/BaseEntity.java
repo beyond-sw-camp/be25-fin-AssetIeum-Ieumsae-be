@@ -1,4 +1,4 @@
-package com.ieumsae.assetieum_be.global.common;
+package com.ieumsae.assetieum.global.common;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.EntityListeners;
