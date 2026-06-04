@@ -14,17 +14,6 @@ public interface TangibleAssetCategoryRepository extends JpaRepository<TangibleA
             String name
     );
 
-    @Query("""
-        SELECT c
-        FROM TangibleAssetCategory c
-        WHERE c.company.id = :companyId
-          AND (:parentId IS NULL OR c.parent.id = :parentId)
-        ORDER BY c.createdAt DESC
-        """)
-    List<TangibleAssetCategory> search(
-            @Param("companyId") UUID companyId,
-            @Param("parentId") UUID parentId);
-
     List<TangibleAssetCategory> findAllByCompany_IdOrderByCreatedAtAsc(UUID companyId);
 
     boolean existsByParent_Id(UUID categoryId);
