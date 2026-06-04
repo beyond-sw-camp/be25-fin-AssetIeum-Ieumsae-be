@@ -1,8 +1,10 @@
 package com.ieumsae.assetieum.domain.auth.dto;
 
 import com.ieumsae.assetieum.domain.member.type.MemberRole;
-import java.util.UUID;
+import com.ieumsae.assetieum.domain.member.type.MemberStatus;
 import lombok.Getter;
+
+import java.util.UUID;
 
 @Getter
 public class LoginResponse {
@@ -14,6 +16,7 @@ public class LoginResponse {
 	private final UUID departmentId;
 	private final String departmentName;
 	private final MemberRole role;
+	private final MemberStatus status;
 	private final String accessToken;
 
 	public LoginResponse(
@@ -24,6 +27,7 @@ public class LoginResponse {
 		UUID departmentId,
 		String departmentName,
 		MemberRole role,
+		MemberStatus status,
 		String accessToken
 	) {
 		this.memberId = memberId;
@@ -33,6 +37,7 @@ public class LoginResponse {
 		this.departmentId = departmentId;
 		this.departmentName = departmentName;
 		this.role = role;
+		this.status = status;
 		this.accessToken = accessToken;
 	}
 }

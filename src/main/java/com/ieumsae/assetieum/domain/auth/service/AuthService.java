@@ -3,6 +3,7 @@ package com.ieumsae.assetieum.domain.auth.service;
 import com.ieumsae.assetieum.domain.auth.customer.CustomerMember;
 import com.ieumsae.assetieum.domain.auth.customer.CustomerMemberClient;
 import com.ieumsae.assetieum.domain.auth.dto.ChangePasswordRequest;
+import com.ieumsae.assetieum.domain.auth.dto.ChangePasswordResponse;
 import com.ieumsae.assetieum.domain.auth.dto.LoginRequest;
 import com.ieumsae.assetieum.domain.auth.dto.LoginResponse;
 import com.ieumsae.assetieum.domain.member.entity.Member;
@@ -12,6 +13,7 @@ import com.ieumsae.assetieum.global.exception.ErrorCode;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
 import com.ieumsae.assetieum.global.security.JwtProvider;
 import jakarta.transaction.Transactional;
+import java.time.LocalDateTime;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -37,7 +39,10 @@ public class AuthService {
 
 	@Transactional
 	public LoginResponse login(LoginRequest request) {
-		CustomerMember customerMember = customerMemberClient.authenticate(request.getEmployeeNumber(), request.getPassword())
+		CustomerMember customerMember = customerMemberClient.authenticate(
+				request.getEmployeeNumber(),
+				request.getPassword()
+			)
 			.orElseThrow(() -> new BusinessException(ErrorCode.INVALID_CREDENTIALS));
 
 		Member member = customerMember.member();
@@ -57,12 +62,16 @@ public class AuthService {
 			member.getDepartment().getId(),
 			member.getDepartment().getName(),
 			member.getRole(),
+			member.getStatus(),
 			jwtProvider.createAccessToken(member)
 		);
 	}
 
 	@Transactional
-	public void changePassword(AuthenticatedMember authenticatedMember, ChangePasswordRequest request) {
+	public ChangePasswordResponse changePassword(
+		AuthenticatedMember authenticatedMember,
+		ChangePasswordRequest request
+	) {
 		Member member = memberRepository.findById(authenticatedMember.id())
 			.orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
@@ -75,5 +84,6 @@ public class AuthService {
 		}
 
 		member.changePassword(passwordEncoder.encode(request.getNewPassword()));
+		return new ChangePasswordResponse(member.getId(), LocalDateTime.now());
 	}
 }
