@@ -4,3 +4,10 @@ spring:
 
   profiles:
     default: local
+
+auth:
+  jwt:
+    secret: ${JWT_SECRET:assetieum-local-development-jwt-secret-change-me-32bytes}
+    issuer: ${JWT_ISSUER:assetieum}
+    audience: ${JWT_AUDIENCE:assetieum-client}
+    access-token-expiration-minutes: ${JWT_ACCESS_TOKEN_EXPIRATION_MINUTES:60}
