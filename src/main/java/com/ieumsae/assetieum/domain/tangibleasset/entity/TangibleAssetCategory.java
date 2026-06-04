@@ -43,9 +43,4 @@ public class TangibleAssetCategory extends BaseEntity {
 
     @Column(name = "name", nullable = false, length = 100)
     private String name;
-
-    public void update(String name, TangibleAssetCategory parent){
-        this.name = name;
-        this.parent = parent;
-    }
 }
