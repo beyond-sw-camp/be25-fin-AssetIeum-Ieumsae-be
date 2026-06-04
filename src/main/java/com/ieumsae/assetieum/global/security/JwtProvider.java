@@ -8,12 +8,13 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.stereotype.Component;
+
+import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
 import java.util.UUID;
-import javax.crypto.SecretKey;
-import org.springframework.stereotype.Component;
 
 @Component
 public class JwtProvider {
@@ -60,6 +61,7 @@ public class JwtProvider {
 				.parseSignedClaims(token)
 				.getPayload();
 
+			// access token 전용 파서이므로 다른 용도의 JWT가 들어오면 거부한다.
 			if (!ACCESS_TOKEN_TYPE.equals(readStringClaim(claims, TOKEN_TYPE_CLAIM))) {
 				throw new BusinessException(ErrorCode.INVALID_TOKEN);
 			}
