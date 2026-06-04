@@ -150,3 +150,5 @@
 <img width="4560" height="2742" alt="Image" src="https://github.com/user-attachments/assets/1b96e13d-618d-4e05-8445-135687220591" />
 - [ERD](https://www.erdcloud.com/d/jHtNFPTxxwohPjgER)
 
+### 와이어프레임
+- [와이어 프레임](https://www.figma.com/design/i5o7Xeb6cELARDILAXW309/%EC%9E%90%EC%82%B0-%EC%9D%B4%EC%9D%8C?node-id=399-509&t=ruWNjERUCQMxksow-0)
