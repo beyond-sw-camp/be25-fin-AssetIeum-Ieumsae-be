@@ -37,7 +37,7 @@ public class AuthService {
 
 	@Transactional
 	public LoginResponse login(LoginRequest request) {
-		CustomerMember customerMember = customerMemberClient.authenticate(request.employeeNumber(), request.password())
+		CustomerMember customerMember = customerMemberClient.authenticate(request.getEmployeeNumber(), request.getPassword())
 			.orElseThrow(() -> new BusinessException(ErrorCode.INVALID_CREDENTIALS));
 
 		Member member = customerMember.member();
@@ -46,7 +46,7 @@ public class AuthService {
 		}
 
 		if (customerMember.legacyPlainPassword()) {
-			member.changePassword(passwordEncoder.encode(request.password()));
+			member.changePassword(passwordEncoder.encode(request.getPassword()));
 		}
 
 		return new LoginResponse(
@@ -70,10 +70,10 @@ public class AuthService {
 			throw new BusinessException(ErrorCode.INACTIVE_MEMBER);
 		}
 
-		if (!passwordEncoder.matches(request.currentPassword(), member.getPassword())) {
+		if (!passwordEncoder.matches(request.getCurrentPassword(), member.getPassword())) {
 			throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
 		}
 
-		member.changePassword(passwordEncoder.encode(request.newPassword()));
+		member.changePassword(passwordEncoder.encode(request.getNewPassword()));
 	}
 }
