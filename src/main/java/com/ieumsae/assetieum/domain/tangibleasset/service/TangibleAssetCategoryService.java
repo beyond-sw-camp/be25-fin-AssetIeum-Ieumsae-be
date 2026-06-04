@@ -1,7 +1,7 @@
 package com.ieumsae.assetieum.domain.tangibleasset.service;
 
-import com.ieumsae.assetieum.domain.company.Company;
-import com.ieumsae.assetieum.domain.company.CompanyRepository;
+import com.ieumsae.assetieum.domain.company.entity.Company;
+import com.ieumsae.assetieum.domain.company.repository.CompanyRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.dto.TangibleAssetCategoryCreateRequest;
 import com.ieumsae.assetieum.domain.tangibleasset.dto.TangibleAssetCategoryDeleteResponse;
 import com.ieumsae.assetieum.domain.tangibleasset.dto.TangibleAssetCategoryResponse;
