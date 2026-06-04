@@ -4,6 +4,7 @@ import com.ieumsae.assetieum.domain.company.Company;
 import com.ieumsae.assetieum.domain.company.CompanyRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.dto.TangibleAssetCategoryCreateRequest;
 import com.ieumsae.assetieum.domain.tangibleasset.dto.TangibleAssetCategoryResponse;
+import com.ieumsae.assetieum.domain.tangibleasset.dto.TangibleAssetCategoryTreeResponse;
 import com.ieumsae.assetieum.domain.tangibleasset.entity.TangibleAssetCategory;
 import com.ieumsae.assetieum.domain.tangibleasset.repository.TangibleAssetCategoryRepository;
 import com.ieumsae.assetieum.global.exception.BusinessException;
@@ -11,6 +12,12 @@ import com.ieumsae.assetieum.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -61,4 +68,50 @@ public class TangibleAssetCategoryService {
         );
 
     }
+
+    public List<TangibleAssetCategoryTreeResponse> getTangibleCategories(
+            UUID companyId
+    ) {
+        if (!companyRepository.existsById(companyId)) {
+            throw new BusinessException(ErrorCode.COMPANY_NOT_FOUND);
+        }
+
+        List<TangibleAssetCategory> categories =
+                tangibleAssetCategoryRepository.findAllByCompany_IdOrderByCreatedAtAsc(
+                        companyId
+                );
+
+        Map<UUID, TangibleAssetCategoryTreeResponse> categoryMap =
+                new LinkedHashMap<>();
+
+        List<TangibleAssetCategoryTreeResponse> roots =
+                new ArrayList<>();
+
+        for (TangibleAssetCategory category : categories) {
+            categoryMap.put(
+                    category.getId(),
+                    TangibleAssetCategoryTreeResponse.from(category)
+            );
+        }
+
+        for (TangibleAssetCategory category : categories) {
+            TangibleAssetCategoryTreeResponse response =
+                    categoryMap.get(category.getId());
+
+            if (category.getParent() == null) {
+                roots.add(response);
+                continue;
+            }
+
+            TangibleAssetCategoryTreeResponse parent =
+                    categoryMap.get(category.getParent().getId());
+
+            if (parent != null) {
+                parent.addChild(response);
+            }
+        }
+
+        return roots;
+    }
+
 }
