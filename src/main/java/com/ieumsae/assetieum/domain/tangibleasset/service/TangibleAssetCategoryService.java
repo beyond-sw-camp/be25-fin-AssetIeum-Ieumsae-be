@@ -3,6 +3,7 @@ package com.ieumsae.assetieum.domain.tangibleasset.service;
 import com.ieumsae.assetieum.domain.company.Company;
 import com.ieumsae.assetieum.domain.company.CompanyRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.dto.TangibleAssetCategoryCreateRequest;
+import com.ieumsae.assetieum.domain.tangibleasset.dto.TangibleAssetCategoryDeleteResponse;
 import com.ieumsae.assetieum.domain.tangibleasset.dto.TangibleAssetCategoryResponse;
 import com.ieumsae.assetieum.domain.tangibleasset.dto.TangibleAssetCategoryTreeResponse;
 import com.ieumsae.assetieum.domain.tangibleasset.entity.TangibleAssetCategory;
@@ -51,7 +52,7 @@ public class TangibleAssetCategoryService {
                     ));
 
             if(!parent.getCompany().getId().equals(request.getCompanyId())) {
-                throw new BusinessException(ErrorCode.INVALID_PARENT_CATEGORY);
+                throw new BusinessException(ErrorCode.TANGIBLE_ASSET_INVALID_PARENT);
             }
         }
 
@@ -114,4 +115,21 @@ public class TangibleAssetCategoryService {
         return roots;
     }
 
+    @Transactional
+    public TangibleAssetCategoryDeleteResponse deleteCategory(UUID categoryId) {
+        TangibleAssetCategory category =
+                tangibleAssetCategoryRepository.findById(categoryId)
+                        .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_CATEGORY_NOT_FOUND));
+
+        if(tangibleAssetCategoryRepository.existsByParent_Id(categoryId)) {
+            throw new BusinessException(ErrorCode.TANGIBLE_ASSET_CATEGORY_HAS_CHILDREN);
+        }
+
+        tangibleAssetCategoryRepository.delete(category);
+
+        return TangibleAssetCategoryDeleteResponse.builder()
+                .categoryId(category.getId())
+                .companyId(category.getCompany().getId())
+                .build();
+    }
 }

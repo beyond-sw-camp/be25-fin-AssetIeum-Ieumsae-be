@@ -1,13 +1,16 @@
 package com.ieumsae.assetieum.domain.tangibleasset.controller;
 
 import com.ieumsae.assetieum.domain.tangibleasset.dto.TangibleAssetCategoryCreateRequest;
+import com.ieumsae.assetieum.domain.tangibleasset.dto.TangibleAssetCategoryDeleteResponse;
 import com.ieumsae.assetieum.domain.tangibleasset.dto.TangibleAssetCategoryResponse;
 import com.ieumsae.assetieum.domain.tangibleasset.dto.TangibleAssetCategoryTreeResponse;
 import com.ieumsae.assetieum.domain.tangibleasset.service.TangibleAssetCategoryService;
 import com.ieumsae.assetieum.global.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -40,5 +43,15 @@ public class TangibleAssetCategoryController {
                 tangibleAssetCategoryService.getTangibleCategories(companyId);
 
         return ApiResponse.ok("유형자산 카테고리 목록 조회에 성공했습니다.", response);
+    }
+
+    @DeleteMapping("/{categoryId}")
+    public ApiResponse<TangibleAssetCategoryDeleteResponse> deleteCategory(
+            @PathVariable UUID categoryId
+    ) {
+        TangibleAssetCategoryDeleteResponse response =
+                tangibleAssetCategoryService.deleteCategory(categoryId);
+
+        return ApiResponse.ok("유형자산 카테고리가 삭제되었습니다.", response);
     }
 }

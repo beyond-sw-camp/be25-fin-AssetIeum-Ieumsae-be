@@ -26,4 +26,6 @@ public interface TangibleAssetCategoryRepository extends JpaRepository<TangibleA
             @Param("parentId") UUID parentId);
 
     List<TangibleAssetCategory> findAllByCompany_IdOrderByCreatedAtAsc(UUID companyId);
+
+    boolean existsByParent_Id(UUID categoryId);
 }
