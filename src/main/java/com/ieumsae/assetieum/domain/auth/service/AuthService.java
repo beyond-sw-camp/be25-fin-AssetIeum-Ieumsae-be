@@ -13,29 +13,20 @@ import com.ieumsae.assetieum.global.exception.ErrorCode;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
 import com.ieumsae.assetieum.global.security.JwtProvider;
 import jakarta.transaction.Transactional;
-import java.time.LocalDateTime;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+
 @Service
+@RequiredArgsConstructor
 public class AuthService {
 
 	private final CustomerMemberClient customerMemberClient;
 	private final MemberRepository memberRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final JwtProvider jwtProvider;
-
-	public AuthService(
-		CustomerMemberClient customerMemberClient,
-		MemberRepository memberRepository,
-		PasswordEncoder passwordEncoder,
-		JwtProvider jwtProvider
-	) {
-		this.customerMemberClient = customerMemberClient;
-		this.memberRepository = memberRepository;
-		this.passwordEncoder = passwordEncoder;
-		this.jwtProvider = jwtProvider;
-	}
 
 	@Transactional
 	public LoginResponse login(LoginRequest request) {
@@ -45,26 +36,27 @@ public class AuthService {
 			)
 			.orElseThrow(() -> new BusinessException(ErrorCode.INVALID_CREDENTIALS));
 
-		Member member = customerMember.member();
+		Member member = customerMember.getMember();
 		if (!member.isActive()) {
 			throw new BusinessException(ErrorCode.INACTIVE_MEMBER);
 		}
 
-		if (customerMember.legacyPlainPassword()) {
+		// 초기 비밀번호가 사번 같은 평문으로 들어온 경우, 첫 로그인 성공 시 해시 비밀번호로 전환한다.
+		if (customerMember.isLegacyPlainPassword()) {
 			member.changePassword(passwordEncoder.encode(request.getPassword()));
 		}
 
-		return new LoginResponse(
-			member.getId(),
-			member.getEmployeeNumber(),
-			member.getName(),
-			member.getEmail(),
-			member.getDepartment().getId(),
-			member.getDepartment().getName(),
-			member.getRole(),
-			member.getStatus(),
-			jwtProvider.createAccessToken(member)
-		);
+		return LoginResponse.builder()
+			.memberId(member.getId())
+			.memberNo(member.getEmployeeNumber())
+			.name(member.getName())
+			.email(member.getEmail())
+			.departmentId(member.getDepartment().getId())
+			.departmentName(member.getDepartment().getName())
+			.role(member.getRole())
+			.status(member.getStatus())
+			.accessToken(jwtProvider.createAccessToken(member))
+			.build();
 	}
 
 	@Transactional
@@ -75,6 +67,7 @@ public class AuthService {
 		Member member = memberRepository.findById(authenticatedMember.id())
 			.orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
+		// 토큰은 로그인 시점의 정보이므로, 보안 작업 전에는 DB 기준 현재 상태를 다시 확인한다.
 		if (!member.isActive()) {
 			throw new BusinessException(ErrorCode.INACTIVE_MEMBER);
 		}
@@ -84,6 +77,9 @@ public class AuthService {
 		}
 
 		member.changePassword(passwordEncoder.encode(request.getNewPassword()));
-		return new ChangePasswordResponse(member.getId(), LocalDateTime.now());
+		return ChangePasswordResponse.builder()
+			.memberId(member.getId())
+			.updatedAt(LocalDateTime.now())
+			.build();
 	}
 }

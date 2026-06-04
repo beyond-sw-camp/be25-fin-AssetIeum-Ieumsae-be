@@ -3,19 +3,16 @@ package com.ieumsae.assetieum.domain.auth.customer;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
 import java.util.Optional;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class LocalCustomerMemberClient implements CustomerMemberClient {
 
 	private final MemberRepository memberRepository;
 	private final PasswordEncoder passwordEncoder;
-
-	public LocalCustomerMemberClient(MemberRepository memberRepository, PasswordEncoder passwordEncoder) {
-		this.memberRepository = memberRepository;
-		this.passwordEncoder = passwordEncoder;
-	}
 
 	@Override
 	public Optional<CustomerMember> authenticate(String employeeNumber, String rawPassword) {
