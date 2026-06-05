@@ -11,13 +11,13 @@ import lombok.Setter;
 public class LoginRequest {
 
 	@NotBlank(message = "사번은 필수입니다.")
-	private String employeeNumber;
+	private String memberNo;
 
 	@NotBlank(message = "비밀번호는 필수입니다.")
 	private String password;
 
-	public LoginRequest(String employeeNumber, String password) {
-		this.employeeNumber = employeeNumber;
+	public LoginRequest(String memberNo, String password) {
+		this.memberNo = memberNo;
 		this.password = password;
 	}
 }

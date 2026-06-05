@@ -7,5 +7,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface MemberRepository extends JpaRepository<Member, UUID> {
 
-	Optional<Member> findByEmployeeNumber(String employeeNumber);
+	Optional<Member> findByMemberNo(String memberNo);
 }

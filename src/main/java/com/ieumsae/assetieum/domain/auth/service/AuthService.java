@@ -1,11 +1,11 @@
 package com.ieumsae.assetieum.domain.auth.service;
 
-import com.ieumsae.assetieum.domain.auth.customer.CustomerMember;
-import com.ieumsae.assetieum.domain.auth.customer.CustomerMemberClient;
 import com.ieumsae.assetieum.domain.auth.dto.ChangePasswordRequest;
 import com.ieumsae.assetieum.domain.auth.dto.ChangePasswordResponse;
 import com.ieumsae.assetieum.domain.auth.dto.LoginRequest;
 import com.ieumsae.assetieum.domain.auth.dto.LoginResponse;
+import com.ieumsae.assetieum.domain.auth.login.LoginMember;
+import com.ieumsae.assetieum.domain.auth.login.LoginMemberClient;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
 import com.ieumsae.assetieum.global.exception.BusinessException;
@@ -13,42 +13,41 @@ import com.ieumsae.assetieum.global.exception.ErrorCode;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
 import com.ieumsae.assetieum.global.security.JwtProvider;
 import jakarta.transaction.Transactional;
+import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
-import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
 public class AuthService {
 
-	private final CustomerMemberClient customerMemberClient;
+	private final LoginMemberClient loginMemberClient;
 	private final MemberRepository memberRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final JwtProvider jwtProvider;
 
 	@Transactional
 	public LoginResponse login(LoginRequest request) {
-		CustomerMember customerMember = customerMemberClient.authenticate(
-				request.getEmployeeNumber(),
+		LoginMember loginMember = loginMemberClient.authenticate(
+				request.getMemberNo(),
 				request.getPassword()
 			)
 			.orElseThrow(() -> new BusinessException(ErrorCode.INVALID_CREDENTIALS));
 
-		Member member = customerMember.getMember();
+		Member member = loginMember.getMember();
 		if (!member.isActive()) {
 			throw new BusinessException(ErrorCode.INACTIVE_MEMBER);
 		}
 
 		// 초기 비밀번호가 사번 같은 평문으로 들어온 경우, 첫 로그인 성공 시 해시 비밀번호로 전환한다.
-		if (customerMember.isLegacyPlainPassword()) {
+		if (loginMember.isLegacyPlainPassword()) {
 			member.changePassword(passwordEncoder.encode(request.getPassword()));
 		}
 
 		return LoginResponse.builder()
 			.memberId(member.getId())
-			.memberNo(member.getEmployeeNumber())
+			.memberNo(member.getMemberNo())
 			.name(member.getName())
 			.email(member.getEmail())
 			.departmentId(member.getDepartment().getId())

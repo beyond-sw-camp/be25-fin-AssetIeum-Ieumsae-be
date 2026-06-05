@@ -5,7 +5,7 @@ import java.util.UUID;
 
 public record AuthenticatedMember(
 	UUID id,
-	String employeeNumber,
+	String memberNo,
 	MemberRole role
 ) {
 }

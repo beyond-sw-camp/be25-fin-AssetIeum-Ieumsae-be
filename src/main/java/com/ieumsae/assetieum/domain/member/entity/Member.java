@@ -14,13 +14,12 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.time.LocalDateTime;
+import java.util.UUID;
 import lombok.Getter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UuidGenerator;
 import org.hibernate.type.SqlTypes;
-
-import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Getter
 @Entity
@@ -42,7 +41,7 @@ public class Member extends BaseEntity {
 	private Company company;
 
 	@Column(name = "member_no", nullable = false, length = 100)
-	private String employeeNumber;
+	private String memberNo;
 
 	@Column(nullable = false, length = 100)
 	private String password;
@@ -70,7 +69,7 @@ public class Member extends BaseEntity {
 	public Member(
 		Company company,
 		Department department,
-		String employeeNumber,
+		String memberNo,
 		String password,
 		String name,
 		MemberRole role,
@@ -78,7 +77,7 @@ public class Member extends BaseEntity {
 	) {
 		this.company = company;
 		this.department = department;
-		this.employeeNumber = employeeNumber;
+		this.memberNo = memberNo;
 		this.password = password;
 		this.name = name;
 		this.role = role;

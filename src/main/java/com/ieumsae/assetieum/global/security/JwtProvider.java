@@ -8,18 +8,17 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
-import org.springframework.stereotype.Component;
-
-import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
 import java.util.UUID;
+import javax.crypto.SecretKey;
+import org.springframework.stereotype.Component;
 
 @Component
 public class JwtProvider {
 
-	private static final String EMPLOYEE_NUMBER_CLAIM = "employeeNumber";
+	private static final String MEMBER_NO_CLAIM = "memberNo";
 	private static final String ROLE_CLAIM = "role";
 	private static final String TOKEN_TYPE_CLAIM = "tokenType";
 	private static final String ACCESS_TOKEN_TYPE = "access";
@@ -36,13 +35,14 @@ public class JwtProvider {
 		Instant now = Instant.now();
 		Instant expiresAt = now.plusSeconds(getAccessTokenExpiresInSeconds());
 
+		// 토큰에는 인증에 필요한 최소 식별 정보만 담고, 변경 가능한 상태값은 서비스에서 DB로 재확인한다.
 		return Jwts.builder()
 			.issuer(jwtProperties.getIssuer())
 			.audience()
 			.add(jwtProperties.getAudience())
 			.and()
 			.subject(member.getId().toString())
-			.claim(EMPLOYEE_NUMBER_CLAIM, member.getEmployeeNumber())
+			.claim(MEMBER_NO_CLAIM, member.getMemberNo())
 			.claim(ROLE_CLAIM, member.getRole().name())
 			.claim(TOKEN_TYPE_CLAIM, ACCESS_TOKEN_TYPE)
 			.issuedAt(Date.from(now))
@@ -68,7 +68,7 @@ public class JwtProvider {
 
 			return new AuthenticatedMember(
 				UUID.fromString(claims.getSubject()),
-				readStringClaim(claims, EMPLOYEE_NUMBER_CLAIM),
+				readStringClaim(claims, MEMBER_NO_CLAIM),
 				MemberRole.valueOf(readStringClaim(claims, ROLE_CLAIM))
 			);
 		} catch (JwtException | IllegalArgumentException exception) {
