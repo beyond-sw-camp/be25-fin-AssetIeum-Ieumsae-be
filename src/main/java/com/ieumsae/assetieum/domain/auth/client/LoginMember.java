@@ -1,4 +1,4 @@
-package com.ieumsae.assetieum.domain.auth.login;
+package com.ieumsae.assetieum.domain.auth.client;
 
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import lombok.Getter;
