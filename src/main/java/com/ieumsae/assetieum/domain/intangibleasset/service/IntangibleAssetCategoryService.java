@@ -4,6 +4,7 @@ import com.ieumsae.assetieum.domain.company.Company;
 import com.ieumsae.assetieum.domain.company.CompanyRepository;
 import com.ieumsae.assetieum.domain.intangibleasset.dto.IntangibleAssetCategoryCreateRequest;
 import com.ieumsae.assetieum.domain.intangibleasset.dto.IntangibleAssetCategoryResponse;
+import com.ieumsae.assetieum.domain.intangibleasset.dto.IntangibleAssetCategoryTreeResponse;
 import com.ieumsae.assetieum.domain.intangibleasset.entity.IntangibleAssetCategory;
 import com.ieumsae.assetieum.domain.intangibleasset.repository.IntangibleAssetCategoryRepository;
 import com.ieumsae.assetieum.global.exception.BusinessException;
@@ -11,6 +12,12 @@ import com.ieumsae.assetieum.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -59,5 +66,49 @@ public class IntangibleAssetCategoryService {
         return IntangibleAssetCategoryResponse.from(
                 savedCategory
         );
+    }
+
+    public List<IntangibleAssetCategoryTreeResponse> getIntangibleCategories(
+            UUID companyId) {
+        if(!companyRepository.existsById(companyId)) {
+            throw new BusinessException(ErrorCode.COMPANY_NOT_FOUND);
+        }
+
+        List<IntangibleAssetCategory> categories =
+                intangibleAssetCategoryRepository.findAllByCompany_IdOrderByCreatedAtAsc(
+                        companyId
+                );
+
+        Map<UUID, IntangibleAssetCategoryTreeResponse> categoryMap =
+                new LinkedHashMap<>();
+
+        List<IntangibleAssetCategoryTreeResponse> roots =
+                new ArrayList<>();
+
+        for(IntangibleAssetCategory category : categories) {
+            categoryMap.put(
+                    category.getId(),
+                    IntangibleAssetCategoryTreeResponse.from(category)
+            );
+        }
+
+        for(IntangibleAssetCategory category : categories) {
+            IntangibleAssetCategoryTreeResponse response =
+                    categoryMap.get(category.getId());
+
+            if(category.getParent() == null){
+                roots.add(response);
+                continue;
+            }
+
+            IntangibleAssetCategoryTreeResponse parent =
+                    categoryMap.get(category.getParent().getId());
+
+            if(parent != null) {
+                parent.addChild(response);
+            }
+        }
+
+        return roots;
     }
 }
