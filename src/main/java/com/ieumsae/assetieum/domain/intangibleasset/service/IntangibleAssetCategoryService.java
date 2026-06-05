@@ -3,6 +3,7 @@ package com.ieumsae.assetieum.domain.intangibleasset.service;
 import com.ieumsae.assetieum.domain.company.Company;
 import com.ieumsae.assetieum.domain.company.CompanyRepository;
 import com.ieumsae.assetieum.domain.intangibleasset.dto.IntangibleAssetCategoryCreateRequest;
+import com.ieumsae.assetieum.domain.intangibleasset.dto.IntangibleAssetCategoryDeleteResponse;
 import com.ieumsae.assetieum.domain.intangibleasset.dto.IntangibleAssetCategoryResponse;
 import com.ieumsae.assetieum.domain.intangibleasset.dto.IntangibleAssetCategoryTreeResponse;
 import com.ieumsae.assetieum.domain.intangibleasset.entity.IntangibleAssetCategory;
@@ -110,5 +111,23 @@ public class IntangibleAssetCategoryService {
         }
 
         return roots;
+    }
+
+    @Transactional
+    public IntangibleAssetCategoryDeleteResponse deleteCategory(UUID categoryId) {
+        IntangibleAssetCategory category =
+                intangibleAssetCategoryRepository.findById(categoryId)
+                        .orElseThrow(() -> new BusinessException(ErrorCode.INTANGIBLE_ASSET_CATEGORY_NOT_FOUND));
+
+        if(intangibleAssetCategoryRepository.existsByParent_Id(categoryId)) {
+            throw new BusinessException(ErrorCode.INTANGIBLE_ASSET_CATEGORY_HAS_CHILDREN);
+        }
+
+        intangibleAssetCategoryRepository.delete(category);
+
+        return IntangibleAssetCategoryDeleteResponse.builder()
+                .categoryId(category.getId())
+                .companyId(category.getCompany().getId())
+                .build();
     }
 }

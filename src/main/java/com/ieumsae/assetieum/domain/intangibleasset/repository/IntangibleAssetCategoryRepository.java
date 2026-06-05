@@ -13,4 +13,6 @@ public interface IntangibleAssetCategoryRepository extends JpaRepository<Intangi
             String name);
 
     List<IntangibleAssetCategory> findAllByCompany_IdOrderByCreatedAtAsc(UUID companyId);
+
+    boolean existsByParent_Id(UUID categoryId);
 }
