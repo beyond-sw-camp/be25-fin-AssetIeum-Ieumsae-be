@@ -24,7 +24,15 @@ public class AssetieumBeApplication {
 	private static void loadRequiredEnv() {
 		Path envPath = findEnvPath()
 				.orElseThrow(() -> new IllegalStateException(".env file is required in the project root."));
-		Set<String> requiredKeys = Set.of("DB_URL", "DB_USERNAME", "DB_PASSWORD");
+		Set<String> requiredKeys = Set.of(
+				"DB_URL",
+				"DB_USERNAME",
+				"DB_PASSWORD",
+				"JWT_SECRET",
+				"JWT_ISSUER",
+				"JWT_AUDIENCE",
+				"JWT_ACCESS_TOKEN_EXPIRATION_MINUTES"
+		);
 
 		try {
 			List<String> lines = Files.readAllLines(envPath);

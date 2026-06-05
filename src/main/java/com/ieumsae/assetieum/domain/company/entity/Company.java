@@ -1,4 +1,4 @@
-package com.ieumsae.assetieum.domain.company;
+package com.ieumsae.assetieum.domain.company.entity;
 
 import com.ieumsae.assetieum.global.common.BaseEntity;
 import jakarta.persistence.Column;

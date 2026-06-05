@@ -1,10 +1,8 @@
-package com.ieumsae.assetieum.domain.company;
+package com.ieumsae.assetieum.domain.company.repository;
 
-import java.util.Optional;
+import com.ieumsae.assetieum.domain.company.entity.Company;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface CompanyRepository extends JpaRepository<Company, UUID> {
-
-	Optional<Company> findByCompanyCode(String companyCode);
 }

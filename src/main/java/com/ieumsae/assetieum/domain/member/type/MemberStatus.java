@@ -1,4 +1,4 @@
-package com.ieumsae.assetieum.domain.member;
+package com.ieumsae.assetieum.domain.member.type;
 
 public enum MemberStatus {
 	ACTIVE,
