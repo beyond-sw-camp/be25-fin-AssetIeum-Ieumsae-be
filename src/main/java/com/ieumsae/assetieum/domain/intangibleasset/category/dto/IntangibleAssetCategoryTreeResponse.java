@@ -1,15 +1,17 @@
-package com.ieumsae.assetieum.domain.intangibleasset.dto;
+package com.ieumsae.assetieum.domain.intangibleasset.category.dto;
 
-import com.ieumsae.assetieum.domain.intangibleasset.entity.IntangibleAssetCategory;
+import com.ieumsae.assetieum.domain.intangibleasset.category.entity.IntangibleAssetCategory;
 import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Getter
 @Builder
-public class IntangibleAssetCategoryResponse {
+public class IntangibleAssetCategoryTreeResponse {
     private UUID categoryId;
 
     private UUID companyId;
@@ -22,15 +24,18 @@ public class IntangibleAssetCategoryResponse {
 
     private LocalDateTime updatedAt;
 
-    public static IntangibleAssetCategoryResponse from(
+    @Builder.Default
+    private List<IntangibleAssetCategoryTreeResponse> children = new ArrayList<>();
+
+    public static IntangibleAssetCategoryTreeResponse from(
             IntangibleAssetCategory category
     ) {
-        return IntangibleAssetCategoryResponse.builder()
+        return IntangibleAssetCategoryTreeResponse.builder()
                 .categoryId(category.getId())
                 .companyId(category.getCompany().getId())
                 .parentId(
                         category.getParent() != null
-                                ? category.getParent().getId()
+                            ? category.getParent().getId()
                                 : null
                 )
                 .name(category.getName())
@@ -38,4 +43,9 @@ public class IntangibleAssetCategoryResponse {
                 .updatedAt(category.getUpdatedAt())
                 .build();
     }
+
+    public void addChild(IntangibleAssetCategoryTreeResponse child) {
+        this.children.add(child);
+    }
+
 }

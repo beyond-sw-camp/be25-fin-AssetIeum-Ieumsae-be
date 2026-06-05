@@ -1,4 +1,4 @@
-package com.ieumsae.assetieum.domain.tangibleasset.dto;
+package com.ieumsae.assetieum.domain.intangibleasset.category.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -11,7 +11,7 @@ import java.util.UUID;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-public class TangibleAssetCategoryCreateRequest {
+public class IntangibleAssetCategoryCreateRequest {
     @NotNull
     private UUID companyId;
 

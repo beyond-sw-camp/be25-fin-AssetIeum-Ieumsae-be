@@ -1,13 +1,13 @@
-package com.ieumsae.assetieum.domain.tangibleasset.service;
+package com.ieumsae.assetieum.domain.tangibleasset.category.service;
 
 import com.ieumsae.assetieum.domain.company.Company;
 import com.ieumsae.assetieum.domain.company.CompanyRepository;
-import com.ieumsae.assetieum.domain.tangibleasset.dto.TangibleAssetCategoryCreateRequest;
-import com.ieumsae.assetieum.domain.tangibleasset.dto.TangibleAssetCategoryDeleteResponse;
-import com.ieumsae.assetieum.domain.tangibleasset.dto.TangibleAssetCategoryResponse;
-import com.ieumsae.assetieum.domain.tangibleasset.dto.TangibleAssetCategoryTreeResponse;
-import com.ieumsae.assetieum.domain.tangibleasset.entity.TangibleAssetCategory;
-import com.ieumsae.assetieum.domain.tangibleasset.repository.TangibleAssetCategoryRepository;
+import com.ieumsae.assetieum.domain.tangibleasset.category.dto.TangibleAssetCategoryCreateRequest;
+import com.ieumsae.assetieum.domain.tangibleasset.category.dto.TangibleAssetCategoryDeleteResponse;
+import com.ieumsae.assetieum.domain.tangibleasset.category.dto.TangibleAssetCategoryResponse;
+import com.ieumsae.assetieum.domain.tangibleasset.category.dto.TangibleAssetCategoryTreeResponse;
+import com.ieumsae.assetieum.domain.tangibleasset.category.entity.TangibleAssetCategory;
+import com.ieumsae.assetieum.domain.tangibleasset.category.repository.TangibleAssetCategoryRepository;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;

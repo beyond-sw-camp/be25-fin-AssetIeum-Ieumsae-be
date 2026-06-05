@@ -1,4 +1,4 @@
-package com.ieumsae.assetieum.domain.tangibleasset.entity;
+package com.ieumsae.assetieum.domain.intangibleasset.category.entity;
 
 import com.ieumsae.assetieum.domain.company.Company;
 import com.ieumsae.assetieum.global.common.BaseEntity;
@@ -25,12 +25,12 @@ import java.util.UUID;
 @Builder
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "tangible_asset_categories")
-public class TangibleAssetCategory extends BaseEntity {
+@Table(name = "intangible_asset_categories")
+public class IntangibleAssetCategory extends BaseEntity {
     @Id
     @UuidGenerator
     @JdbcTypeCode(SqlTypes.CHAR)
-    @Column(name = "tangible_asset_category_id", nullable = false, length = 36)
+    @Column(name = "intangible_asset_category_id", nullable = false, length = 36)
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -39,7 +39,7 @@ public class TangibleAssetCategory extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")
-    private TangibleAssetCategory parent;
+    private IntangibleAssetCategory parent;
 
     @Column(name = "name", nullable = false, length = 100)
     private String name;

@@ -1,6 +1,6 @@
-package com.ieumsae.assetieum.domain.intangibleasset.repository;
+package com.ieumsae.assetieum.domain.intangibleasset.category.repository;
 
-import com.ieumsae.assetieum.domain.intangibleasset.entity.IntangibleAssetCategory;
+import com.ieumsae.assetieum.domain.intangibleasset.category.entity.IntangibleAssetCategory;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

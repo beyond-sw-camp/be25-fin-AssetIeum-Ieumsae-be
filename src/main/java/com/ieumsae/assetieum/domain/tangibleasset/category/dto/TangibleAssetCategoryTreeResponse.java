@@ -1,6 +1,6 @@
-package com.ieumsae.assetieum.domain.tangibleasset.dto;
+package com.ieumsae.assetieum.domain.tangibleasset.category.dto;
 
-import com.ieumsae.assetieum.domain.tangibleasset.entity.TangibleAssetCategory;
+import com.ieumsae.assetieum.domain.tangibleasset.category.entity.TangibleAssetCategory;
 import lombok.Builder;
 import lombok.Getter;
 

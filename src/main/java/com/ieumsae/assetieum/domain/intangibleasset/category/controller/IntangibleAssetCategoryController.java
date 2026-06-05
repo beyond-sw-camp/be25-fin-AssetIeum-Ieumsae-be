@@ -1,10 +1,10 @@
-package com.ieumsae.assetieum.domain.intangibleasset.controller;
+package com.ieumsae.assetieum.domain.intangibleasset.category.controller;
 
-import com.ieumsae.assetieum.domain.intangibleasset.dto.IntangibleAssetCategoryCreateRequest;
-import com.ieumsae.assetieum.domain.intangibleasset.dto.IntangibleAssetCategoryDeleteResponse;
-import com.ieumsae.assetieum.domain.intangibleasset.dto.IntangibleAssetCategoryResponse;
-import com.ieumsae.assetieum.domain.intangibleasset.dto.IntangibleAssetCategoryTreeResponse;
-import com.ieumsae.assetieum.domain.intangibleasset.service.IntangibleAssetCategoryService;
+import com.ieumsae.assetieum.domain.intangibleasset.category.dto.IntangibleAssetCategoryCreateRequest;
+import com.ieumsae.assetieum.domain.intangibleasset.category.dto.IntangibleAssetCategoryDeleteResponse;
+import com.ieumsae.assetieum.domain.intangibleasset.category.dto.IntangibleAssetCategoryResponse;
+import com.ieumsae.assetieum.domain.intangibleasset.category.dto.IntangibleAssetCategoryTreeResponse;
+import com.ieumsae.assetieum.domain.intangibleasset.category.service.IntangibleAssetCategoryService;
 import com.ieumsae.assetieum.global.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
