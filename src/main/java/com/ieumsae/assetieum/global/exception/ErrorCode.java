@@ -16,6 +16,14 @@ public enum ErrorCode {
 	TANGIBLE_ASSET_INVALID_PARENT(HttpStatus.BAD_REQUEST, "tangible-asset-003", "유효하지 않은 부모 카테고리입니다."),
 	TANGIBLE_ASSET_CATEGORY_HAS_CHILDREN(HttpStatus.CONFLICT, "tangible-asset-004", "하위 카테고리가 존재하는 경우 삭제할 수 없습니다."),
 
+
+	// 무형 자산
+	INTANGIBLE_ASSET_CATEGORY_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "intangible-asset-001", "이미 존재하는 카테고리명입니다."),
+	INTANGIBLE_ASSET_CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "intangible-asset-002", "해당 무형 자산 카테고리는 존재하지 않습니다."),
+	INTANGIBLE_ASSET_INVALID_PARENT(HttpStatus.BAD_REQUEST, "intangible-asset-003", "유효하지 않은 부모 카테고리입니다."),
+	INTANGIBLE_ASSET_CATEGORY_HAS_CHILDREN(HttpStatus.CONFLICT, "intangible-asset-004", "하위 카테고리가 존재하는 경우 삭제할 수 없습니다."),
+
+
 	// 공통
 	INVALID_INPUT_VALUE(HttpStatus.BAD_REQUEST, "COMMON_001", "잘못된 요청입니다."),
 	INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "COMMON_002", "서버 내부 오류가 발생했습니다.");

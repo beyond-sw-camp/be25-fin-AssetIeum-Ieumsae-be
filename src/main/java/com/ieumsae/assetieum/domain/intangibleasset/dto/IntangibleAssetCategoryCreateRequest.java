@@ -1,6 +1,7 @@
-package com.ieumsae.assetieum.domain.intagibleasset.dto;
+package com.ieumsae.assetieum.domain.intangibleasset.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -11,7 +12,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class IntangibleAssetCategoryCreateRequest {
-    @NotBlank
+    @NotNull
     private UUID companyId;
 
     private UUID parentId;

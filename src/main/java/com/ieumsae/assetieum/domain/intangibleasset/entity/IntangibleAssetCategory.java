@@ -1,4 +1,4 @@
-package com.ieumsae.assetieum.domain.intagibleasset.entity;
+package com.ieumsae.assetieum.domain.intangibleasset.entity;
 
 import com.ieumsae.assetieum.domain.company.Company;
 import com.ieumsae.assetieum.global.common.BaseEntity;
@@ -38,7 +38,7 @@ public class IntangibleAssetCategory extends BaseEntity {
     private Company company;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "parent_id", nullable = false)
+    @JoinColumn(name = "parent_id")
     private IntangibleAssetCategory parent;
 
     @Column(name = "name", nullable = false, length = 100)

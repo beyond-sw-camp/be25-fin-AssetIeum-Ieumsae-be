@@ -1,6 +1,6 @@
-package com.ieumsae.assetieum.domain.intagibleasset.dto;
+package com.ieumsae.assetieum.domain.intangibleasset.dto;
 
-import com.ieumsae.assetieum.domain.intagibleasset.entity.IntangibleAssetCategory;
+import com.ieumsae.assetieum.domain.intangibleasset.entity.IntangibleAssetCategory;
 import lombok.Builder;
 import lombok.Getter;
 
