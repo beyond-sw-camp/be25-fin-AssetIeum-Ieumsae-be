@@ -1,5 +1,6 @@
 package com.ieumsae.assetieum.domain.tangibleasset.category.dto;
 
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.ieumsae.assetieum.domain.tangibleasset.category.entity.TangibleAssetCategory;
 import lombok.Builder;
 import lombok.Getter;
@@ -11,6 +12,15 @@ import java.util.UUID;
 
 @Getter
 @Builder
+@JsonPropertyOrder({
+        "categoryId",
+        "companyId",
+        "parentId",
+        "name",
+        "createdAt",
+        "updatedAt",
+        "children"
+})
 public class TangibleAssetCategoryTreeResponse {
     private UUID categoryId;
 
