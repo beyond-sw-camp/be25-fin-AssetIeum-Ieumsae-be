@@ -1,0 +1,18 @@
+package com.ieumsae.assetieum.domain.tangibleasset.category.repository;
+
+import com.ieumsae.assetieum.domain.tangibleasset.category.entity.TangibleAssetCategory;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+import java.util.UUID;
+
+public interface TangibleAssetCategoryRepository extends JpaRepository<TangibleAssetCategory, UUID> {
+    boolean existsByCompany_IdAndName(
+            UUID companyId,
+            String name
+    );
+
+    List<TangibleAssetCategory> findAllByCompany_IdOrderByCreatedAtAsc(UUID companyId);
+
+    boolean existsByParent_Id(UUID categoryId);
+}
