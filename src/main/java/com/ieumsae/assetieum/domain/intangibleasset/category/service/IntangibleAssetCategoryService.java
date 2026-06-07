@@ -1,7 +1,7 @@
 package com.ieumsae.assetieum.domain.intangibleasset.category.service;
 
-import com.ieumsae.assetieum.domain.company.Company;
-import com.ieumsae.assetieum.domain.company.CompanyRepository;
+import com.ieumsae.assetieum.domain.company.entity.Company;
+import com.ieumsae.assetieum.domain.company.repository.CompanyRepository;
 import com.ieumsae.assetieum.domain.intangibleasset.category.dto.IntangibleAssetCategoryCreateRequest;
 import com.ieumsae.assetieum.domain.intangibleasset.category.dto.IntangibleAssetCategoryDeleteResponse;
 import com.ieumsae.assetieum.domain.intangibleasset.category.dto.IntangibleAssetCategoryResponse;
