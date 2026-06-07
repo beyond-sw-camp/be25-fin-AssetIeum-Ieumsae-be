@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
@@ -36,13 +37,11 @@ public class CompanyService {
 			throw new BusinessException(ErrorCode.COMPANY_ALREADY_EXISTS);
 		}
 
-		Company company = companyRepository.save(new Company(request.getCompanyCode()));
+		Company company = companyRepository.save(Company.builder()
+			.companyCode(request.getCompanyCode())
+			.build());
 
-		return CompanyCreateResponse.builder()
-			.companyId(company.getId())
-			.companyCode(company.getCompanyCode())
-			.createdAt(company.getCreatedAt())
-			.build();
+		return CompanyCreateResponse.from(company);
 	}
 
 	@Transactional
@@ -53,11 +52,9 @@ public class CompanyService {
 		validateSuperAdmin(authenticatedMember);
 
 		Company company = findActiveCompany(companyId);
+		LocalDateTime deletedAt = company.delete();
 
-		return CompanyDeleteResponse.builder()
-			.companyId(company.getId())
-			.deletedAt(company.delete())
-			.build();
+		return CompanyDeleteResponse.from(company, deletedAt);
 	}
 
 	private void validateSuperAdmin(AuthenticatedMember authenticatedMember) {
