@@ -10,4 +10,6 @@ public interface MemberRepository extends JpaRepository<Member, UUID> {
 	Optional<Member> findByMemberNo(String memberNo);
 
 	Optional<Member> findByMemberNoAndCompany_CompanyCode(String memberNo, String companyCode);
+
+	boolean existsByDepartment_IdAndDeletedAtIsNull(UUID departmentId);
 }

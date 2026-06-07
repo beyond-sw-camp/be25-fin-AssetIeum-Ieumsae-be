@@ -1,6 +1,7 @@
 package com.ieumsae.assetieum.domain.department.entity;
 
 import com.ieumsae.assetieum.domain.company.entity.Company;
+import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.global.common.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -36,6 +37,10 @@ public class Department extends BaseEntity {
 	@JoinColumn(name = "parent_department_id")
 	private Department parentDepartment;
 
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "department_manager_id")
+	private Member departmentManager;
+
 	@Column(nullable = false, length = 100)
 	private String name;
 
@@ -45,13 +50,24 @@ public class Department extends BaseEntity {
 	protected Department() {
 	}
 
-	public Department(Company company, Department parentDepartment, String name) {
+	public Department(Company company, Department parentDepartment, Member departmentManager, String name) {
 		this.company = company;
 		this.parentDepartment = parentDepartment;
+		this.departmentManager = departmentManager;
 		this.name = name;
 	}
 
 	public boolean isDeleted() {
 		return deletedAt != null;
+	}
+
+	public void update(String name, Member departmentManager) {
+		this.name = name;
+		this.departmentManager = departmentManager;
+	}
+
+	public LocalDateTime delete() {
+		this.deletedAt = LocalDateTime.now();
+		return this.deletedAt;
 	}
 }
