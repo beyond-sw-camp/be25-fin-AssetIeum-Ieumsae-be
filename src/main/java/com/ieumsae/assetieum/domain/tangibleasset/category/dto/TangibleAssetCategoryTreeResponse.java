@@ -1,5 +1,6 @@
 package com.ieumsae.assetieum.domain.tangibleasset.category.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.ieumsae.assetieum.domain.tangibleasset.category.entity.TangibleAssetCategory;
 import lombok.Builder;
@@ -30,8 +31,10 @@ public class TangibleAssetCategoryTreeResponse {
 
     private String name;
 
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime createdAt;
 
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime updatedAt;
 
     @Builder.Default
