@@ -5,13 +5,12 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.LocalDateTime;
+import java.util.UUID;
 import lombok.Getter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UuidGenerator;
 import org.hibernate.type.SqlTypes;
-
-import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Getter
 @Entity
@@ -39,5 +38,10 @@ public class Company extends BaseEntity {
 
 	public boolean isDeleted() {
 		return deletedAt != null;
+	}
+
+	public LocalDateTime delete() {
+		this.deletedAt = LocalDateTime.now();
+		return deletedAt;
 	}
 }
