@@ -6,11 +6,14 @@ import com.ieumsae.assetieum.domain.tangibleasset.category.entity.TangibleAssetC
 import com.ieumsae.assetieum.domain.tangibleasset.category.repository.TangibleAssetCategoryRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.item.dto.TangibleAssetItemCreateRequest;
 import com.ieumsae.assetieum.domain.tangibleasset.item.dto.TangibleAssetItemResponse;
+import com.ieumsae.assetieum.domain.tangibleasset.item.dto.TangibleAssetItemSearchRequest;
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
 import com.ieumsae.assetieum.domain.tangibleasset.item.repository.TangibleAssetItemRepository;
+import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -73,4 +76,33 @@ public class TangibleAssetItemService {
         );
     }
 
+    /**
+     * 회사 기준 유형자산 품목 목록 조회.
+     * 카테고리, 품목명, 제조사, 모델명, 표준 여부를 기준으로 필터링하여
+     * 해당하는 품목만 조회하여 반환한다.
+     */
+    public PaginationResponse<TangibleAssetItemResponse> getItems(
+            TangibleAssetItemSearchRequest request
+    ) {
+        // 1. 입력값 검증
+        Company company = companyRepository.findById(request.getCompanyId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
+
+        // 2. 페이징 처리 및 필터링 후 품목 목록 반환
+        Page<TangibleAssetItem> itemPage =
+                tangibleAssetItemRepository.search(
+                        request.getCompanyId(),
+                        request.getCategoryId(),
+                        request.getProductName(),
+                        request.getManufacturer(),
+                        request.getModelName(),
+                        request.getIsStandard(),
+                        request.toPageable()
+                );
+
+        Page<TangibleAssetItemResponse> responsePage =
+                itemPage.map(TangibleAssetItemResponse::from);
+
+        return PaginationResponse.from(responsePage);
+    }
 }
