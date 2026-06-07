@@ -11,6 +11,8 @@ public enum ErrorCode {
 	ACCESS_DENIED(HttpStatus.FORBIDDEN, "AUTH_003", "접근 권한이 없습니다."),
 	MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "MEMBER_001", "멤버를 찾을 수 없습니다."),
 	INACTIVE_MEMBER(HttpStatus.FORBIDDEN, "MEMBER_002", "활성 상태가 아닌 멤버입니다."),
+	MEMBER_ALREADY_EXISTS(HttpStatus.CONFLICT, "MEMBER_003", "이미 등록된 사번입니다."),
+	MEMBER_EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, "MEMBER_004", "이미 등록된 이메일입니다."),
 
 	// 회사
 	COMPANY_NOT_FOUND(HttpStatus.NOT_FOUND, "company-001", "회사를 찾을 수 없습니다."),

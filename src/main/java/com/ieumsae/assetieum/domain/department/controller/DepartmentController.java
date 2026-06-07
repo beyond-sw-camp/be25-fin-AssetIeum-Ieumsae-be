@@ -33,7 +33,7 @@ public class DepartmentController {
 		@Valid @RequestBody DepartmentCreateRequest request
 	) {
 		DepartmentCreateResponse response = departmentService.createDepartment(authenticatedMember, request);
-		return ApiResponse.created("부서 등록에 성공했습니다.", response);
+		return ApiResponse.ok("부서 등록에 성공했습니다.", response);
 	}
 
 	@PatchMapping("/{departmentId}")

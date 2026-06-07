@@ -45,6 +45,8 @@ public class SecurityConfig {
 				.requestMatchers(HttpMethod.POST, "/api/v1/departments").hasRole("SUPER_ADMIN")
 				.requestMatchers(HttpMethod.PATCH, "/api/v1/departments/**").hasRole("SUPER_ADMIN")
 				.requestMatchers(HttpMethod.DELETE, "/api/v1/departments/**").hasRole("SUPER_ADMIN")
+				.requestMatchers(HttpMethod.POST, "/api/v1/members").hasRole("SUPER_ADMIN")
+				.requestMatchers(HttpMethod.PATCH, "/api/v1/members/*/department").hasRole("SUPER_ADMIN")
 				.anyRequest().authenticated()
 			)
 			.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
