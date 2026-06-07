@@ -10,6 +10,10 @@ import java.util.UUID;
 
 import static com.ieumsae.assetieum.domain.tangibleasset.category.entity.QTangibleAssetCategory.tangibleAssetCategory;
 
+/**
+ * 유형자산 카테고리 QueryDSL 커스텀 Repository 구현체.
+ * 카테고리 ID 조회 시 동적 검색 조건 처리를 담당한다.
+ */
 @RequiredArgsConstructor
 public class TangibleAssetCategoryRepositoryImpl implements TangibleAssetCategoryRepositoryCustom{
 
