@@ -14,6 +14,7 @@ import com.ieumsae.assetieum.domain.member.type.MemberRole;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
+import java.time.LocalDateTime;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -37,9 +38,12 @@ public class DepartmentService {
 		Department parentDepartment = findParentDepartment(request.getParentDepartmentId(), company.getId());
 		Member departmentManager = findDepartmentManager(request.getDepartmentManagerId(), company.getId());
 
-		Department department = departmentRepository.save(
-			new Department(company, parentDepartment, departmentManager, request.getName())
-		);
+		Department department = departmentRepository.save(Department.builder()
+			.company(company)
+			.parentDepartment(parentDepartment)
+			.departmentManager(departmentManager)
+			.name(request.getName())
+			.build());
 
 		return DepartmentCreateResponse.from(department);
 	}
@@ -70,11 +74,9 @@ public class DepartmentService {
 		Member requester = validateSuperAdmin(authenticatedMember);
 		Department department = findActiveDepartment(departmentId, requester.getCompany().getId());
 		validateDeletable(department);
+		LocalDateTime deletedAt = department.delete();
 
-		return DepartmentDeleteResponse.builder()
-			.departmentId(department.getId())
-			.deletedAt(department.delete())
-			.build();
+		return DepartmentDeleteResponse.from(department, deletedAt);
 	}
 
 	private Member validateSuperAdmin(AuthenticatedMember authenticatedMember) {
