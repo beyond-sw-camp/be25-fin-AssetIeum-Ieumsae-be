@@ -8,6 +8,7 @@ import com.ieumsae.assetieum.domain.tangibleasset.category.dto.TangibleAssetCate
 import com.ieumsae.assetieum.domain.tangibleasset.category.dto.TangibleAssetCategoryTreeResponse;
 import com.ieumsae.assetieum.domain.tangibleasset.category.entity.TangibleAssetCategory;
 import com.ieumsae.assetieum.domain.tangibleasset.category.repository.TangibleAssetCategoryRepository;
+import com.ieumsae.assetieum.domain.tangibleasset.item.repository.TangibleAssetItemRepository;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ public class TangibleAssetCategoryService {
 
     private final TangibleAssetCategoryRepository tangibleAssetCategoryRepository;
     private final CompanyRepository companyRepository;
+    private final TangibleAssetItemRepository tangibleAssetItemRepository;
 
     /**
      * 유형자산 카테고리 등록.
@@ -134,7 +136,9 @@ public class TangibleAssetCategoryService {
 
     /**
      * 유형자산 카테고리 삭제.
-     * 하위 카테고리가 존재하는 경우 삭제를 제한한다.
+     * 하위 카테고리가 존재하는 경우,
+     * 해당 카테고리에 품목이 존재하는 경우,
+     * 삭제를 제한한다.
      */
     @Transactional
     public TangibleAssetCategoryDeleteResponse deleteCategory(UUID categoryId) {
@@ -145,6 +149,10 @@ public class TangibleAssetCategoryService {
 
         if(tangibleAssetCategoryRepository.existsByParent_Id(categoryId)) {
             throw new BusinessException(ErrorCode.TANGIBLE_ASSET_CATEGORY_HAS_CHILDREN);
+        }
+
+        if(tangibleAssetItemRepository.existsByTangibleAssetCategory_Id(categoryId)) {
+            throw new BusinessException(ErrorCode.TANGIBLE_ASSET_CATEGORY_HAS_ITEMS);
         }
 
         // 2. 카테고리 삭제

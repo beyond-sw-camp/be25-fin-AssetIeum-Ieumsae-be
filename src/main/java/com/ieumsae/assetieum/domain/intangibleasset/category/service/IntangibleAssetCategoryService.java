@@ -147,6 +147,11 @@ public class IntangibleAssetCategoryService {
             throw new BusinessException(ErrorCode.INTANGIBLE_ASSET_CATEGORY_HAS_CHILDREN);
         }
 
+        // item 구현 이후 추가 필요
+//        if(intangibleAssetItemRepository.existsByIntangibleAssetCategory_Id(categoryId)) {
+//            throw new BusinessException(ErrorCode.INTANGIBLE_ASSET_CATEGORY_HAS_ITEMS);
+//        }
+
         // 2. 카테고리 삭제
         intangibleAssetCategoryRepository.delete(category);
 
