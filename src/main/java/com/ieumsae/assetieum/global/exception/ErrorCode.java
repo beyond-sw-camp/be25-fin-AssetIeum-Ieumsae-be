@@ -17,16 +17,27 @@ public enum ErrorCode {
 	COMPANY_ALREADY_EXISTS(HttpStatus.CONFLICT, "company-002", "이미 등록된 회사 코드입니다."),
 
 	// 유형 자산
+	ACCESS_DENIED_COMPANY_SCOPE(HttpStatus.BAD_REQUEST, "company-003", "동일 회사의 데이터만 접근할 수 있습니다."),
+
+	// *유형 자산*
+	// 유형 자산 카테고리
 	TANGIBLE_ASSET_CATEGORY_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "tangible-asset-001", "이미 존재하는 카테고리명입니다."),
 	TANGIBLE_ASSET_CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "tangible-asset-002", "해당 유형 자산 카테고리가 존재하지 않습니다."),
 	TANGIBLE_ASSET_INVALID_PARENT(HttpStatus.BAD_REQUEST, "tangible-asset-003", "유효하지 않은 부모 카테고리입니다."),
 	TANGIBLE_ASSET_CATEGORY_HAS_CHILDREN(HttpStatus.CONFLICT, "tangible-asset-004", "하위 카테고리가 존재하는 경우 삭제할 수 없습니다."),
+	TANGIBLE_ASSET_CATEGORY_HAS_ITEMS(HttpStatus.CONFLICT, "tangible-asset-005", "품목이 존재하는 경우 삭제할 수 없습니다."),
 
-	// 무형 자산
+	// 유형 자산 품목
+	TANGIBLE_ASSET_ITEM_DUPLICATED_PRODUCT_NAME(HttpStatus.BAD_REQUEST, "tangible-asset-005", "이미 존재하는 제품명입니다."),
+	TANGIBLE_ASSET_ITEM_DUPLICATED_MODEL_NAME(HttpStatus.BAD_REQUEST, "tangible-asset-006", "이미 존재하는 모델명입니다."),
+
+	// *무형 자산*
+	// 무형 자산 카테고리
 	INTANGIBLE_ASSET_CATEGORY_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "intangible-asset-001", "이미 존재하는 카테고리명입니다."),
 	INTANGIBLE_ASSET_CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "intangible-asset-002", "해당 무형 자산 카테고리가 존재하지 않습니다."),
 	INTANGIBLE_ASSET_INVALID_PARENT(HttpStatus.BAD_REQUEST, "intangible-asset-003", "유효하지 않은 부모 카테고리입니다."),
 	INTANGIBLE_ASSET_CATEGORY_HAS_CHILDREN(HttpStatus.CONFLICT, "intangible-asset-004", "하위 카테고리가 존재하는 경우 삭제할 수 없습니다."),
+	INTANGIBLE_ASSET_CATEGORY_HAS_ITEMS(HttpStatus.CONFLICT, "intangible-asset-005", "품목이 존재하는 경우 삭제할 수 없습니다."),
 
 	// 공통
 	INVALID_INPUT_VALUE(HttpStatus.BAD_REQUEST, "COMMON_001", "잘못된 요청입니다."),
