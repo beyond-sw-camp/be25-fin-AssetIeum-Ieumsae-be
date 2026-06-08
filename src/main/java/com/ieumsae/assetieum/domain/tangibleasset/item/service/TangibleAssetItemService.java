@@ -7,6 +7,7 @@ import com.ieumsae.assetieum.domain.tangibleasset.category.repository.TangibleAs
 import com.ieumsae.assetieum.domain.tangibleasset.item.dto.TangibleAssetItemCreateRequest;
 import com.ieumsae.assetieum.domain.tangibleasset.item.dto.TangibleAssetItemResponse;
 import com.ieumsae.assetieum.domain.tangibleasset.item.dto.TangibleAssetItemSearchRequest;
+import com.ieumsae.assetieum.domain.tangibleasset.item.dto.TangibleAssetItemUpdateRequest;
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
 import com.ieumsae.assetieum.domain.tangibleasset.item.repository.TangibleAssetItemRepository;
 import com.ieumsae.assetieum.global.common.page.PaginationResponse;
@@ -16,6 +17,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -104,5 +107,46 @@ public class TangibleAssetItemService {
                 itemPage.map(TangibleAssetItemResponse::from);
 
         return PaginationResponse.from(responsePage);
+    }
+
+    /**
+     * 회사 기준 유형자산 품목 수정.
+     * 카테고리, 품목명, 제조사, 모델명, 표준 여부을 수정하여
+     * 해당하는 품목의 수정된 데이터를 반환한다.
+     */
+    @Transactional
+    public TangibleAssetItemResponse updateItem(
+            UUID itemId,
+            TangibleAssetItemUpdateRequest request
+    ) {
+        // 1. 입력값 검증
+        TangibleAssetItem item = tangibleAssetItemRepository.findByIdAndDeletedAtIsNull(itemId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_ITEM_NOT_FOUND));
+
+        TangibleAssetCategory category = null;
+
+        if(request.getCategoryId() != null) {
+            category = tangibleAssetCategoryRepository.findById(request.getCategoryId())
+                    .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_CATEGORY_NOT_FOUND));
+        }
+
+        if(tangibleAssetItemRepository.existsByCompany_IdAndProductName(
+                item.getCompany().getId(),
+                request.getProductName()
+        )){
+            throw new BusinessException(ErrorCode.TANGIBLE_ASSET_ITEM_DUPLICATED_PRODUCT_NAME);
+        }
+
+        if(tangibleAssetItemRepository.existsByCompany_IdAndModelName(
+                item.getCompany().getId(),
+                request.getModelName()
+        )) {
+            throw new BusinessException(ErrorCode.TANGIBLE_ASSET_ITEM_DUPLICATED_MODEL_NAME);
+        }
+
+        // 2. 품목 수정
+        item.update(request, category);
+
+        return TangibleAssetItemResponse.from(item);
     }
 }
