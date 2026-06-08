@@ -1,6 +1,7 @@
-package com.ieumsae.assetieum.domain.tangibleasset.entity;
+package com.ieumsae.assetieum.domain.tangibleasset.item.entity;
 
 import com.ieumsae.assetieum.domain.company.entity.Company;
+import com.ieumsae.assetieum.domain.tangibleasset.category.entity.TangibleAssetCategory;
 import com.ieumsae.assetieum.global.common.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -18,6 +19,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UuidGenerator;
 import org.hibernate.type.SqlTypes;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -25,12 +27,12 @@ import java.util.UUID;
 @Builder
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "tangible_asset_categories")
-public class TangibleAssetCategory extends BaseEntity {
+@Table(name = "tangible_asset_items")
+public class TangibleAssetItem extends BaseEntity {
     @Id
     @UuidGenerator
     @JdbcTypeCode(SqlTypes.CHAR)
-    @Column(name = "tangible_asset_category_id", nullable = false, length = 36)
+    @Column(name = "tangible_asset_item_id", nullable = false, length = 36)
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -38,14 +40,21 @@ public class TangibleAssetCategory extends BaseEntity {
     private Company company;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "parent_id")
-    private TangibleAssetCategory parent;
+    @JoinColumn(name = "category_id", nullable = false)
+    private TangibleAssetCategory tangibleAssetCategory;
 
-    @Column(name = "name", nullable = false, length = 100)
-    private String name;
+    @Column(name = "product_name", nullable = false, length = 255)
+    private String productName;
 
-    public void update(String name, TangibleAssetCategory parent){
-        this.name = name;
-        this.parent = parent;
-    }
+    @Column(name = "manufacturer", length = 100)
+    private String manufacturer;
+
+    @Column(name = "model_name", length = 100)
+    private String modelName;
+
+    @Column(name = "is_standard", nullable = false)
+    private Boolean isStandard;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 }

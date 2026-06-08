@@ -1,6 +1,6 @@
 plugins {
 	id 'java'
-	id 'org.springframework.boot' version '4.0.6'
+	id 'org.springframework.boot' version '3.5.3'
 	id 'io.spring.dependency-management' version '1.1.7'
 }
 
@@ -18,27 +18,101 @@ repositories {
 }
 
 dependencies {
+
+	// =========================
+	// Spring Boot Starter
+	// =========================
+
+	// JPA / Hibernate
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-	implementation 'org.springframework.boot:spring-boot-starter-flyway'
-	implementation 'org.springframework.boot:spring-boot-starter-security'
-	implementation 'org.springframework.boot:spring-boot-starter-validation'
-	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+
+	// DB 마이그레이션 (Flyway)
+	implementation 'org.flywaydb:flyway-core'
 	implementation 'org.flywaydb:flyway-mysql'
+
+	// Spring Security
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+
+	// Validation (@Valid, @NotNull 등)
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+	// Web MVC / REST API
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+
+
+	// =========================
+	// Authentication
+	// =========================
+
+	// JWT
 	implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
-	compileOnly 'org.projectlombok:lombok'
 	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
 	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
+
+
+	// =========================
+	// Database
+	// =========================
+
+	// MariaDB Driver
 	runtimeOnly 'org.mariadb.jdbc:mariadb-java-client'
+
+
+	// =========================
+	// QueryDSL
+	// =========================
+
+	// QueryDSL JPA
+	implementation 'com.querydsl:querydsl-jpa:5.1.0:jakarta'
+
+	// QClass 자동 생성
+	annotationProcessor 'com.querydsl:querydsl-apt:5.1.0:jakarta'
+
+	// Jakarta
+	annotationProcessor 'jakarta.annotation:jakarta.annotation-api'
+	annotationProcessor 'jakarta.persistence:jakarta.persistence-api'
+
+
+	// =========================
+	// Lombok
+	// =========================
+
+	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
-	testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
-	testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
-	testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
-	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+
+
+	// =========================
+	// Test
+	// =========================
+
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'org.springframework.security:spring-security-test'
+
 	testCompileOnly 'org.projectlombok:lombok'
-	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	testAnnotationProcessor 'org.projectlombok:lombok'
+
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+
+
+// =========================
+// QueryDSL Generated Source
+// =========================
+
+def querydslDir = layout.buildDirectory.dir("generated/querydsl").get().asFile
+
+sourceSets {
+	main {
+		java {
+			srcDirs += querydslDir
+		}
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	options.generatedSourceOutputDirectory = querydslDir
 }

@@ -1,6 +1,6 @@
 package com.ieumsae.assetieum.domain.tangibleasset.category.entity;
 
-import com.ieumsae.assetieum.domain.company.Company;
+import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.global.common.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
