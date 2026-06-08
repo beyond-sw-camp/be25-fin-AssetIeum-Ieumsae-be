@@ -14,6 +14,7 @@ public class JwtProperties {
 	private String audience;
 	private long accessTokenExpirationMinutes;
 	private long refreshTokenExpirationDays;
+	private long refreshTokenGracePeriodSeconds;
 
 	@PostConstruct
 	void validate() {
@@ -31,6 +32,9 @@ public class JwtProperties {
 		}
 		if (refreshTokenExpirationDays <= 0) {
 			throw new IllegalStateException("auth.jwt.refresh-token-expiration-days must be positive.");
+		}
+		if (refreshTokenGracePeriodSeconds < 0) {
+			throw new IllegalStateException("auth.jwt.refresh-token-grace-period-seconds must not be negative.");
 		}
 	}
 
@@ -72,5 +76,13 @@ public class JwtProperties {
 
 	public void setRefreshTokenExpirationDays(long refreshTokenExpirationDays) {
 		this.refreshTokenExpirationDays = refreshTokenExpirationDays;
+	}
+
+	public long getRefreshTokenGracePeriodSeconds() {
+		return refreshTokenGracePeriodSeconds;
+	}
+
+	public void setRefreshTokenGracePeriodSeconds(long refreshTokenGracePeriodSeconds) {
+		this.refreshTokenGracePeriodSeconds = refreshTokenGracePeriodSeconds;
 	}
 }

@@ -48,7 +48,9 @@ public class AuthController {
 	) {
 		String refreshToken = refreshTokenCookieManager.extractRefreshToken(request);
 		ReissueResult result = authService.reissue(refreshToken);
-		response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookieManager.createCookieHeader(result.refreshToken()));
+		if (result.refreshToken() != null) {
+			response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookieManager.createCookieHeader(result.refreshToken()));
+		}
 		return ApiResponse.ok("토큰 재발급에 성공했습니다.", result.response());
 	}
 

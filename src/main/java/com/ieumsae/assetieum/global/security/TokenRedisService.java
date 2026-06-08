@@ -5,6 +5,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.HexFormat;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 public class TokenRedisService {
 
 	private static final String REFRESH_TOKEN_KEY_PREFIX = "auth:refresh:";
+	private static final String PREVIOUS_REFRESH_TOKEN_KEY_PREFIX = "auth:refresh:previous:";
 	private static final String ACCESS_BLACKLIST_KEY_PREFIX = "auth:blacklist:access:";
 
 	private final StringRedisTemplate redisTemplate;
@@ -28,13 +30,47 @@ public class TokenRedisService {
 		);
 	}
 
-	public boolean matchesRefreshToken(UUID memberId, String refreshToken) {
+	public RefreshTokenStatus getRefreshTokenStatus(UUID memberId, String refreshToken) {
+		String refreshTokenHash = sha256(refreshToken);
 		String savedHash = redisTemplate.opsForValue().get(refreshTokenKey(memberId));
-		return savedHash != null && savedHash.equals(sha256(refreshToken));
+		if (savedHash != null && savedHash.equals(refreshTokenHash)) {
+			return RefreshTokenStatus.CURRENT;
+		}
+
+		Boolean existsGraceToken = redisTemplate.hasKey(previousRefreshTokenKey(memberId, refreshTokenHash));
+		if (Boolean.TRUE.equals(existsGraceToken)) {
+			return RefreshTokenStatus.GRACE;
+		}
+
+		return RefreshTokenStatus.NONE;
+	}
+
+	public void rotateRefreshToken(
+		UUID memberId,
+		String previousRefreshToken,
+		String newRefreshToken,
+		long expiresInSeconds,
+		long gracePeriodSeconds
+	) {
+		saveRefreshToken(memberId, newRefreshToken, expiresInSeconds);
+
+		if (gracePeriodSeconds <= 0) {
+			return;
+		}
+
+		redisTemplate.opsForValue().set(
+			previousRefreshTokenKey(memberId, sha256(previousRefreshToken)),
+			"grace",
+			Duration.ofSeconds(gracePeriodSeconds)
+		);
 	}
 
 	public void deleteRefreshToken(UUID memberId) {
 		redisTemplate.delete(refreshTokenKey(memberId));
+		Set<String> previousTokenKeys = redisTemplate.keys(previousRefreshTokenKeyPattern(memberId));
+		if (previousTokenKeys != null && !previousTokenKeys.isEmpty()) {
+			redisTemplate.delete(previousTokenKeys);
+		}
 	}
 
 	public void blacklistAccessToken(String accessToken, long remainingSeconds) {
@@ -59,6 +95,14 @@ public class TokenRedisService {
 		return REFRESH_TOKEN_KEY_PREFIX + memberId;
 	}
 
+	private String previousRefreshTokenKey(UUID memberId, String refreshTokenHash) {
+		return PREVIOUS_REFRESH_TOKEN_KEY_PREFIX + memberId + ":" + refreshTokenHash;
+	}
+
+	private String previousRefreshTokenKeyPattern(UUID memberId) {
+		return PREVIOUS_REFRESH_TOKEN_KEY_PREFIX + memberId + ":*";
+	}
+
 	private String accessBlacklistKey(String accessToken) {
 		return ACCESS_BLACKLIST_KEY_PREFIX + sha256(accessToken);
 	}
@@ -71,5 +115,11 @@ public class TokenRedisService {
 		} catch (NoSuchAlgorithmException exception) {
 			throw new IllegalStateException("SHA-256 algorithm is not available.", exception);
 		}
+	}
+
+	public enum RefreshTokenStatus {
+		CURRENT,
+		GRACE,
+		NONE
 	}
 }

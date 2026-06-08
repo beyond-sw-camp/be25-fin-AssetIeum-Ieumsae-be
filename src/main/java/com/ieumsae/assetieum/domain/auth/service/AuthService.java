@@ -13,7 +13,9 @@ import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
 import com.ieumsae.assetieum.global.security.JwtProvider;
+import com.ieumsae.assetieum.global.security.JwtProperties;
 import com.ieumsae.assetieum.global.security.TokenRedisService;
+import com.ieumsae.assetieum.global.security.TokenRedisService.RefreshTokenStatus;
 import jakarta.transaction.Transactional;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +30,7 @@ public class AuthService {
 	private final MemberRepository memberRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final JwtProvider jwtProvider;
+	private final JwtProperties jwtProperties;
 	private final TokenRedisService tokenRedisService;
 
 	@Transactional
@@ -76,7 +79,11 @@ public class AuthService {
 		}
 
 		AuthenticatedMember authenticatedMember = jwtProvider.parseRefreshToken(refreshToken);
-		if (!tokenRedisService.matchesRefreshToken(authenticatedMember.id(), refreshToken)) {
+		RefreshTokenStatus refreshTokenStatus = tokenRedisService.getRefreshTokenStatus(
+			authenticatedMember.id(),
+			refreshToken
+		);
+		if (refreshTokenStatus == RefreshTokenStatus.NONE) {
 			tokenRedisService.deleteRefreshToken(authenticatedMember.id());
 			throw new BusinessException(ErrorCode.REFRESH_TOKEN_REUSED);
 		}
@@ -90,12 +97,17 @@ public class AuthService {
 		}
 
 		String newAccessToken = jwtProvider.createAccessToken(member);
-		String newRefreshToken = jwtProvider.createRefreshToken(member);
-		tokenRedisService.saveRefreshToken(
-			member.getId(),
-			newRefreshToken,
-			jwtProvider.getRefreshTokenExpiresInSeconds()
-		);
+		String newRefreshToken = null;
+		if (refreshTokenStatus == RefreshTokenStatus.CURRENT) {
+			newRefreshToken = jwtProvider.createRefreshToken(member);
+			tokenRedisService.rotateRefreshToken(
+				member.getId(),
+				refreshToken,
+				newRefreshToken,
+				jwtProvider.getRefreshTokenExpiresInSeconds(),
+				jwtProperties.getRefreshTokenGracePeriodSeconds()
+			);
+		}
 
 		return new ReissueResult(
 			TokenReissueResponse.from(newAccessToken, jwtProvider.getAccessTokenExpiresInSeconds()),
