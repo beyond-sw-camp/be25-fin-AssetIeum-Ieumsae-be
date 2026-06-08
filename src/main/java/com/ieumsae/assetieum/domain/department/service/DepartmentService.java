@@ -26,6 +26,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
@@ -109,12 +110,31 @@ public class DepartmentService {
 	) {
 		Member requester = validateSuperAdmin(authenticatedMember);
 		Department department = findActiveDepartment(departmentId, requester.getCompany().getId());
-		Member departmentManager = findDepartmentManager(
-			request.getDepartmentManagerId(),
-			requester.getCompany().getId()
-		);
+		Department parentDepartment = department.getParentDepartment();
+		String name = department.getName();
+		Member departmentManager = department.getDepartmentManager();
 
-		department.update(request.getName(), departmentManager);
+		if (request.parentDepartmentIdProvided()) {
+			parentDepartment = findParentDepartment(
+				request.getParentDepartmentId(),
+				requester.getCompany().getId()
+			);
+			validateParentDepartment(department, parentDepartment);
+		}
+
+		if (request.nameProvided()) {
+			validateDepartmentName(request.getName());
+			name = request.getName();
+		}
+
+		if (request.departmentManagerIdProvided()) {
+			departmentManager = findDepartmentManager(
+				request.getDepartmentManagerId(),
+				requester.getCompany().getId()
+			);
+		}
+
+		department.update(parentDepartment, name, departmentManager);
 
 		return DepartmentUpdateResponse.from(department);
 	}
@@ -173,6 +193,27 @@ public class DepartmentService {
 		}
 
 		return departmentManager;
+	}
+
+	private void validateParentDepartment(Department department, Department parentDepartment) {
+		if (parentDepartment == null) {
+			return;
+		}
+
+		Department current = parentDepartment;
+		while (current != null) {
+			if (current.getId().equals(department.getId())) {
+				throw new BusinessException(ErrorCode.INVALID_PARENT_DEPARTMENT);
+			}
+
+			current = current.getParentDepartment();
+		}
+	}
+
+	private void validateDepartmentName(String name) {
+		if (!StringUtils.hasText(name)) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+		}
 	}
 
 	private void validateDeletable(Department department) {

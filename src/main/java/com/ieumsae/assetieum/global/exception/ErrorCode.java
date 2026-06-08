@@ -15,11 +15,14 @@ public enum ErrorCode {
 	// 회사
 	COMPANY_NOT_FOUND(HttpStatus.NOT_FOUND, "company-001", "회사를 찾을 수 없습니다."),
 	COMPANY_ALREADY_EXISTS(HttpStatus.CONFLICT, "company-002", "이미 등록된 회사 코드입니다."),
+	ACCESS_DENIED_COMPANY_SCOPE(HttpStatus.BAD_REQUEST, "company-003", "동일 회사의 데이터만 접근할 수 있습니다."),
+
+	// 부서
 	DEPARTMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "department-001", "부서를 찾을 수 없습니다."),
 	INVALID_DEPARTMENT_MANAGER(HttpStatus.BAD_REQUEST, "department-002", "유효하지 않은 부서장입니다."),
 	DEPARTMENT_HAS_CHILDREN(HttpStatus.CONFLICT, "department-003", "하위 부서가 존재하는 부서는 삭제할 수 없습니다."),
 	DEPARTMENT_HAS_MEMBERS(HttpStatus.CONFLICT, "department-004", "소속 사원이 존재하는 부서는 삭제할 수 없습니다."),
-	ACCESS_DENIED_COMPANY_SCOPE(HttpStatus.BAD_REQUEST, "company-003", "동일 회사의 데이터만 접근할 수 있습니다."),
+	INVALID_PARENT_DEPARTMENT(HttpStatus.BAD_REQUEST, "department-005", "유효하지 않은 상위 부서입니다."),
 
 	// *유형 자산*
 	// 유형 자산 카테고리

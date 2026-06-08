@@ -57,7 +57,8 @@ public class Department extends BaseEntity {
 		return deletedAt != null;
 	}
 
-	public void update(String name, Member departmentManager) {
+	public void update(Department parentDepartment, String name, Member departmentManager) {
+		this.parentDepartment = parentDepartment;
 		this.name = name;
 		this.departmentManager = departmentManager;
 	}
