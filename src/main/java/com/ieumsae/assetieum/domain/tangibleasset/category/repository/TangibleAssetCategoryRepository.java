@@ -6,7 +6,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 import java.util.UUID;
 
-public interface TangibleAssetCategoryRepository extends JpaRepository<TangibleAssetCategory, UUID> {
+public interface TangibleAssetCategoryRepository
+        extends JpaRepository<TangibleAssetCategory, UUID>, TangibleAssetCategoryRepositoryCustom {
     boolean existsByCompany_IdAndName(
             UUID companyId,
             String name
