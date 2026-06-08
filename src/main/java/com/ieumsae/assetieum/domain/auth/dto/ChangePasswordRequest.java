@@ -18,8 +18,12 @@ public class ChangePasswordRequest {
 	@Size(min = 8, max = 100, message = "새 비밀번호는 8자 이상 100자 이하여야 합니다.")
 	private String newPassword;
 
-	public ChangePasswordRequest(String currentPassword, String newPassword) {
+	@NotBlank(message = "새 비밀번호 확인은 필수입니다.")
+	private String confirmPassword;
+
+	public ChangePasswordRequest(String currentPassword, String newPassword, String confirmPassword) {
 		this.currentPassword = currentPassword;
 		this.newPassword = newPassword;
+		this.confirmPassword = confirmPassword;
 	}
 }
