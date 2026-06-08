@@ -38,6 +38,8 @@ public enum ErrorCode {
 	// 유형 자산 품목
 	TANGIBLE_ASSET_ITEM_DUPLICATED_PRODUCT_NAME(HttpStatus.BAD_REQUEST, "tangible-asset-006", "이미 존재하는 제품명입니다."),
 	TANGIBLE_ASSET_ITEM_DUPLICATED_MODEL_NAME(HttpStatus.BAD_REQUEST, "tangible-asset-007", "이미 존재하는 모델명입니다."),
+	TANGIBLE_ASSET_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "tangible-asset-008", "해당 유형 자산 품목이 존재하지 않습니다."),
+	TANGIBLE_ASSET_ITEM_HAS_ASSETS(HttpStatus.CONFLICT, "tangible-asset-009", "자산이 존재하는 경우 삭제할 수 없습니다."),
 
 	// 무형 자산 카테고리
 	INTANGIBLE_ASSET_CATEGORY_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "intangible-asset-001", "이미 존재하는 카테고리명입니다."),

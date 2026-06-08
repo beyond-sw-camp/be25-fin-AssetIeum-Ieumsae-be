@@ -2,6 +2,7 @@ package com.ieumsae.assetieum.domain.tangibleasset.item.entity;
 
 import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.tangibleasset.category.entity.TangibleAssetCategory;
+import com.ieumsae.assetieum.domain.tangibleasset.item.dto.TangibleAssetItemUpdateRequest;
 import com.ieumsae.assetieum.global.common.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -57,4 +58,29 @@ public class TangibleAssetItem extends BaseEntity {
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
+
+    public void update(
+            TangibleAssetItemUpdateRequest request,
+            TangibleAssetCategory category
+    ) {
+        if(request.getProductName() != null) {
+            this.productName = request.getProductName();
+        }
+        if(request.getModelName() != null) {
+            this.modelName = request.getModelName();
+        }
+        if(category != null) {
+            this.tangibleAssetCategory = category;
+        }
+        if(request.getManufacturer() != null) {
+            this.manufacturer = request.getManufacturer();
+        }
+        if(request.getIsStandard() != null) {
+            this.isStandard = request.getIsStandard();
+        }
+    }
+
+    public void delete() {
+        this.deletedAt = LocalDateTime.now();
+    }
 }
