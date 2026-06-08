@@ -8,7 +8,6 @@ import com.ieumsae.assetieum.domain.member.dto.MemberCreateResponse;
 import com.ieumsae.assetieum.domain.member.dto.MemberDepartmentUpdateRequest;
 import com.ieumsae.assetieum.domain.member.dto.MemberDepartmentUpdateResponse;
 import com.ieumsae.assetieum.domain.member.dto.MemberListItemResponse;
-import com.ieumsae.assetieum.domain.member.dto.MemberListResponse;
 import com.ieumsae.assetieum.domain.member.dto.MemberSearchRequest;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
@@ -16,6 +15,7 @@ import com.ieumsae.assetieum.domain.member.type.MemberRole;
 import com.ieumsae.assetieum.domain.member.type.MemberStatus;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
+import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -34,7 +34,7 @@ public class MemberService {
 	private final DepartmentRepository departmentRepository;
 	private final PasswordEncoder passwordEncoder;
 
-	public MemberListResponse getMembers(
+	public PaginationResponse<MemberListItemResponse> getMembers(
 		AuthenticatedMember authenticatedMember,
 		MemberSearchRequest request
 	) {
@@ -48,7 +48,7 @@ public class MemberService {
 			request.toPageable()
 		).map(MemberListItemResponse::from);
 
-		return MemberListResponse.from(members);
+		return PaginationResponse.from(members);
 	}
 
 	@Transactional

@@ -4,9 +4,10 @@ import com.ieumsae.assetieum.domain.member.dto.MemberCreateRequest;
 import com.ieumsae.assetieum.domain.member.dto.MemberCreateResponse;
 import com.ieumsae.assetieum.domain.member.dto.MemberDepartmentUpdateRequest;
 import com.ieumsae.assetieum.domain.member.dto.MemberDepartmentUpdateResponse;
-import com.ieumsae.assetieum.domain.member.dto.MemberListResponse;
+import com.ieumsae.assetieum.domain.member.dto.MemberListItemResponse;
 import com.ieumsae.assetieum.domain.member.dto.MemberSearchRequest;
 import com.ieumsae.assetieum.domain.member.service.MemberService;
+import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.response.ApiResponse;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
 import jakarta.validation.Valid;
@@ -30,11 +31,11 @@ public class MemberController {
 	private final MemberService memberService;
 
 	@GetMapping
-	public ApiResponse<MemberListResponse> getMembers(
+	public ApiResponse<PaginationResponse<MemberListItemResponse>> getMembers(
 		@AuthenticationPrincipal AuthenticatedMember authenticatedMember,
 		@Valid @ModelAttribute MemberSearchRequest request
 	) {
-		MemberListResponse response = memberService.getMembers(
+		PaginationResponse<MemberListItemResponse> response = memberService.getMembers(
 			authenticatedMember,
 			request
 		);
