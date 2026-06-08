@@ -79,4 +79,8 @@ public class TangibleAssetItem extends BaseEntity {
             this.isStandard = request.getIsStandard();
         }
     }
+
+    public void delete() {
+        this.deletedAt = LocalDateTime.now();
+    }
 }

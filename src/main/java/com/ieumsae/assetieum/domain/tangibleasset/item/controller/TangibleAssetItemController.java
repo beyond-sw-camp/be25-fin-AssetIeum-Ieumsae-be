@@ -1,6 +1,7 @@
 package com.ieumsae.assetieum.domain.tangibleasset.item.controller;
 
 import com.ieumsae.assetieum.domain.tangibleasset.item.dto.TangibleAssetItemCreateRequest;
+import com.ieumsae.assetieum.domain.tangibleasset.item.dto.TangibleAssetItemDeleteResponse;
 import com.ieumsae.assetieum.domain.tangibleasset.item.dto.TangibleAssetItemResponse;
 import com.ieumsae.assetieum.domain.tangibleasset.item.dto.TangibleAssetItemSearchRequest;
 import com.ieumsae.assetieum.domain.tangibleasset.item.dto.TangibleAssetItemUpdateRequest;
@@ -9,6 +10,7 @@ import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -55,6 +57,15 @@ public class TangibleAssetItemController {
                 tangibleAssetItemService.updateItem(itemId, request);
 
         return ApiResponse.ok("유형자산 품목이 수정되었습니다.", response);
+    }
+
+    @DeleteMapping("/{itemId}")
+    public ApiResponse<TangibleAssetItemDeleteResponse> deleteItem(
+            @PathVariable UUID itemId
+    ) {
+        TangibleAssetItemDeleteResponse response = tangibleAssetItemService.deleteItem(itemId);
+
+        return ApiResponse.ok("유형자산 품목이 삭제되었습니다.", response);
     }
 
 }
