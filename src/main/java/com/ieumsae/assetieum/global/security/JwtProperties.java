@@ -13,11 +13,12 @@ public class JwtProperties {
 	private String issuer;
 	private String audience;
 	private long accessTokenExpirationMinutes;
+	private long refreshTokenExpirationDays;
 
 	@PostConstruct
 	void validate() {
-		if (secret == null || secret.getBytes(StandardCharsets.UTF_8).length < 32) {
-			throw new IllegalStateException("auth.jwt.secret must be at least 32 bytes for HS256.");
+		if (secret == null || secret.getBytes(StandardCharsets.UTF_8).length < 64) {
+			throw new IllegalStateException("auth.jwt.secret must be at least 64 bytes.");
 		}
 		if (issuer == null || issuer.isBlank()) {
 			throw new IllegalStateException("auth.jwt.issuer is required.");
@@ -27,6 +28,9 @@ public class JwtProperties {
 		}
 		if (accessTokenExpirationMinutes <= 0) {
 			throw new IllegalStateException("auth.jwt.access-token-expiration-minutes must be positive.");
+		}
+		if (refreshTokenExpirationDays <= 0) {
+			throw new IllegalStateException("auth.jwt.refresh-token-expiration-days must be positive.");
 		}
 	}
 
@@ -60,5 +64,13 @@ public class JwtProperties {
 
 	public void setAccessTokenExpirationMinutes(long accessTokenExpirationMinutes) {
 		this.accessTokenExpirationMinutes = accessTokenExpirationMinutes;
+	}
+
+	public long getRefreshTokenExpirationDays() {
+		return refreshTokenExpirationDays;
+	}
+
+	public void setRefreshTokenExpirationDays(long refreshTokenExpirationDays) {
+		this.refreshTokenExpirationDays = refreshTokenExpirationDays;
 	}
 }

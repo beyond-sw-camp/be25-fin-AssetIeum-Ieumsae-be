@@ -28,6 +28,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 	private static final String BEARER_PREFIX = "Bearer ";
 
 	private final JwtProvider jwtProvider;
+	private final TokenRedisService tokenRedisService;
 	private final ObjectMapper objectMapper;
 
 	@Override
@@ -43,6 +44,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 		}
 
 		try {
+			if (tokenRedisService.isAccessTokenBlacklisted(token)) {
+				throw new BusinessException(ErrorCode.INVALID_TOKEN);
+			}
+
 			AuthenticatedMember authenticatedMember = jwtProvider.parseAccessToken(token);
 			UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
 				authenticatedMember,
