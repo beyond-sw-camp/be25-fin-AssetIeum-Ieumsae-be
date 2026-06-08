@@ -24,6 +24,7 @@ public enum ErrorCode {
 	DEPARTMENT_HAS_MEMBERS(HttpStatus.CONFLICT, "department-004", "소속 사원이 존재하는 부서는 삭제할 수 없습니다."),
 	INVALID_PARENT_DEPARTMENT(HttpStatus.BAD_REQUEST, "department-005", "유효하지 않은 상위 부서입니다."),
 
+
 	// *유형 자산*
 	// 유형 자산 카테고리
 
