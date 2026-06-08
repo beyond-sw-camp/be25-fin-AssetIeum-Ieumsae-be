@@ -10,16 +10,22 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.time.LocalDateTime;
+import java.util.UUID;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UuidGenerator;
 import org.hibernate.type.SqlTypes;
 
-import java.time.LocalDateTime;
-import java.util.UUID;
-
 @Getter
 @Entity
+@Builder
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "departments")
 public class Department extends BaseEntity {
 
@@ -47,21 +53,12 @@ public class Department extends BaseEntity {
 	@Column(name = "deleted_at")
 	private LocalDateTime deletedAt;
 
-	protected Department() {
-	}
-
-	public Department(Company company, Department parentDepartment, Member departmentManager, String name) {
-		this.company = company;
-		this.parentDepartment = parentDepartment;
-		this.departmentManager = departmentManager;
-		this.name = name;
-	}
-
 	public boolean isDeleted() {
 		return deletedAt != null;
 	}
 
-	public void update(String name, Member departmentManager) {
+	public void update(Department parentDepartment, String name, Member departmentManager) {
+		this.parentDepartment = parentDepartment;
 		this.name = name;
 		this.departmentManager = departmentManager;
 	}

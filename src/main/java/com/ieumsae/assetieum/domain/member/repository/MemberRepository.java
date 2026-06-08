@@ -18,6 +18,8 @@ public interface MemberRepository extends JpaRepository<Member, UUID> {
 
 	boolean existsByDepartment_IdAndDeletedAtIsNull(UUID departmentId);
 
+	long countByDepartment_IdAndDeletedAtIsNull(UUID departmentId);
+
 	boolean existsByCompany_IdAndMemberNoAndDeletedAtIsNull(UUID companyId, String memberNo);
 
 	boolean existsByCompany_IdAndEmailAndDeletedAtIsNull(UUID companyId, String email);

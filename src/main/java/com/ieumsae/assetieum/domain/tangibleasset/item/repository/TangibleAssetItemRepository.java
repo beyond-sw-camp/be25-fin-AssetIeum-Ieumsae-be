@@ -1,0 +1,16 @@
+package com.ieumsae.assetieum.domain.tangibleasset.item.repository;
+
+import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.UUID;
+
+public interface TangibleAssetItemRepository
+        extends JpaRepository<TangibleAssetItem, UUID>, TangibleAssetItemRepositoryCustom  {
+
+    boolean existsByCompany_IdAndProductName(UUID companyId, String productName);
+
+    boolean existsByCompany_IdAndModelName(UUID companyId, String modelName);
+
+    boolean existsByTangibleAssetCategory_Id(UUID tangibleAssetCategoryId);
+}

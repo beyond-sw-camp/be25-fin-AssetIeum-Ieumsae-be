@@ -11,11 +11,11 @@ import com.ieumsae.assetieum.domain.member.type.MemberRole;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
+import java.time.LocalDateTime;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -36,13 +36,11 @@ public class CompanyService {
 			throw new BusinessException(ErrorCode.COMPANY_ALREADY_EXISTS);
 		}
 
-		Company company = companyRepository.save(new Company(request.getCompanyCode()));
+		Company company = companyRepository.save(Company.builder()
+			.companyCode(request.getCompanyCode())
+			.build());
 
-		return CompanyCreateResponse.builder()
-			.companyId(company.getId())
-			.companyCode(company.getCompanyCode())
-			.createdAt(company.getCreatedAt())
-			.build();
+		return CompanyCreateResponse.from(company);
 	}
 
 	@Transactional
@@ -53,11 +51,9 @@ public class CompanyService {
 		validateSuperAdmin(authenticatedMember);
 
 		Company company = findActiveCompany(companyId);
+		LocalDateTime deletedAt = company.delete();
 
-		return CompanyDeleteResponse.builder()
-			.companyId(company.getId())
-			.deletedAt(company.delete())
-			.build();
+		return CompanyDeleteResponse.from(company, deletedAt);
 	}
 
 	private void validateSuperAdmin(AuthenticatedMember authenticatedMember) {

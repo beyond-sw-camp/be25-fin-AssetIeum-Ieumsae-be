@@ -3,6 +3,8 @@ package com.ieumsae.assetieum.domain.department.controller;
 import com.ieumsae.assetieum.domain.department.dto.DepartmentCreateRequest;
 import com.ieumsae.assetieum.domain.department.dto.DepartmentCreateResponse;
 import com.ieumsae.assetieum.domain.department.dto.DepartmentDeleteResponse;
+import com.ieumsae.assetieum.domain.department.dto.DepartmentDetailResponse;
+import com.ieumsae.assetieum.domain.department.dto.DepartmentListResponse;
 import com.ieumsae.assetieum.domain.department.dto.DepartmentUpdateRequest;
 import com.ieumsae.assetieum.domain.department.dto.DepartmentUpdateResponse;
 import com.ieumsae.assetieum.domain.department.service.DepartmentService;
@@ -13,6 +15,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,6 +29,23 @@ import org.springframework.web.bind.annotation.RestController;
 public class DepartmentController {
 
 	private final DepartmentService departmentService;
+
+	@GetMapping
+	public ApiResponse<DepartmentListResponse> getDepartments(
+		@AuthenticationPrincipal AuthenticatedMember authenticatedMember
+	) {
+		DepartmentListResponse response = departmentService.getDepartments(authenticatedMember);
+		return ApiResponse.ok("부서 목록 조회에 성공했습니다.", response);
+	}
+
+	@GetMapping("/{departmentId}")
+	public ApiResponse<DepartmentDetailResponse> getDepartment(
+		@AuthenticationPrincipal AuthenticatedMember authenticatedMember,
+		@PathVariable UUID departmentId
+	) {
+		DepartmentDetailResponse response = departmentService.getDepartment(authenticatedMember, departmentId);
+		return ApiResponse.ok("부서 상세 조회에 성공했습니다.", response);
+	}
 
 	@PostMapping
 	public ApiResponse<DepartmentCreateResponse> createDepartment(
