@@ -135,7 +135,7 @@ public class TangibleAssetCategoryService {
     }
 
     /**
-     * 유형자산 카테고리 삭제.
+     * 유형자산 카테고리 삭제. (hard delete)
      * 하위 카테고리가 존재하는 경우,
      * 해당 카테고리에 품목이 존재하는 경우,
      * 삭제를 제한한다.
