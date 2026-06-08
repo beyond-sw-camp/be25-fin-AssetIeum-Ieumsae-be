@@ -1,0 +1,77 @@
+package com.ieumsae.assetieum.domain.company.service;
+
+import com.ieumsae.assetieum.domain.company.dto.CompanyCreateRequest;
+import com.ieumsae.assetieum.domain.company.dto.CompanyCreateResponse;
+import com.ieumsae.assetieum.domain.company.dto.CompanyDeleteResponse;
+import com.ieumsae.assetieum.domain.company.entity.Company;
+import com.ieumsae.assetieum.domain.company.repository.CompanyRepository;
+import com.ieumsae.assetieum.domain.member.entity.Member;
+import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
+import com.ieumsae.assetieum.domain.member.type.MemberRole;
+import com.ieumsae.assetieum.global.exception.BusinessException;
+import com.ieumsae.assetieum.global.exception.ErrorCode;
+import com.ieumsae.assetieum.global.security.AuthenticatedMember;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class CompanyService {
+
+	private final CompanyRepository companyRepository;
+	private final MemberRepository memberRepository;
+
+	@Transactional
+	public CompanyCreateResponse createCompany(
+		AuthenticatedMember authenticatedMember,
+		CompanyCreateRequest request
+	) {
+		validateSuperAdmin(authenticatedMember);
+
+		if (companyRepository.existsByCompanyCodeAndDeletedAtIsNull(request.getCompanyCode())) {
+			throw new BusinessException(ErrorCode.COMPANY_ALREADY_EXISTS);
+		}
+
+		Company company = companyRepository.save(Company.builder()
+			.companyCode(request.getCompanyCode())
+			.build());
+
+		return CompanyCreateResponse.from(company);
+	}
+
+	@Transactional
+	public CompanyDeleteResponse deleteCompany(
+		AuthenticatedMember authenticatedMember,
+		UUID companyId
+	) {
+		validateSuperAdmin(authenticatedMember);
+
+		Company company = findActiveCompany(companyId);
+		LocalDateTime deletedAt = company.delete();
+
+		return CompanyDeleteResponse.from(company, deletedAt);
+	}
+
+	private void validateSuperAdmin(AuthenticatedMember authenticatedMember) {
+		Member member = memberRepository.findById(authenticatedMember.id())
+			.orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+
+		if (!member.isActive()) {
+			throw new BusinessException(ErrorCode.INACTIVE_MEMBER);
+		}
+
+		if (member.getRole() != MemberRole.SUPER_ADMIN) {
+			throw new BusinessException(ErrorCode.ACCESS_DENIED);
+		}
+	}
+
+	private Company findActiveCompany(UUID companyId) {
+		return companyRepository.findByIdAndDeletedAtIsNull(companyId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
+	}
+}

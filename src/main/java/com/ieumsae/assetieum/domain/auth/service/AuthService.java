@@ -1,11 +1,11 @@
 package com.ieumsae.assetieum.domain.auth.service;
 
+import com.ieumsae.assetieum.domain.auth.client.LoginMember;
+import com.ieumsae.assetieum.domain.auth.client.LoginMemberClient;
 import com.ieumsae.assetieum.domain.auth.dto.ChangePasswordRequest;
 import com.ieumsae.assetieum.domain.auth.dto.ChangePasswordResponse;
 import com.ieumsae.assetieum.domain.auth.dto.LoginRequest;
 import com.ieumsae.assetieum.domain.auth.dto.LoginResponse;
-import com.ieumsae.assetieum.domain.auth.client.LoginMember;
-import com.ieumsae.assetieum.domain.auth.client.LoginMemberClient;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
 import com.ieumsae.assetieum.global.exception.BusinessException;
@@ -30,6 +30,7 @@ public class AuthService {
 	@Transactional
 	public LoginResponse login(LoginRequest request) {
 		LoginMember loginMember = loginMemberClient.authenticate(
+				request.getCompanyCode(),
 				request.getMemberNo(),
 				request.getPassword()
 			)
@@ -73,6 +74,10 @@ public class AuthService {
 
 		if (!passwordEncoder.matches(request.getCurrentPassword(), member.getPassword())) {
 			throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+		}
+
+		if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "새 비밀번호와 새 비밀번호 확인이 일치하지 않습니다.");
 		}
 
 		member.changePassword(passwordEncoder.encode(request.getNewPassword()));

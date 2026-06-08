@@ -5,16 +5,22 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.LocalDateTime;
+import java.util.UUID;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UuidGenerator;
 import org.hibernate.type.SqlTypes;
 
-import java.time.LocalDateTime;
-import java.util.UUID;
-
 @Getter
 @Entity
+@Builder
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "companies")
 public class Company extends BaseEntity {
 
@@ -30,14 +36,12 @@ public class Company extends BaseEntity {
 	@Column(name = "deleted_at")
 	private LocalDateTime deletedAt;
 
-	protected Company() {
-	}
-
-	public Company(String companyCode) {
-		this.companyCode = companyCode;
-	}
-
 	public boolean isDeleted() {
 		return deletedAt != null;
+	}
+
+	public LocalDateTime delete() {
+		this.deletedAt = LocalDateTime.now();
+		return deletedAt;
 	}
 }
