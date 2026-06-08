@@ -44,6 +44,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 		}
 
 		try {
+			// 로그아웃 처리된 Access Token은 만료 전이라도 인증에 사용할 수 없다.
 			if (tokenRedisService.isAccessTokenBlacklisted(token)) {
 				throw new BusinessException(ErrorCode.INVALID_TOKEN);
 			}

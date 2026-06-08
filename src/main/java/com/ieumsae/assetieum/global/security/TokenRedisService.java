@@ -22,6 +22,7 @@ public class TokenRedisService {
 	public void saveRefreshToken(UUID memberId, String refreshToken, long expiresInSeconds) {
 		redisTemplate.opsForValue().set(
 			refreshTokenKey(memberId),
+			// Redis에는 토큰 원문 대신 해시만 저장해 유출 시 피해를 줄인다.
 			sha256(refreshToken),
 			Duration.ofSeconds(expiresInSeconds)
 		);
@@ -41,6 +42,7 @@ public class TokenRedisService {
 			return;
 		}
 
+		// 로그아웃된 Access Token은 남은 만료 시간 동안만 차단한다.
 		redisTemplate.opsForValue().set(
 			accessBlacklistKey(accessToken),
 			"logout",
