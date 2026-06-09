@@ -9,8 +9,12 @@ public enum ErrorCode {
 	INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "AUTH_001", "사번 또는 비밀번호가 올바르지 않습니다."),
 	INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_002", "유효하지 않은 인증 토큰입니다."),
 	ACCESS_DENIED(HttpStatus.FORBIDDEN, "AUTH_003", "접근 권한이 없습니다."),
+
+	// 멤버
 	MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "MEMBER_001", "멤버를 찾을 수 없습니다."),
 	INACTIVE_MEMBER(HttpStatus.FORBIDDEN, "MEMBER_002", "활성 상태가 아닌 멤버입니다."),
+	MEMBER_ALREADY_EXISTS(HttpStatus.CONFLICT, "MEMBER_003", "이미 등록된 사번입니다."),
+	MEMBER_EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, "MEMBER_004", "이미 등록된 이메일입니다."),
 
 	// 회사
 	COMPANY_NOT_FOUND(HttpStatus.NOT_FOUND, "company-001", "회사를 찾을 수 없습니다."),
@@ -24,10 +28,7 @@ public enum ErrorCode {
 	DEPARTMENT_HAS_MEMBERS(HttpStatus.CONFLICT, "department-004", "소속 사원이 존재하는 부서는 삭제할 수 없습니다."),
 	INVALID_PARENT_DEPARTMENT(HttpStatus.BAD_REQUEST, "department-005", "유효하지 않은 상위 부서입니다."),
 
-
-	// *유형 자산*
 	// 유형 자산 카테고리
-
 	TANGIBLE_ASSET_CATEGORY_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "tangible-asset-001", "이미 존재하는 카테고리명입니다."),
 	TANGIBLE_ASSET_CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "tangible-asset-002", "해당 유형 자산 카테고리가 존재하지 않습니다."),
 	TANGIBLE_ASSET_INVALID_PARENT(HttpStatus.BAD_REQUEST, "tangible-asset-003", "유효하지 않은 부모 카테고리입니다."),
@@ -35,15 +36,11 @@ public enum ErrorCode {
 	TANGIBLE_ASSET_CATEGORY_HAS_ITEMS(HttpStatus.CONFLICT, "tangible-asset-005", "품목이 존재하는 경우 삭제할 수 없습니다."),
 
 	// 유형 자산 품목
-	TANGIBLE_ASSET_ITEM_DUPLICATED_PRODUCT_NAME(HttpStatus.BAD_REQUEST, "tangible-asset-005", "이미 존재하는 제품명입니다."),
-	TANGIBLE_ASSET_ITEM_DUPLICATED_MODEL_NAME(HttpStatus.BAD_REQUEST, "tangible-asset-006", "이미 존재하는 모델명입니다."),
-	TANGIBLE_ASSET_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "tangible-asset-007", "해당 유형 자산 품목은 존재하지 않습니다."),
-	TANGIBLE_ASSET_ITEM_HAS_ASSETS(HttpStatus.CONFLICT, "tangible-asset-008", "자산이 존재하는 경우 삭제할 수 없습니다."),
+	TANGIBLE_ASSET_ITEM_DUPLICATED_PRODUCT_NAME(HttpStatus.BAD_REQUEST, "tangible-asset-006", "이미 존재하는 제품명입니다."),
+	TANGIBLE_ASSET_ITEM_DUPLICATED_MODEL_NAME(HttpStatus.BAD_REQUEST, "tangible-asset-007", "이미 존재하는 모델명입니다."),
+	TANGIBLE_ASSET_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "tangible-asset-008", "해당 유형 자산 품목이 존재하지 않습니다."),
+	TANGIBLE_ASSET_ITEM_HAS_ASSETS(HttpStatus.CONFLICT, "tangible-asset-009", "자산이 존재하는 경우 삭제할 수 없습니다."),
 
-	// 유형 자산
-
-
-	// *무형 자산*
 	// 무형 자산 카테고리
 	INTANGIBLE_ASSET_CATEGORY_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "intangible-asset-001", "이미 존재하는 카테고리명입니다."),
 	INTANGIBLE_ASSET_CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "intangible-asset-002", "해당 무형 자산 카테고리가 존재하지 않습니다."),
