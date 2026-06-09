@@ -21,7 +21,9 @@ public class JwtProvider {
 	private static final String MEMBER_NO_CLAIM = "memberNo";
 	private static final String ROLE_CLAIM = "role";
 	private static final String TOKEN_TYPE_CLAIM = "tokenType";
+	private static final String TOKEN_ID_CLAIM = "jti";
 	private static final String ACCESS_TOKEN_TYPE = "access";
+	private static final String REFRESH_TOKEN_TYPE = "refresh";
 
 	private final JwtProperties jwtProperties;
 	private final SecretKey secretKey;
@@ -35,7 +37,6 @@ public class JwtProvider {
 		Instant now = Instant.now();
 		Instant expiresAt = now.plusSeconds(getAccessTokenExpiresInSeconds());
 
-		// 토큰에는 인증에 필요한 최소 식별 정보만 담고, 변경 가능한 상태값은 서비스에서 DB로 재확인한다.
 		return Jwts.builder()
 			.issuer(jwtProperties.getIssuer())
 			.audience()
@@ -51,33 +52,78 @@ public class JwtProvider {
 			.compact();
 	}
 
+	public String createRefreshToken(Member member) {
+		Instant now = Instant.now();
+		Instant expiresAt = now.plusSeconds(getRefreshTokenExpiresInSeconds());
+
+		return Jwts.builder()
+			.issuer(jwtProperties.getIssuer())
+			.audience()
+			.add(jwtProperties.getAudience())
+			.and()
+			.subject(member.getId().toString())
+			.claim(MEMBER_NO_CLAIM, member.getMemberNo())
+			.claim(ROLE_CLAIM, member.getRole().name())
+			.claim(TOKEN_TYPE_CLAIM, REFRESH_TOKEN_TYPE)
+			.claim(TOKEN_ID_CLAIM, UUID.randomUUID().toString())
+			.issuedAt(Date.from(now))
+			.expiration(Date.from(expiresAt))
+			.signWith(secretKey, Jwts.SIG.HS256)
+			.compact();
+	}
+
 	public AuthenticatedMember parseAccessToken(String token) {
+		Claims claims = parseToken(token);
+		if (!ACCESS_TOKEN_TYPE.equals(readStringClaim(claims, TOKEN_TYPE_CLAIM))) {
+			throw new BusinessException(ErrorCode.INVALID_TOKEN);
+		}
+
+		return toAuthenticatedMember(claims);
+	}
+
+	public AuthenticatedMember parseRefreshToken(String token) {
+		Claims claims = parseToken(token);
+		if (!REFRESH_TOKEN_TYPE.equals(readStringClaim(claims, TOKEN_TYPE_CLAIM))) {
+			throw new BusinessException(ErrorCode.INVALID_TOKEN);
+		}
+
+		return toAuthenticatedMember(claims);
+	}
+
+	public long getRemainingSeconds(String token) {
+		Claims claims = parseToken(token);
+		long remainingMillis = claims.getExpiration().getTime() - System.currentTimeMillis();
+		return Math.max(remainingMillis / 1000, 0);
+	}
+
+	public long getAccessTokenExpiresInSeconds() {
+		return jwtProperties.getAccessTokenExpirationMinutes() * 60;
+	}
+
+	public long getRefreshTokenExpiresInSeconds() {
+		return jwtProperties.getRefreshTokenExpirationDays() * 24 * 60 * 60;
+	}
+
+	private Claims parseToken(String token) {
 		try {
-			Claims claims = Jwts.parser()
+			return Jwts.parser()
 				.verifyWith(secretKey)
 				.requireIssuer(jwtProperties.getIssuer())
 				.requireAudience(jwtProperties.getAudience())
 				.build()
 				.parseSignedClaims(token)
 				.getPayload();
-
-			// access token 전용 파서이므로 다른 용도의 JWT가 들어오면 거부한다.
-			if (!ACCESS_TOKEN_TYPE.equals(readStringClaim(claims, TOKEN_TYPE_CLAIM))) {
-				throw new BusinessException(ErrorCode.INVALID_TOKEN);
-			}
-
-			return new AuthenticatedMember(
-				UUID.fromString(claims.getSubject()),
-				readStringClaim(claims, MEMBER_NO_CLAIM),
-				MemberRole.valueOf(readStringClaim(claims, ROLE_CLAIM))
-			);
 		} catch (JwtException | IllegalArgumentException exception) {
 			throw new BusinessException(ErrorCode.INVALID_TOKEN);
 		}
 	}
 
-	public long getAccessTokenExpiresInSeconds() {
-		return jwtProperties.getAccessTokenExpirationMinutes() * 60;
+	private AuthenticatedMember toAuthenticatedMember(Claims claims) {
+		return new AuthenticatedMember(
+			UUID.fromString(claims.getSubject()),
+			readStringClaim(claims, MEMBER_NO_CLAIM),
+			MemberRole.valueOf(readStringClaim(claims, ROLE_CLAIM))
+		);
 	}
 
 	private String readStringClaim(Claims claims, String name) {

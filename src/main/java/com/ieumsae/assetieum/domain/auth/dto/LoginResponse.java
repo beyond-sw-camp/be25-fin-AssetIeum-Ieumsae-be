@@ -18,7 +18,9 @@ import lombok.Getter;
 	"departmentName",
 	"role",
 	"status",
-	"accessToken"
+	"accessToken",
+	"tokenType",
+	"expiresIn"
 })
 public class LoginResponse {
 
@@ -31,4 +33,6 @@ public class LoginResponse {
 	private final MemberRole role;
 	private final MemberStatus status;
 	private final String accessToken;
+	private final String tokenType;
+	private final long expiresIn;
 }

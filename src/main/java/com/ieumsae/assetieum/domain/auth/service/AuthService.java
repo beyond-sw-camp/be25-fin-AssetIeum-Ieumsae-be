@@ -6,12 +6,16 @@ import com.ieumsae.assetieum.domain.auth.dto.ChangePasswordRequest;
 import com.ieumsae.assetieum.domain.auth.dto.ChangePasswordResponse;
 import com.ieumsae.assetieum.domain.auth.dto.LoginRequest;
 import com.ieumsae.assetieum.domain.auth.dto.LoginResponse;
+import com.ieumsae.assetieum.domain.auth.dto.TokenReissueResponse;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
 import com.ieumsae.assetieum.global.security.JwtProvider;
+import com.ieumsae.assetieum.global.security.JwtProperties;
+import com.ieumsae.assetieum.global.security.TokenRedisService;
+import com.ieumsae.assetieum.global.security.TokenRedisService.RefreshTokenStatus;
 import jakarta.transaction.Transactional;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
@@ -26,9 +30,11 @@ public class AuthService {
 	private final MemberRepository memberRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final JwtProvider jwtProvider;
+	private final JwtProperties jwtProperties;
+	private final TokenRedisService tokenRedisService;
 
 	@Transactional
-	public LoginResponse login(LoginRequest request) {
+	public LoginResult login(LoginRequest request) {
 		LoginMember loginMember = loginMemberClient.authenticate(
 				request.getCompanyCode(),
 				request.getMemberNo(),
@@ -41,12 +47,15 @@ public class AuthService {
 			throw new BusinessException(ErrorCode.INACTIVE_MEMBER);
 		}
 
-		// 초기 비밀번호가 사번 같은 평문으로 들어온 경우, 첫 로그인 성공 시 해시 비밀번호로 전환한다.
 		if (loginMember.isLegacyPlainPassword()) {
 			member.changePassword(passwordEncoder.encode(request.getPassword()));
 		}
 
-		return LoginResponse.builder()
+		String accessToken = jwtProvider.createAccessToken(member);
+		String refreshToken = jwtProvider.createRefreshToken(member);
+		tokenRedisService.saveRefreshToken(member.getId(), refreshToken, jwtProvider.getRefreshTokenExpiresInSeconds());
+
+		LoginResponse response = LoginResponse.builder()
 			.memberId(member.getId())
 			.memberNo(member.getMemberNo())
 			.name(member.getName())
@@ -55,8 +64,65 @@ public class AuthService {
 			.departmentName(member.getDepartment().getName())
 			.role(member.getRole())
 			.status(member.getStatus())
-			.accessToken(jwtProvider.createAccessToken(member))
+			.accessToken(accessToken)
+			.tokenType("Bearer")
+			.expiresIn(jwtProvider.getAccessTokenExpiresInSeconds())
 			.build();
+
+		return new LoginResult(response, refreshToken);
+	}
+
+	@Transactional
+	public ReissueResult reissue(String refreshToken) {
+		if (refreshToken == null || refreshToken.isBlank()) {
+			throw new BusinessException(ErrorCode.INVALID_TOKEN);
+		}
+
+		AuthenticatedMember authenticatedMember = jwtProvider.parseRefreshToken(refreshToken);
+		RefreshTokenStatus refreshTokenStatus = tokenRedisService.getRefreshTokenStatus(
+			authenticatedMember.id(),
+			refreshToken
+		);
+		if (refreshTokenStatus == RefreshTokenStatus.NONE) {
+			tokenRedisService.deleteRefreshToken(authenticatedMember.id());
+			throw new BusinessException(ErrorCode.REFRESH_TOKEN_REUSED);
+		}
+
+		Member member = memberRepository.findById(authenticatedMember.id())
+			.orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+
+		if (!member.isActive()) {
+			tokenRedisService.deleteRefreshToken(member.getId());
+			throw new BusinessException(ErrorCode.INACTIVE_MEMBER);
+		}
+
+		String newAccessToken = jwtProvider.createAccessToken(member);
+		String newRefreshToken = null;
+		if (refreshTokenStatus == RefreshTokenStatus.CURRENT) {
+			newRefreshToken = jwtProvider.createRefreshToken(member);
+			tokenRedisService.rotateRefreshToken(
+				member.getId(),
+				refreshToken,
+				newRefreshToken,
+				jwtProvider.getRefreshTokenExpiresInSeconds(),
+				jwtProperties.getRefreshTokenGracePeriodSeconds()
+			);
+		}
+
+		return new ReissueResult(
+			TokenReissueResponse.from(newAccessToken, jwtProvider.getAccessTokenExpiresInSeconds()),
+			newRefreshToken
+		);
+	}
+
+	@Transactional
+	public void logout(AuthenticatedMember authenticatedMember, String accessToken) {
+		tokenRedisService.deleteRefreshToken(authenticatedMember.id());
+
+		if (accessToken != null && !accessToken.isBlank()) {
+			long remainingSeconds = jwtProvider.getRemainingSeconds(accessToken);
+			tokenRedisService.blacklistAccessToken(accessToken, remainingSeconds);
+		}
 	}
 
 	@Transactional
@@ -67,7 +133,6 @@ public class AuthService {
 		Member member = memberRepository.findById(authenticatedMember.id())
 			.orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
-		// 토큰은 로그인 시점의 정보이므로, 보안 작업 전에는 DB 기준 현재 상태를 다시 확인한다.
 		if (!member.isActive()) {
 			throw new BusinessException(ErrorCode.INACTIVE_MEMBER);
 		}
@@ -85,5 +150,11 @@ public class AuthService {
 			.memberId(member.getId())
 			.updatedAt(LocalDateTime.now())
 			.build();
+	}
+
+	public record LoginResult(LoginResponse response, String refreshToken) {
+	}
+
+	public record ReissueResult(TokenReissueResponse response, String refreshToken) {
 	}
 }
