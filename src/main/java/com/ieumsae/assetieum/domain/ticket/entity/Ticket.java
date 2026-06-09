@@ -76,4 +76,24 @@ public class Ticket extends BaseEntity {
 
 	@Column(name = "deleted_at")
 	private LocalDateTime deletedAt;
+
+	public static Ticket createAssetRequest(
+		Company company,
+		String ticketNo,
+		Member requester,
+		Department department,
+		Member approver,
+		String requestReason
+	) {
+		return Ticket.builder()
+			.company(company)
+			.ticketNo(ticketNo)
+			.ticketType(TicketType.ASSET_REQUEST)
+			.ticketStatus(TicketStatus.REQUESTED)
+			.requester(requester)
+			.department(department)
+			.approver(approver)
+			.requestReason(requestReason)
+			.build();
+	}
 }

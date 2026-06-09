@@ -44,14 +44,14 @@ public class IntangibleAssetItem extends BaseEntity {
 	@JoinColumn(name = "category_id", nullable = false)
 	private IntangibleAssetCategory intangibleAssetCategory;
 
-	@Column(name = "item_code", nullable = false, length = 50)
-	private String itemCode;
-
-	@Column(nullable = false, length = 150)
-	private String name;
+	@Column(name = "product_name", nullable = false, length = 255)
+	private String productName;
 
 	@Column(length = 100)
 	private String provider;
+
+	@Column(name = "license_type", nullable = false, length = 30)
+	private String licenseType;
 
 	@Column(name = "is_standard", nullable = false)
 	private Boolean isStandard;

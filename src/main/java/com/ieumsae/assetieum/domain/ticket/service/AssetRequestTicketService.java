@@ -12,16 +12,10 @@ import com.ieumsae.assetieum.domain.ticket.entity.AssetRequestTicket;
 import com.ieumsae.assetieum.domain.ticket.entity.Ticket;
 import com.ieumsae.assetieum.domain.ticket.repository.AssetRequestTicketRepository;
 import com.ieumsae.assetieum.domain.ticket.repository.TicketRepository;
-import com.ieumsae.assetieum.domain.ticket.type.AssetRequestTicketStatus;
 import com.ieumsae.assetieum.domain.ticket.type.AssetType;
-import com.ieumsae.assetieum.domain.ticket.type.RequestMethod;
-import com.ieumsae.assetieum.domain.ticket.type.TicketStatus;
-import com.ieumsae.assetieum.domain.ticket.type.TicketType;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -33,13 +27,12 @@ import org.springframework.util.StringUtils;
 @Transactional(readOnly = true)
 public class AssetRequestTicketService {
 
-	private static final DateTimeFormatter TICKET_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
-
 	private final TicketRepository ticketRepository;
 	private final AssetRequestTicketRepository assetRequestTicketRepository;
 	private final MemberRepository memberRepository;
 	private final TangibleAssetItemRepository tangibleAssetItemRepository;
 	private final IntangibleAssetItemRepository intangibleAssetItemRepository;
+	private final TicketNoGenerator ticketNoGenerator;
 
 	@Transactional
 	public StandardAssetRequestCreateResponse createStandardAssetRequest(
@@ -54,32 +47,39 @@ public class AssetRequestTicketService {
 		if (request.getAssetType() == AssetType.TANGIBLE) {
 			tangibleAssetItem = findStandardTangibleAssetItem(request.getAssetItemId(), requester.getCompany().getId());
 		} else {
-			intangibleAssetItem = findStandardIntangibleAssetItem(request.getAssetItemId(), requester.getCompany().getId());
+			intangibleAssetItem = findStandardIntangibleAssetItem(
+				request.getAssetItemId(),
+				requester.getCompany().getId()
+			);
 		}
 
-		Ticket ticket = ticketRepository.save(Ticket.builder()
-			.company(requester.getCompany())
-			.ticketNo(createTicketNo())
-			.ticketType(TicketType.ASSET_REQUEST)
-			.ticketStatus(TicketStatus.REQUESTED)
-			.requester(requester)
-			.department(requester.getDepartment())
-			.approver(approver)
-			.requestReason(normalize(request.getRequestReason()))
-			.build());
+		Ticket ticket = ticketRepository.save(Ticket.createAssetRequest(
+			requester.getCompany(),
+			ticketNoGenerator.generate(),
+			requester,
+			requester.getDepartment(),
+			approver,
+			normalize(request.getRequestReason())
+		));
 
-		assetRequestTicketRepository.save(AssetRequestTicket.builder()
-			.ticket(ticket)
-			.company(requester.getCompany())
-			.status(AssetRequestTicketStatus.REQUESTED)
-			.requestMethod(RequestMethod.TEAM_PURCHASE)
-			.requestedUsageType(request.getRequestedUsageType())
-			.quantity(request.getQuantity())
-			.tangibleAssetItem(tangibleAssetItem)
-			.intangibleAssetItem(intangibleAssetItem)
-			.build());
+		assetRequestTicketRepository.save(
+			AssetRequestTicket.createStandardRequest(
+				ticket,
+				requester.getCompany(),
+				request.getRequestedUsageType(),
+				tangibleAssetItem,
+				intangibleAssetItem,
+				request.getQuantity()
+			)
+		);
 
-		return StandardAssetRequestCreateResponse.from(ticket);
+		return StandardAssetRequestCreateResponse.from(
+			ticket,
+			request.getRequestedUsageType(),
+			request.getAssetType(),
+			request.getAssetItemId(),
+			request.getQuantity()
+		);
 	}
 
 	private Member findActiveRequester(UUID memberId) {
@@ -112,25 +112,12 @@ public class AssetRequestTicketService {
 
 	private IntangibleAssetItem findStandardIntangibleAssetItem(UUID itemId, UUID companyId) {
 		IntangibleAssetItem item = intangibleAssetItemRepository.findByIdAndDeletedAtIsNull(itemId)
-			.orElseThrow(() -> new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "해당 무형 자산 품목이 존재하지 않습니다."));
+			.orElseThrow(() -> new BusinessException(ErrorCode.INTANGIBLE_ASSET_ITEM_NOT_FOUND));
 
 		if (!item.getCompany().getId().equals(companyId) || !Boolean.TRUE.equals(item.getIsStandard())) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "해당 무형 자산 품목이 존재하지 않습니다.");
+			throw new BusinessException(ErrorCode.INTANGIBLE_ASSET_ITEM_NOT_FOUND);
 		}
 		return item;
-	}
-
-	private String createTicketNo() {
-		String prefix = "TKT-" + LocalDate.now().format(TICKET_DATE_FORMAT) + "-";
-		return prefix + String.format("%03d", findNextSequence(prefix));
-	}
-
-	private int findNextSequence(String prefix) {
-		return ticketRepository.findTopByTicketNoStartingWithOrderByTicketNoDesc(prefix)
-			.map(ticket -> ticket.getTicketNo().substring(prefix.length()))
-			.map(Integer::parseInt)
-			.map(sequence -> sequence + 1)
-			.orElse(1);
 	}
 
 	private String normalize(String value) {

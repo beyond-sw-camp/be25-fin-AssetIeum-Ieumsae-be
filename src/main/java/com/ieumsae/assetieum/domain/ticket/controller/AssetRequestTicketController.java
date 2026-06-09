@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/asset-request-tickets")
+@RequestMapping("/api/v1/tickets/asset-requests")
 public class AssetRequestTicketController {
 
 	private final AssetRequestTicketService assetRequestTicketService;
