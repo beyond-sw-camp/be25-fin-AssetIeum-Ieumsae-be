@@ -1,0 +1,79 @@
+package com.ieumsae.assetieum.domain.ticket.entity;
+
+import com.ieumsae.assetieum.domain.company.entity.Company;
+import com.ieumsae.assetieum.domain.department.entity.Department;
+import com.ieumsae.assetieum.domain.member.entity.Member;
+import com.ieumsae.assetieum.domain.ticket.type.TicketStatus;
+import com.ieumsae.assetieum.domain.ticket.type.TicketType;
+import com.ieumsae.assetieum.global.common.BaseEntity;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import java.time.LocalDateTime;
+import java.util.UUID;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.UuidGenerator;
+import org.hibernate.type.SqlTypes;
+
+@Getter
+@Entity
+@Builder
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Table(name = "tickets")
+public class Ticket extends BaseEntity {
+
+	@Id
+	@UuidGenerator
+	@JdbcTypeCode(SqlTypes.CHAR)
+	@Column(name = "ticket_id", columnDefinition = "CHAR(36)")
+	private UUID id;
+
+	@ManyToOne(fetch = FetchType.LAZY, optional = false)
+	@JoinColumn(name = "company_id", nullable = false)
+	private Company company;
+
+	@Column(name = "ticket_no", nullable = false, length = 50)
+	private String ticketNo;
+
+	@Enumerated(EnumType.STRING)
+	@Column(name = "ticket_type", nullable = false, length = 50)
+	private TicketType ticketType;
+
+	@Enumerated(EnumType.STRING)
+	@Column(name = "ticket_status", nullable = false, length = 50)
+	private TicketStatus ticketStatus;
+
+	@ManyToOne(fetch = FetchType.LAZY, optional = false)
+	@JoinColumn(name = "requester_id", nullable = false)
+	private Member requester;
+
+	@ManyToOne(fetch = FetchType.LAZY, optional = false)
+	@JoinColumn(name = "department_id", nullable = false)
+	private Department department;
+
+	@ManyToOne(fetch = FetchType.LAZY, optional = false)
+	@JoinColumn(name = "approver_id", nullable = false)
+	private Member approver;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "assignee_id")
+	private Member assignee;
+
+	@Column(name = "request_reason", length = 255)
+	private String requestReason;
+
+	@Column(name = "deleted_at")
+	private LocalDateTime deletedAt;
+}
