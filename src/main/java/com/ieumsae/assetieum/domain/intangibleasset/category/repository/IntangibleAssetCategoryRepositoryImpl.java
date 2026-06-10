@@ -1,6 +1,6 @@
-package com.ieumsae.assetieum.domain.tangibleasset.category.repository;
+package com.ieumsae.assetieum.domain.intangibleasset.category.repository;
 
-import com.ieumsae.assetieum.domain.tangibleasset.category.entity.TangibleAssetCategory;
+import com.ieumsae.assetieum.domain.intangibleasset.category.entity.IntangibleAssetCategory;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
@@ -11,12 +11,12 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * 유형자산 카테고리 커스텀 Repository 구현체.
+ * 무형자산 카테고리 커스텀 Repository 구현체
  * 선택한 카테고리의 하위 카테고리 ID 조회를 담당한다.
  */
 @Repository
 @RequiredArgsConstructor
-public class TangibleAssetCategoryRepositoryImpl implements TangibleAssetCategoryRepositoryCustom {
+public class IntangibleAssetCategoryRepositoryImpl implements IntangibleAssetCategoryRepositoryCustom {
 
     @PersistenceContext
     private final EntityManager em;
@@ -28,8 +28,8 @@ public class TangibleAssetCategoryRepositoryImpl implements TangibleAssetCategor
      */
     @Override
     public List<UUID> findAllDescendantIds(UUID categoryId) {
-        List<TangibleAssetCategory> categories = em.createQuery(
-                "SELECT c FROM TangibleAssetCategory c", TangibleAssetCategory.class
+        List<IntangibleAssetCategory> categories = em.createQuery(
+                "SELECT c FROM IntangibleAssetCategory c", IntangibleAssetCategory.class
         ).getResultList();
 
         List<UUID> descendantIds = new ArrayList<>();
@@ -48,10 +48,10 @@ public class TangibleAssetCategoryRepositoryImpl implements TangibleAssetCategor
      */
     private void collectDescendantIds(
             UUID parentId,
-            List<TangibleAssetCategory> categories,
+            List<IntangibleAssetCategory> categories,
             List<UUID> descendantIds
     ) {
-        for (TangibleAssetCategory category : categories) {
+        for (IntangibleAssetCategory category : categories) {
             if (category.getParent() == null) {
                 continue;
             }

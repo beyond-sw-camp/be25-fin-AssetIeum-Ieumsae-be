@@ -35,7 +35,7 @@ public class TangibleAssetItemController {
         TangibleAssetItemResponse response =
                 tangibleAssetItemService.createItem(request);
 
-        return ApiResponse.created("유형자산 품목이 등록되었습니다.", response);
+        return ApiResponse.ok("유형자산 품목이 등록되었습니다.", response);
     }
 
     @GetMapping

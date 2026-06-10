@@ -1,7 +1,7 @@
-package com.ieumsae.assetieum.domain.tangibleasset.item.repository;
+package com.ieumsae.assetieum.domain.intangibleasset.item.repository;
 
-import com.ieumsae.assetieum.domain.tangibleasset.category.repository.TangibleAssetCategoryRepository;
-import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
+import com.ieumsae.assetieum.domain.intangibleasset.category.repository.IntangibleAssetCategoryRepository;
+import com.ieumsae.assetieum.domain.intangibleasset.item.entity.IntangibleAssetItem;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.TypedQuery;
@@ -17,40 +17,36 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * 유형자산 품목 Repository 구현체.
- * JPA EntityManager를 사용하여 동적 쿼리를 처리한다.
- */
 @Repository
 @RequiredArgsConstructor
-public class TangibleAssetItemRepositoryImpl implements TangibleAssetItemRepositoryCustom {
+public class IntangibleAssetItemRepositoryImpl implements IntangibleAssetItemRepositoryCustom {
 
     @PersistenceContext
     private final EntityManager em;
-    private final TangibleAssetCategoryRepository categoryRepository;
+    private final IntangibleAssetCategoryRepository categoryRepository;
 
     /**
-     * 회사 기준 유형자산 품목 목록을 조회한다.
-     * 카테고리, 품목명, 제조사, 모델명, 표준 여부 조건을 동적으로 적용한다.
+     * 회사 기준 무형자산 품목 목록을 조회한다.
+     * 카테고리, 품목명, 제공사, 라이선스 유형, 표준 여부 조건을 동적으로 적용한다.
      */
     @Override
-    public Page<TangibleAssetItem> search(
+    public Page<IntangibleAssetItem> search(
             UUID companyId,
             UUID categoryId,
             String keyword,
             Boolean isStandard,
             Pageable pageable
     ) {
-        StringBuilder jpql = new StringBuilder("SELECT t FROM TangibleAssetItem t WHERE t.company.id = :companyId AND t.deletedAt IS NULL");
-        StringBuilder countJpql = new StringBuilder("SELECT COUNT(t) FROM TangibleAssetItem t WHERE t.company.id = :companyId AND t.deletedAt IS NULL");
-        
+        StringBuilder jpql = new StringBuilder("SELECT t FROM IntangibleAssetItem t WHERE t.company.id = :companyId AND t.deletedAt IS NULL");
+        StringBuilder countJpql = new StringBuilder("SELECT COUNT(t) FROM IntangibleAssetItem t WHERE t.company.id = :companyId AND t.deletedAt IS NULL");
+
         Map<String, Object> params = new HashMap<>();
         params.put("companyId", companyId);
 
         List<UUID> categoryIds = getCategoryIds(categoryId);
         if (categoryIds != null && !categoryIds.isEmpty()) {
-            jpql.append(" AND t.tangibleAssetCategory.id IN :categoryIds");
-            countJpql.append(" AND t.tangibleAssetCategory.id IN :categoryIds");
+            jpql.append(" AND t.intangibleAssetCategory.id IN :categoryIds");
+            countJpql.append(" AND t.intangibleAssetCategory.id IN :categoryIds");
             params.put("categoryIds", categoryIds);
         }
 
@@ -58,9 +54,9 @@ public class TangibleAssetItemRepositoryImpl implements TangibleAssetItemReposit
             String keywordCondition = """
                      AND (
                         LOWER(t.productName) LIKE LOWER(:keyword)
-                        OR LOWER(t.manufacturer) LIKE LOWER(:keyword)
-                        OR LOWER(t.modelName) LIKE LOWER(:keyword)
-                        OR LOWER(t.tangibleAssetCategory.name) LIKE LOWER(:keyword)
+                        OR LOWER(t.provider) LIKE LOWER(:keyword)
+                        OR LOWER(CAST(t.licenseType AS string)) LIKE LOWER(:keyword)
+                        OR LOWER(t.intangibleAssetCategory.name) LIKE LOWER(:keyword)
                     )
                     """;
             jpql.append(keywordCondition);
@@ -76,7 +72,7 @@ public class TangibleAssetItemRepositoryImpl implements TangibleAssetItemReposit
 
         jpql.append(" ORDER BY t.createdAt DESC");
 
-        TypedQuery<TangibleAssetItem> query = em.createQuery(jpql.toString(), TangibleAssetItem.class);
+        TypedQuery<IntangibleAssetItem> query = em.createQuery(jpql.toString(), IntangibleAssetItem.class);
         TypedQuery<Long> countQuery = em.createQuery(countJpql.toString(), Long.class);
 
         for (Map.Entry<String, Object> entry : params.entrySet()) {
@@ -87,7 +83,7 @@ public class TangibleAssetItemRepositoryImpl implements TangibleAssetItemReposit
         query.setFirstResult((int) pageable.getOffset());
         query.setMaxResults(pageable.getPageSize());
 
-        List<TangibleAssetItem> content = query.getResultList();
+        List<IntangibleAssetItem> content = query.getResultList();
         Long total = countQuery.getSingleResult();
 
         return new PageImpl<>(content, pageable, total);

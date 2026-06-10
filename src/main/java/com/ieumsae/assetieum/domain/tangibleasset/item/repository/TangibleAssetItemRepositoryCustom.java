@@ -20,9 +20,7 @@ public interface TangibleAssetItemRepositoryCustom {
     Page<TangibleAssetItem> search(
             UUID companyId,
             UUID categoryId,
-            String productName,
-            String manufacturer,
-            String modelName,
+            String keyword,
             Boolean isStandard,
             Pageable pageable
     );

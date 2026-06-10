@@ -1,4 +1,4 @@
-package com.ieumsae.assetieum.domain.tangibleasset.item.dto;
+package com.ieumsae.assetieum.domain.intangibleasset.item.dto;
 
 import com.ieumsae.assetieum.global.common.page.PaginationRequest;
 import jakarta.validation.constraints.NotNull;
@@ -11,7 +11,7 @@ import java.util.UUID;
 @Getter
 @Setter
 @NoArgsConstructor
-public class TangibleAssetItemSearchRequest extends PaginationRequest {
+public class IntangibleAssetItemSearchRequest extends PaginationRequest {
     @NotNull
     private UUID companyId;
 
