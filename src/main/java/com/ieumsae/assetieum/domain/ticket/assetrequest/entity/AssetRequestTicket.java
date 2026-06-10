@@ -1,11 +1,11 @@
-package com.ieumsae.assetieum.domain.ticket.entity;
+package com.ieumsae.assetieum.domain.ticket.assetrequest.entity;
 
 import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.intangibleasset.item.entity.IntangibleAssetItem;
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
-import com.ieumsae.assetieum.domain.ticket.type.AssetRequestTicketStatus;
-import com.ieumsae.assetieum.domain.ticket.type.RequestMethod;
-import com.ieumsae.assetieum.domain.ticket.type.RequestedUsageType;
+import com.ieumsae.assetieum.domain.ticket.assetrequest.type.AssetRequestTicketStatus;
+import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
+import com.ieumsae.assetieum.domain.ticket.common.type.RequestedUsageType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -54,10 +54,6 @@ public class AssetRequestTicket {
 	private AssetRequestTicketStatus status;
 
 	@Enumerated(EnumType.STRING)
-	@Column(name = "request_method", nullable = false, length = 50)
-	private RequestMethod requestMethod;
-
-	@Enumerated(EnumType.STRING)
 	@Column(name = "requested_usage_type", nullable = false, length = 30)
 	private RequestedUsageType requestedUsageType;
 
@@ -87,7 +83,6 @@ public class AssetRequestTicket {
 			.ticket(ticket)
 			.company(company)
 			.status(AssetRequestTicketStatus.REQUESTED)
-			.requestMethod(RequestMethod.TEAM_PURCHASE)
 			.requestedUsageType(requestedUsageType)
 			.tangibleAssetItem(tangibleAssetItem)
 			.intangibleAssetItem(intangibleAssetItem)

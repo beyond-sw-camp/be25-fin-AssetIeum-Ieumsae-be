@@ -1,4 +1,4 @@
-package com.ieumsae.assetieum.domain.ticket.service;
+package com.ieumsae.assetieum.domain.ticket.assetrequest.service;
 
 import com.ieumsae.assetieum.domain.intangibleasset.item.entity.IntangibleAssetItem;
 import com.ieumsae.assetieum.domain.intangibleasset.item.repository.IntangibleAssetItemRepository;
@@ -6,13 +6,14 @@ import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
 import com.ieumsae.assetieum.domain.tangibleasset.item.repository.TangibleAssetItemRepository;
-import com.ieumsae.assetieum.domain.ticket.dto.StandardAssetRequestCreateRequest;
-import com.ieumsae.assetieum.domain.ticket.dto.StandardAssetRequestCreateResponse;
-import com.ieumsae.assetieum.domain.ticket.entity.AssetRequestTicket;
-import com.ieumsae.assetieum.domain.ticket.entity.Ticket;
-import com.ieumsae.assetieum.domain.ticket.repository.AssetRequestTicketRepository;
-import com.ieumsae.assetieum.domain.ticket.repository.TicketRepository;
-import com.ieumsae.assetieum.domain.ticket.type.AssetType;
+import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.StandardAssetRequestCreateRequest;
+import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.StandardAssetRequestCreateResponse;
+import com.ieumsae.assetieum.domain.ticket.assetrequest.entity.AssetRequestTicket;
+import com.ieumsae.assetieum.domain.ticket.assetrequest.repository.AssetRequestTicketRepository;
+import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
+import com.ieumsae.assetieum.domain.ticket.common.repository.TicketRepository;
+import com.ieumsae.assetieum.domain.ticket.common.service.TicketNoGenerator;
+import com.ieumsae.assetieum.domain.ticket.common.type.AssetType;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
