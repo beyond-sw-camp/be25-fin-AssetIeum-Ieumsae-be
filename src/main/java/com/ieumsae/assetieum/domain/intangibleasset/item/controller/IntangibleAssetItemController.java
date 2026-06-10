@@ -3,6 +3,7 @@ package com.ieumsae.assetieum.domain.intangibleasset.item.controller;
 import com.ieumsae.assetieum.domain.intangibleasset.item.dto.IntangibleAssetItemCreateRequest;
 import com.ieumsae.assetieum.domain.intangibleasset.item.dto.IntangibleAssetItemDeleteResponse;
 import com.ieumsae.assetieum.domain.intangibleasset.item.dto.IntangibleAssetItemResponse;
+import com.ieumsae.assetieum.domain.intangibleasset.item.dto.IntangibleAssetItemSearchRequest;
 import com.ieumsae.assetieum.domain.intangibleasset.item.dto.IntangibleAssetItemUpdateRequest;
 import com.ieumsae.assetieum.domain.intangibleasset.item.service.IntangibleAssetItemService;
 import com.ieumsae.assetieum.global.common.page.PaginationResponse;
@@ -37,15 +38,15 @@ public class IntangibleAssetItemController {
         return ApiResponse.ok("무형자산 품목이 등록되었습니다.", response);
     }
 
-//    @GetMapping
-//    public ApiResponse<PaginationResponse<IntangibleAssetItemResponse>> getItems(
-//            @Valid @ModelAttribute IntangibleAssetItemSearchRequest request
-//    ) {
-//        PaginationResponse<IntangibleAssetItemResponse> response =
-//                intangibleAssetItemService.getItems(request);
-//
-//        return ApiResponse.ok("무형자산 품목 목록 조회에 성공했습니다.", response);
-//    }
+    @GetMapping
+    public ApiResponse<PaginationResponse<IntangibleAssetItemResponse>> getItems(
+            @Valid @ModelAttribute IntangibleAssetItemSearchRequest request
+    ) {
+        PaginationResponse<IntangibleAssetItemResponse> response =
+                intangibleAssetItemService.getItems(request);
+
+        return ApiResponse.ok("무형자산 품목 목록 조회에 성공했습니다.", response);
+    }
 
     @PatchMapping("/{itemId}")
     public ApiResponse<IntangibleAssetItemResponse> updateItem(

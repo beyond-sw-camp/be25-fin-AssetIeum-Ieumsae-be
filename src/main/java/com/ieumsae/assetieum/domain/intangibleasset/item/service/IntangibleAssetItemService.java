@@ -8,14 +8,16 @@ import com.ieumsae.assetieum.domain.intangibleasset.category.repository.Intangib
 import com.ieumsae.assetieum.domain.intangibleasset.item.dto.IntangibleAssetItemCreateRequest;
 import com.ieumsae.assetieum.domain.intangibleasset.item.dto.IntangibleAssetItemDeleteResponse;
 import com.ieumsae.assetieum.domain.intangibleasset.item.dto.IntangibleAssetItemResponse;
+import com.ieumsae.assetieum.domain.intangibleasset.item.dto.IntangibleAssetItemSearchRequest;
 import com.ieumsae.assetieum.domain.intangibleasset.item.dto.IntangibleAssetItemUpdateRequest;
 import com.ieumsae.assetieum.domain.intangibleasset.item.entity.IntangibleAssetItem;
 import com.ieumsae.assetieum.domain.intangibleasset.item.repository.IntangibleAssetItemRepository;
-import com.ieumsae.assetieum.domain.tangibleasset.category.entity.TangibleAssetCategory;
+import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -134,5 +136,33 @@ public class IntangibleAssetItemService {
         IntangibleAssetItem savedItem = intangibleAssetItemRepository.save(item);
 
         return IntangibleAssetItemResponse.from(savedItem);
+    }
+
+    /**
+     * 회사 기준 무형자산 품목 목록 조회
+     * 카테고리, 품목명, 제공사, 라이선스 유형, 표준 여부를 기준으로 필터링하여
+     * 해당하는 품목만 조회하여 반환한다.
+     */
+    public PaginationResponse<IntangibleAssetItemResponse> getItems(
+            IntangibleAssetItemSearchRequest request
+    ) {
+        // 1. 입력값 검증
+        Company company = companyRepository.findById(request.getCompanyId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
+
+        // 2. 페이징 처리 및 필터링 후 품목 목록 반환
+        Page<IntangibleAssetItem> itemPage =
+                intangibleAssetItemRepository.search(
+                        request.getCompanyId(),
+                        request.getCategoryId(),
+                        request.getKeyword(),
+                        request.getIsStandard(),
+                        request.toPageable()
+                );
+
+        Page<IntangibleAssetItemResponse> responsePage =
+                itemPage.map(IntangibleAssetItemResponse::from);
+
+        return PaginationResponse.from(responsePage);
     }
 }
