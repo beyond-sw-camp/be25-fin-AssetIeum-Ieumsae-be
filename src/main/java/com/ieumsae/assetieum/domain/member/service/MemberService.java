@@ -128,7 +128,7 @@ public class MemberService {
 	}
 
 	private void validateMemberNoNotDuplicated(UUID companyId, String memberNo) {
-		if (memberRepository.existsByCompany_IdAndMemberNoAndDeletedAtIsNull(companyId, memberNo)) {
+		if (memberRepository.existsByCompany_IdAndMemberNo(companyId, memberNo)) {
 			throw new BusinessException(ErrorCode.MEMBER_ALREADY_EXISTS);
 		}
 	}
