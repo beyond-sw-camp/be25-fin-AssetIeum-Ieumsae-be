@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface IntangibleAssetItemRepository extends JpaRepository<IntangibleAssetItem, UUID> {
+public interface IntangibleAssetItemRepository extends JpaRepository<IntangibleAssetItem, UUID>, IntangibleAssetItemRepositoryCustom{
 
     Optional<IntangibleAssetItem> findByIdAndDeletedAtIsNull(UUID itemId);
 

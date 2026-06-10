@@ -99,9 +99,7 @@ public class TangibleAssetItemService {
                 tangibleAssetItemRepository.search(
                         request.getCompanyId(),
                         request.getCategoryId(),
-                        request.getProductName(),
-                        request.getManufacturer(),
-                        request.getModelName(),
+                        request.getKeyword(),
                         request.getIsStandard(),
                         request.toPageable()
                 );
