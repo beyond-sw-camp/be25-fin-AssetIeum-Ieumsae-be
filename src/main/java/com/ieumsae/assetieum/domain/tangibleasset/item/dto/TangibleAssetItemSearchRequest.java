@@ -17,11 +17,7 @@ public class TangibleAssetItemSearchRequest extends PaginationRequest {
 
     private UUID categoryId;
 
-    private String productName;
-
-    private String manufacturer;
-
-    private String modelName;
+    private String keyword;
 
     private Boolean isStandard;
 }

@@ -37,9 +37,7 @@ public class TangibleAssetItemRepositoryImpl implements TangibleAssetItemReposit
     public Page<TangibleAssetItem> search(
             UUID companyId,
             UUID categoryId,
-            String productName,
-            String manufacturer,
-            String modelName,
+            String keyword,
             Boolean isStandard,
             Pageable pageable
     ) {
@@ -56,22 +54,18 @@ public class TangibleAssetItemRepositoryImpl implements TangibleAssetItemReposit
             params.put("categoryIds", categoryIds);
         }
 
-        if (productName != null && !productName.isBlank()) {
-            jpql.append(" AND LOWER(t.productName) LIKE LOWER(:productName)");
-            countJpql.append(" AND LOWER(t.productName) LIKE LOWER(:productName)");
-            params.put("productName", "%" + productName + "%");
-        }
-
-        if (manufacturer != null && !manufacturer.isBlank()) {
-            jpql.append(" AND LOWER(t.manufacturer) LIKE LOWER(:manufacturer)");
-            countJpql.append(" AND LOWER(t.manufacturer) LIKE LOWER(:manufacturer)");
-            params.put("manufacturer", "%" + manufacturer + "%");
-        }
-
-        if (modelName != null && !modelName.isBlank()) {
-            jpql.append(" AND LOWER(t.modelName) LIKE LOWER(:modelName)");
-            countJpql.append(" AND LOWER(t.modelName) LIKE LOWER(:modelName)");
-            params.put("modelName", "%" + modelName + "%");
+        if (keyword != null && !keyword.isBlank()) {
+            String keywordCondition = """
+                     AND (
+                        LOWER(t.productName) LIKE LOWER(:keyword)
+                        OR LOWER(t.manufacturer) LIKE LOWER(:keyword)
+                        OR LOWER(t.modelName) LIKE LOWER(:keyword)
+                        OR LOWER(t.tangibleAssetCategory.name) LIKE LOWER(:keyword)
+                    )
+                    """;
+            jpql.append(keywordCondition);
+            countJpql.append(keywordCondition);
+            params.put("keyword", "%" + keyword + "%");
         }
 
         if (isStandard != null) {
