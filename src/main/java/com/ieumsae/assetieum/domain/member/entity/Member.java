@@ -74,6 +74,10 @@ public class Member extends BaseEntity {
 		return status == MemberStatus.ACTIVE && deletedAt == null;
 	}
 
+	public boolean canLogin() {
+		return (status == MemberStatus.ACTIVE || status == MemberStatus.ON_LEAVE) && deletedAt == null;
+	}
+
 	public void changePassword(String encodedPassword) {
 		this.password = encodedPassword;
 	}
