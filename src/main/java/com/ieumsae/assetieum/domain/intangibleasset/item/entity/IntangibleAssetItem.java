@@ -2,6 +2,7 @@ package com.ieumsae.assetieum.domain.intangibleasset.item.entity;
 
 import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.intangibleasset.category.entity.IntangibleAssetCategory;
+import com.ieumsae.assetieum.domain.intangibleasset.item.dto.IntangibleAssetItemUpdateRequest;
 import com.ieumsae.assetieum.domain.intangibleasset.item.type.LicenseType;
 import com.ieumsae.assetieum.global.common.BaseEntity;
 import jakarta.persistence.Column;
@@ -49,7 +50,7 @@ public class IntangibleAssetItem extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id", nullable = false)
-    private IntangibleAssetCategory category;
+    private IntangibleAssetCategory intangibleAssetCategory;
 
     @Column(name = "product_name", nullable = false, length = 255)
     private String productName;
@@ -70,5 +71,26 @@ public class IntangibleAssetItem extends BaseEntity {
 
     public void delete() {
         this.deletedAt = LocalDateTime.now();
+    }
+
+    public void update(
+            IntangibleAssetItemUpdateRequest request,
+            IntangibleAssetCategory category
+    ) {
+        if(request.getProductName() != null) {
+            this.productName = request.getProductName();
+        }
+        if(category != null) {
+            this.intangibleAssetCategory = category;
+        }
+        if(request.getIsStandard() != null) {
+            this.isStandard = request.getIsStandard();
+        }
+        if(request.getProvider() != null) {
+            this.provider = request.getProvider();
+        }
+        if(request.getLicenseType() != null) {
+            this.licenseType = request.getLicenseType();
+        }
     }
 }

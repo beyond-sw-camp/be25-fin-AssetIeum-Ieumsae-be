@@ -9,4 +9,6 @@ import java.util.UUID;
 public interface IntangibleAssetItemRepository extends JpaRepository<IntangibleAssetItem, UUID> {
 
     Optional<IntangibleAssetItem> findByIdAndDeletedAtIsNull(UUID itemId);
+
+    boolean existsByCompany_IdAndProductName(UUID id, String productName);
 }

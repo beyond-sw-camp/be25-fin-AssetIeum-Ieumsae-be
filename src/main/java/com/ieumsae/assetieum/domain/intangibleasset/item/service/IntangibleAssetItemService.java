@@ -1,11 +1,16 @@
 package com.ieumsae.assetieum.domain.intangibleasset.item.service;
 
 import com.ieumsae.assetieum.domain.intangibleasset.asset.repository.IntangibleAssetRepository;
+import com.ieumsae.assetieum.domain.intangibleasset.category.entity.IntangibleAssetCategory;
+import com.ieumsae.assetieum.domain.intangibleasset.category.repository.IntangibleAssetCategoryRepository;
 import com.ieumsae.assetieum.domain.intangibleasset.item.dto.IntangibleAssetItemDeleteResponse;
+import com.ieumsae.assetieum.domain.intangibleasset.item.dto.IntangibleAssetItemResponse;
+import com.ieumsae.assetieum.domain.intangibleasset.item.dto.IntangibleAssetItemUpdateRequest;
 import com.ieumsae.assetieum.domain.intangibleasset.item.entity.IntangibleAssetItem;
 import com.ieumsae.assetieum.domain.intangibleasset.item.repository.IntangibleAssetItemRepository;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +24,7 @@ public class IntangibleAssetItemService {
 
     private final IntangibleAssetItemRepository intangibleAssetItemRepository;
     private final IntangibleAssetRepository intangibleAssetRepository;
+    private final IntangibleAssetCategoryRepository intangibleAssetCategoryRepository;
 
     /**
      * 무형자산 품목 삭제 (soft delete)
@@ -48,5 +54,39 @@ public class IntangibleAssetItemService {
                 .deletedAt(item.getDeletedAt())
                 .build();
 
+    }
+
+    /**
+     * 회사 기준 무형자산 품목 수정.
+     * 카테고리, 품목명, 제공사, 라이선스 유형, 표준 여부을 수정하여
+     * 해당하는 품목의 수정된 데이터를 반환한다.
+     */
+    @Transactional
+    public IntangibleAssetItemResponse updateItem(
+            UUID itemId,
+            IntangibleAssetItemUpdateRequest request
+    ) {
+        // 1. 입력값 검증
+        IntangibleAssetItem item = intangibleAssetItemRepository.findByIdAndDeletedAtIsNull(itemId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.INTANGIBLE_ASSET_ITEM_NOT_FOUND));
+
+        IntangibleAssetCategory category = null;
+
+        if(request.getCategoryId() != null) {
+            category = intangibleAssetCategoryRepository.findById(item.getIntangibleAssetCategory().getId())
+                    .orElseThrow(() -> new BusinessException(ErrorCode.INTANGIBLE_ASSET_CATEGORY_NOT_FOUND));
+        }
+
+        if(intangibleAssetItemRepository.existsByCompany_IdAndProductName(
+                item.getCompany().getId(),
+                request.getProductName()
+        )) {
+            throw new BusinessException(ErrorCode.INTANGIBLE_ASSET_ITEM_DUPLICATED_PRODUCT_NAME);
+        }
+
+        // 2. 품목 수정
+        item.update(request, category);
+
+        return IntangibleAssetItemResponse.from(item);
     }
 }
