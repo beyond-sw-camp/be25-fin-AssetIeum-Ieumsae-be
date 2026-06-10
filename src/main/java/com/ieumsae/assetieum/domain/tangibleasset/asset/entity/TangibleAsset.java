@@ -3,6 +3,7 @@ package com.ieumsae.assetieum.domain.tangibleasset.asset.entity;
 import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.department.entity.Department;
 import com.ieumsae.assetieum.domain.member.entity.Member;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.type.AssetUsageType;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.type.TangibleAssetStatus;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.type.UsageType;
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
@@ -61,6 +62,10 @@ public class TangibleAsset extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "usage_type", length = 30)
     private UsageType usageType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "asset_usage_type", length = 30)
+    private AssetUsageType assetUsageType;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "tangible_asset_status", nullable = false, length = 30)

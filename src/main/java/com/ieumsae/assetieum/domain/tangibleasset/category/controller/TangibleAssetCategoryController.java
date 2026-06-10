@@ -32,7 +32,7 @@ public class TangibleAssetCategoryController {
     ) {
         TangibleAssetCategoryResponse response = tangibleAssetCategoryService.createCategory(request);
 
-        return ApiResponse.created("유형자산 카테고리가 등록되었습니다.", response);
+        return ApiResponse.ok("유형자산 카테고리가 등록되었습니다.", response);
     }
 
     @GetMapping

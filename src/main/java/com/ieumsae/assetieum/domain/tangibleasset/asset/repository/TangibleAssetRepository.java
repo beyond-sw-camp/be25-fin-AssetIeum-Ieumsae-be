@@ -7,4 +7,8 @@ import java.util.UUID;
 
 public interface TangibleAssetRepository extends JpaRepository<TangibleAsset, UUID> {
     boolean existsByCompany_IdAndTangibleAssetItem_Id(UUID id, UUID id1);
+
+    boolean existsByCompany_IdAndSerialNumberAndTangibleAssetItem_Id(UUID company_id, String serialNumber, UUID tangibleAssetItem_id);
+
+    boolean existsByAssetCode(String assetCode);
 }
