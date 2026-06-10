@@ -1,11 +1,14 @@
 package com.ieumsae.assetieum.domain.intangibleasset.item.repository;
 
 import com.ieumsae.assetieum.domain.intangibleasset.item.entity.IntangibleAssetItem;
+import org.springframework.data.jpa.repository.JpaRepository;
+
 import java.util.Optional;
 import java.util.UUID;
-import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface IntangibleAssetItemRepository extends JpaRepository<IntangibleAssetItem, UUID> {
 
-	Optional<IntangibleAssetItem> findByIdAndDeletedAtIsNull(UUID itemId);
+    Optional<IntangibleAssetItem> findByIdAndDeletedAtIsNull(UUID itemId);
+
+    boolean existsByCompany_IdAndProductName(UUID id, String productName);
 }
