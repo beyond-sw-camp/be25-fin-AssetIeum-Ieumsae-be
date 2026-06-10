@@ -63,6 +63,10 @@ public class Department extends BaseEntity {
 		this.departmentManager = departmentManager;
 	}
 
+	public void changeDepartmentManager(Member departmentManager) {
+		this.departmentManager = departmentManager;
+	}
+
 	public LocalDateTime delete() {
 		this.deletedAt = LocalDateTime.now();
 		return this.deletedAt;

@@ -61,6 +61,7 @@ public class MemberService {
 		Department department = findActiveDepartment(request.getDepartmentId(), company.getId());
 		validateMemberNoNotDuplicated(company.getId(), request.getMemberNo());
 		validateEmailNotDuplicated(company.getId(), request.getEmail());
+		validateDepartmentManagerAssignable(department, request.getRole());
 
 		Member member = memberRepository.save(Member.builder()
 			.company(company)
@@ -72,6 +73,8 @@ public class MemberService {
 			.status(MemberStatus.ACTIVE)
 			.email(request.getEmail())
 			.build());
+
+		assignDepartmentManagerIfNeeded(department, member);
 
 		return MemberCreateResponse.from(member);
 	}
@@ -125,7 +128,7 @@ public class MemberService {
 	}
 
 	private void validateMemberNoNotDuplicated(UUID companyId, String memberNo) {
-		if (memberRepository.existsByCompany_IdAndMemberNoAndDeletedAtIsNull(companyId, memberNo)) {
+		if (memberRepository.existsByCompany_IdAndMemberNo(companyId, memberNo)) {
 			throw new BusinessException(ErrorCode.MEMBER_ALREADY_EXISTS);
 		}
 	}
@@ -138,6 +141,24 @@ public class MemberService {
 		if (memberRepository.existsByCompany_IdAndEmailAndDeletedAtIsNull(companyId, email)) {
 			throw new BusinessException(ErrorCode.MEMBER_EMAIL_ALREADY_EXISTS);
 		}
+	}
+
+	private void validateDepartmentManagerAssignable(Department department, MemberRole role) {
+		if (role != MemberRole.DEPARTMENT_MANAGER) {
+			return;
+		}
+
+		if (department.getDepartmentManager() != null) {
+			throw new BusinessException(ErrorCode.INVALID_DEPARTMENT_MANAGER, "이미 부서장이 지정된 부서입니다.");
+		}
+	}
+
+	private void assignDepartmentManagerIfNeeded(Department department, Member member) {
+		if (member.getRole() != MemberRole.DEPARTMENT_MANAGER) {
+			return;
+		}
+
+		department.changeDepartmentManager(member);
 	}
 
 	private String normalizeKeyword(String keyword) {
