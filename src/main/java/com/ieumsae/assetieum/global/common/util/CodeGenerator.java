@@ -1,4 +1,4 @@
-package com.ieumsae.assetieum.global.util;
+package com.ieumsae.assetieum.global.common.util;
 
 import java.time.Duration;
 import java.time.LocalDate;
@@ -36,6 +36,6 @@ public class CodeGenerator {
             redisTemplate.expire(redisKey, SEQUENCE_TTL);
         }
 
-        return prefix.toUpperCase() + "-" + date + "-" + String.format("%03d", sequence);
+        return prefix.toUpperCase() + "-" + date + "-" + String.format("%05d", sequence);
     }
 }

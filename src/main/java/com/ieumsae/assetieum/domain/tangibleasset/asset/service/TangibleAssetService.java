@@ -10,7 +10,7 @@ import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
 import com.ieumsae.assetieum.domain.tangibleasset.item.repository.TangibleAssetItemRepository;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
-import com.ieumsae.assetieum.global.util.CodeGenerator;
+import com.ieumsae.assetieum.global.common.util.CodeGenerator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
