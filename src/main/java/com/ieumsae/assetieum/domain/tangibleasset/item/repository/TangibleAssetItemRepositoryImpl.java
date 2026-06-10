@@ -2,34 +2,36 @@ package com.ieumsae.assetieum.domain.tangibleasset.item.repository;
 
 import com.ieumsae.assetieum.domain.tangibleasset.category.repository.TangibleAssetCategoryRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
-import com.querydsl.core.types.dsl.BooleanExpression;
-import com.querydsl.jpa.impl.JPAQueryFactory;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.TypedQuery;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
-import static com.ieumsae.assetieum.domain.tangibleasset.item.entity.QTangibleAssetItem.tangibleAssetItem;
-
 /**
- * 유형자산 품목 QueryDSL 커스텀 Repository 구현체.
- * 품목 목록 조회 시 동적 검색 조건과 페이징 처리를 담당한다.
+ * 유형자산 품목 Repository 구현체.
+ * JPA EntityManager를 사용하여 동적 쿼리를 처리한다.
  */
+@Repository
 @RequiredArgsConstructor
 public class TangibleAssetItemRepositoryImpl implements TangibleAssetItemRepositoryCustom {
 
-    private final JPAQueryFactory queryFactory;
+    @PersistenceContext
+    private final EntityManager em;
     private final TangibleAssetCategoryRepository categoryRepository;
 
     /**
      * 회사 기준 유형자산 품목 목록을 조회한다.
      * 카테고리, 품목명, 제조사, 모델명, 표준 여부 조건을 동적으로 적용한다.
-     *
-     * categoryId가 전달된 경우 선택한 카테고리와 하위 카테고리에 속한 품목까지 함께 조회한다.
      */
     @Override
     public Page<TangibleAssetItem> search(
@@ -41,47 +43,60 @@ public class TangibleAssetItemRepositoryImpl implements TangibleAssetItemReposit
             Boolean isStandard,
             Pageable pageable
     ) {
+        StringBuilder jpql = new StringBuilder("SELECT t FROM TangibleAssetItem t WHERE t.company.id = :companyId AND t.deletedAt IS NULL");
+        StringBuilder countJpql = new StringBuilder("SELECT COUNT(t) FROM TangibleAssetItem t WHERE t.company.id = :companyId AND t.deletedAt IS NULL");
+        
+        Map<String, Object> params = new HashMap<>();
+        params.put("companyId", companyId);
+
         List<UUID> categoryIds = getCategoryIds(categoryId);
+        if (categoryIds != null && !categoryIds.isEmpty()) {
+            jpql.append(" AND t.tangibleAssetCategory.id IN :categoryIds");
+            countJpql.append(" AND t.tangibleAssetCategory.id IN :categoryIds");
+            params.put("categoryIds", categoryIds);
+        }
 
-        List<TangibleAssetItem> content = queryFactory
-                .selectFrom(tangibleAssetItem)
-                .where(
-                        companyIdEq(companyId),
-                        categoryIn(categoryIds),
-                        productNameContains(productName),
-                        manufacturerContains(manufacturer),
-                        modelNameContains(modelName),
-                        isStandardEq(isStandard),
-                        notDeleted()
-                )
-                .orderBy(tangibleAssetItem.createdAt.desc())
-                .offset(pageable.getOffset())
-                .limit(pageable.getPageSize())
-                .fetch();
+        if (productName != null && !productName.isBlank()) {
+            jpql.append(" AND LOWER(t.productName) LIKE LOWER(:productName)");
+            countJpql.append(" AND LOWER(t.productName) LIKE LOWER(:productName)");
+            params.put("productName", "%" + productName + "%");
+        }
 
-        Long total = queryFactory
-                .select(tangibleAssetItem.count())
-                .from(tangibleAssetItem)
-                .where(
-                        companyIdEq(companyId),
-                        categoryIn(categoryIds),
-                        productNameContains(productName),
-                        manufacturerContains(manufacturer),
-                        modelNameContains(modelName),
-                        isStandardEq(isStandard),
-                        notDeleted()
-                )
-                .fetchOne();
+        if (manufacturer != null && !manufacturer.isBlank()) {
+            jpql.append(" AND LOWER(t.manufacturer) LIKE LOWER(:manufacturer)");
+            countJpql.append(" AND LOWER(t.manufacturer) LIKE LOWER(:manufacturer)");
+            params.put("manufacturer", "%" + manufacturer + "%");
+        }
 
-        return new PageImpl<>(
-                content,
-                pageable,
-                total == null ? 0 : total
-        );
-    }
+        if (modelName != null && !modelName.isBlank()) {
+            jpql.append(" AND LOWER(t.modelName) LIKE LOWER(:modelName)");
+            countJpql.append(" AND LOWER(t.modelName) LIKE LOWER(:modelName)");
+            params.put("modelName", "%" + modelName + "%");
+        }
 
-    private BooleanExpression companyIdEq(UUID companyId) {
-        return tangibleAssetItem.company.id.eq(companyId);
+        if (isStandard != null) {
+            jpql.append(" AND t.isStandard = :isStandard");
+            countJpql.append(" AND t.isStandard = :isStandard");
+            params.put("isStandard", isStandard);
+        }
+
+        jpql.append(" ORDER BY t.createdAt DESC");
+
+        TypedQuery<TangibleAssetItem> query = em.createQuery(jpql.toString(), TangibleAssetItem.class);
+        TypedQuery<Long> countQuery = em.createQuery(countJpql.toString(), Long.class);
+
+        for (Map.Entry<String, Object> entry : params.entrySet()) {
+            query.setParameter(entry.getKey(), entry.getValue());
+            countQuery.setParameter(entry.getKey(), entry.getValue());
+        }
+
+        query.setFirstResult((int) pageable.getOffset());
+        query.setMaxResults(pageable.getPageSize());
+
+        List<TangibleAssetItem> content = query.getResultList();
+        Long total = countQuery.getSingleResult();
+
+        return new PageImpl<>(content, pageable, total);
     }
 
     private List<UUID> getCategoryIds(UUID categoryId) {
@@ -96,43 +111,5 @@ public class TangibleAssetItemRepositoryImpl implements TangibleAssetItemReposit
         categoryIds.add(categoryId);
 
         return categoryIds;
-    }
-
-    private BooleanExpression categoryIn(List<UUID> categoryIds) {
-        return categoryIds == null
-                ? null
-                : tangibleAssetItem.tangibleAssetCategory.id.in(categoryIds);
-    }
-
-    private BooleanExpression productNameContains(String productName) {
-        return isBlank(productName)
-                ? null
-                : tangibleAssetItem.productName.containsIgnoreCase(productName);
-    }
-
-    private BooleanExpression manufacturerContains(String manufacturer) {
-        return isBlank(manufacturer)
-                ? null
-                : tangibleAssetItem.manufacturer.containsIgnoreCase(manufacturer);
-    }
-
-    private BooleanExpression modelNameContains(String modelName) {
-        return isBlank(modelName)
-                ? null
-                : tangibleAssetItem.modelName.containsIgnoreCase(modelName);
-    }
-
-    private BooleanExpression isStandardEq(Boolean isStandard) {
-        return isStandard == null
-                ? null
-                : tangibleAssetItem.isStandard.eq(isStandard);
-    }
-
-    private BooleanExpression notDeleted() {
-        return tangibleAssetItem.deletedAt.isNull();
-    }
-
-    private boolean isBlank(String value) {
-        return value == null || value.isBlank();
     }
 }
