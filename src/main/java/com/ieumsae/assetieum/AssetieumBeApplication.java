@@ -31,7 +31,8 @@ public class AssetieumBeApplication {
 				"JWT_SECRET",
 				"JWT_ISSUER",
 				"JWT_AUDIENCE",
-				"JWT_ACCESS_TOKEN_EXPIRATION_MINUTES"
+				"JWT_ACCESS_TOKEN_EXPIRATION_MINUTES",
+				"JWT_REFRESH_TOKEN_EXPIRATION_DAYS"
 		);
 
 		try {

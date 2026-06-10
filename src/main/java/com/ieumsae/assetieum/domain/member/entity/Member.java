@@ -16,13 +16,20 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import java.util.UUID;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UuidGenerator;
 import org.hibernate.type.SqlTypes;
 
 @Getter
 @Entity
+@Builder
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "members")
 public class Member extends BaseEntity {
 
@@ -63,33 +70,19 @@ public class Member extends BaseEntity {
 	@Column(name = "deleted_at")
 	private LocalDateTime deletedAt;
 
-	protected Member() {
-	}
-
-	public Member(
-		Company company,
-		Department department,
-		String memberNo,
-		String password,
-		String name,
-		MemberRole role,
-		String email
-	) {
-		this.company = company;
-		this.department = department;
-		this.memberNo = memberNo;
-		this.password = password;
-		this.name = name;
-		this.role = role;
-		this.status = MemberStatus.ACTIVE;
-		this.email = email;
-	}
-
 	public boolean isActive() {
 		return status == MemberStatus.ACTIVE && deletedAt == null;
 	}
 
+	public boolean canLogin() {
+		return (status == MemberStatus.ACTIVE || status == MemberStatus.ON_LEAVE) && deletedAt == null;
+	}
+
 	public void changePassword(String encodedPassword) {
 		this.password = encodedPassword;
+	}
+
+	public void changeDepartment(Department department) {
+		this.department = department;
 	}
 }
