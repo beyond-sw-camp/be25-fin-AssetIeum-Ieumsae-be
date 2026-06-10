@@ -20,7 +20,7 @@ public interface MemberRepository extends JpaRepository<Member, UUID> {
 
 	long countByDepartment_IdAndDeletedAtIsNull(UUID departmentId);
 
-	boolean existsByCompany_IdAndMemberNoAndDeletedAtIsNull(UUID companyId, String memberNo);
+	boolean existsByCompany_IdAndMemberNo(UUID companyId, String memberNo);
 
 	boolean existsByCompany_IdAndEmailAndDeletedAtIsNull(UUID companyId, String email);
 

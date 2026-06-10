@@ -43,7 +43,7 @@ public class AuthService {
 			.orElseThrow(() -> new BusinessException(ErrorCode.INVALID_CREDENTIALS));
 
 		Member member = loginMember.getMember();
-		if (!member.isActive()) {
+		if (!member.canLogin()) {
 			throw new BusinessException(ErrorCode.INACTIVE_MEMBER);
 		}
 
@@ -91,7 +91,7 @@ public class AuthService {
 		Member member = memberRepository.findById(authenticatedMember.id())
 			.orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
-		if (!member.isActive()) {
+		if (!member.canLogin()) {
 			tokenRedisService.deleteRefreshToken(member.getId());
 			throw new BusinessException(ErrorCode.INACTIVE_MEMBER);
 		}
@@ -133,7 +133,7 @@ public class AuthService {
 		Member member = memberRepository.findById(authenticatedMember.id())
 			.orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
-		if (!member.isActive()) {
+		if (!member.canLogin()) {
 			throw new BusinessException(ErrorCode.INACTIVE_MEMBER);
 		}
 
