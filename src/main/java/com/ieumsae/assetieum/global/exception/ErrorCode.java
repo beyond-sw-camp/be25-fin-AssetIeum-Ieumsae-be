@@ -59,6 +59,9 @@ public enum ErrorCode {
 	INTANGIBLE_ASSET_ITEM_HAS_ASSETS(HttpStatus.CONFLICT, "intangible-asset-008", "자산이 존재하는 경우 삭제할 수 없습니다."),
 
 
+	// 티켓
+	INVALID_RENTAL_PERIOD(HttpStatus.BAD_REQUEST, "ticket-001", "유효하지 않은 대여 기간입니다."),
+
 	// 공통
 	INVALID_INPUT_VALUE(HttpStatus.BAD_REQUEST, "COMMON_001", "잘못된 요청입니다."),
 	INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "COMMON_002", "서버 내부 오류가 발생했습니다.");
