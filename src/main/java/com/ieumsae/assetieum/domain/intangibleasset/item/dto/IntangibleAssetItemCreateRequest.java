@@ -13,8 +13,6 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class IntangibleAssetItemCreateRequest {
-    @NotNull
-    private UUID companyId;
 
     @NotNull
     private UUID categoryId;

@@ -10,5 +10,9 @@ public interface IntangibleAssetItemRepository extends JpaRepository<IntangibleA
 
     Optional<IntangibleAssetItem> findByIdAndDeletedAtIsNull(UUID itemId);
 
+    Optional<IntangibleAssetItem> findByIdAndCompany_IdAndDeletedAtIsNull(UUID itemId, UUID companyId);
+
     boolean existsByCompany_IdAndProductName(UUID id, String productName);
+
+    boolean existsByCompany_IdAndIntangibleAssetCategory_Id(UUID companyId, UUID categoryId);
 }

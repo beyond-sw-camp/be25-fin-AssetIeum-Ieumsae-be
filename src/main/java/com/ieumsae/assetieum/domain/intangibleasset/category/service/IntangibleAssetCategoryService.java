@@ -8,6 +8,7 @@ import com.ieumsae.assetieum.domain.intangibleasset.category.dto.IntangibleAsset
 import com.ieumsae.assetieum.domain.intangibleasset.category.dto.IntangibleAssetCategoryTreeResponse;
 import com.ieumsae.assetieum.domain.intangibleasset.category.entity.IntangibleAssetCategory;
 import com.ieumsae.assetieum.domain.intangibleasset.category.repository.IntangibleAssetCategoryRepository;
+import com.ieumsae.assetieum.domain.intangibleasset.item.repository.IntangibleAssetItemRepository;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +27,7 @@ import java.util.UUID;
 public class IntangibleAssetCategoryService {
 
     private final IntangibleAssetCategoryRepository intangibleAssetCategoryRepository;
-
+    private final IntangibleAssetItemRepository intangibleAssetItemRepository;
     private final CompanyRepository companyRepository;
 
     /**
@@ -37,31 +38,29 @@ public class IntangibleAssetCategoryService {
      */
     @Transactional
     public IntangibleAssetCategoryResponse createCategory(
-            IntangibleAssetCategoryCreateRequest request
+            IntangibleAssetCategoryCreateRequest request,
+            UUID companyId
     ) {
         // 1. 입력값 검증
         if(intangibleAssetCategoryRepository.existsByCompany_IdAndName(
-                request.getCompanyId(),
+                companyId,
                 request.getName()
         )) {
             throw new BusinessException(ErrorCode.INTANGIBLE_ASSET_CATEGORY_ALREADY_EXISTS);
         }
 
-        Company company = companyRepository.findById(request.getCompanyId())
+        Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
 
         IntangibleAssetCategory parent = null;
         if(request.getParentId() != null){
-            parent = intangibleAssetCategoryRepository.findById(
-                    request.getParentId()
+            parent = intangibleAssetCategoryRepository.findByIdAndCompany_Id(
+                    request.getParentId(),
+                    companyId
             ).orElseThrow(() ->
                     new BusinessException(
                             ErrorCode.INTANGIBLE_ASSET_CATEGORY_NOT_FOUND
                     ));
-
-            if(!parent.getCompany().getId().equals(request.getCompanyId())) {
-                throw new BusinessException(ErrorCode.INTANGIBLE_ASSET_INVALID_PARENT);
-            }
         }
 
         // 2. 카테고리 생성 및 저장
@@ -137,20 +136,19 @@ public class IntangibleAssetCategoryService {
      * 하위 카테고리가 존재하는 경우 삭제를 제한한다.
      */
     @Transactional
-    public IntangibleAssetCategoryDeleteResponse deleteCategory(UUID categoryId) {
+    public IntangibleAssetCategoryDeleteResponse deleteCategory(UUID categoryId, UUID companyId) {
         // 1. 입력값 검증
         IntangibleAssetCategory category =
-                intangibleAssetCategoryRepository.findById(categoryId)
+                intangibleAssetCategoryRepository.findByIdAndCompany_Id(categoryId, companyId)
                         .orElseThrow(() -> new BusinessException(ErrorCode.INTANGIBLE_ASSET_CATEGORY_NOT_FOUND));
 
-        if(intangibleAssetCategoryRepository.existsByParent_Id(categoryId)) {
+        if(intangibleAssetCategoryRepository.existsByParent_IdAndCompany_Id(categoryId, companyId)) {
             throw new BusinessException(ErrorCode.INTANGIBLE_ASSET_CATEGORY_HAS_CHILDREN);
         }
 
-        // item 구현 이후 추가 필요
-//        if(intangibleAssetItemRepository.existsByIntangibleAssetCategory_Id(categoryId)) {
-//            throw new BusinessException(ErrorCode.INTANGIBLE_ASSET_CATEGORY_HAS_ITEMS);
-//        }
+        if(intangibleAssetItemRepository.existsByCompany_IdAndIntangibleAssetCategory_Id(companyId, categoryId)) {
+            throw new BusinessException(ErrorCode.INTANGIBLE_ASSET_CATEGORY_HAS_ITEMS);
+        }
 
         // 2. 카테고리 삭제
         intangibleAssetCategoryRepository.delete(category);
