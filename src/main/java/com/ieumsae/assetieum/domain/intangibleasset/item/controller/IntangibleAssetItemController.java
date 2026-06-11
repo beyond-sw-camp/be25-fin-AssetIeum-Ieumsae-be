@@ -8,8 +8,11 @@ import com.ieumsae.assetieum.domain.intangibleasset.item.dto.IntangibleAssetItem
 import com.ieumsae.assetieum.domain.intangibleasset.item.service.IntangibleAssetItemService;
 import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.response.ApiResponse;
+import com.ieumsae.assetieum.global.security.AuthenticatedMember;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -28,42 +31,49 @@ import java.util.UUID;
 public class IntangibleAssetItemController {
     private final IntangibleAssetItemService intangibleAssetItemService;
 
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
     @PostMapping
     public ApiResponse<IntangibleAssetItemResponse> createItem(
+            @AuthenticationPrincipal AuthenticatedMember member,
             @Valid @RequestBody IntangibleAssetItemCreateRequest request
     ) {
         IntangibleAssetItemResponse response =
-                intangibleAssetItemService.createItem(request);
+                intangibleAssetItemService.createItem(request, member.companyId());
 
         return ApiResponse.ok("무형자산 품목이 등록되었습니다.", response);
     }
 
     @GetMapping
     public ApiResponse<PaginationResponse<IntangibleAssetItemResponse>> getItems(
+            @AuthenticationPrincipal AuthenticatedMember member,
             @Valid @ModelAttribute IntangibleAssetItemSearchRequest request
     ) {
         PaginationResponse<IntangibleAssetItemResponse> response =
-                intangibleAssetItemService.getItems(request);
+                intangibleAssetItemService.getItems(request, member.companyId());
 
         return ApiResponse.ok("무형자산 품목 목록 조회에 성공했습니다.", response);
     }
 
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
     @PatchMapping("/{itemId}")
     public ApiResponse<IntangibleAssetItemResponse> updateItem(
+            @AuthenticationPrincipal AuthenticatedMember member,
             @PathVariable UUID itemId,
             @Valid @RequestBody IntangibleAssetItemUpdateRequest request
     ) {
         IntangibleAssetItemResponse response =
-                intangibleAssetItemService.updateItem(itemId, request);
+                intangibleAssetItemService.updateItem(itemId, request, member.companyId());
 
         return ApiResponse.ok("무형자산 품목이 수정되었습니다.", response);
     }
 
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
     @DeleteMapping("/{itemId}")
     public ApiResponse<IntangibleAssetItemDeleteResponse> deleteItem(
+            @AuthenticationPrincipal AuthenticatedMember member,
             @PathVariable UUID itemId
     ) {
-        IntangibleAssetItemDeleteResponse response = intangibleAssetItemService.deleteItem(itemId);
+        IntangibleAssetItemDeleteResponse response = intangibleAssetItemService.deleteItem(itemId, member.companyId());
 
         return ApiResponse.ok("무형자산 품목이 삭제되었습니다.", response);
     }

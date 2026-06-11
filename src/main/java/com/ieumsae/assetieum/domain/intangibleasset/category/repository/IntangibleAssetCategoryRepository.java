@@ -4,6 +4,7 @@ import com.ieumsae.assetieum.domain.intangibleasset.category.entity.IntangibleAs
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface IntangibleAssetCategoryRepository extends JpaRepository<IntangibleAssetCategory, UUID>, IntangibleAssetCategoryRepositoryCustom{
@@ -14,5 +15,7 @@ public interface IntangibleAssetCategoryRepository extends JpaRepository<Intangi
 
     List<IntangibleAssetCategory> findAllByCompany_IdOrderByCreatedAtAsc(UUID companyId);
 
-    boolean existsByParent_Id(UUID categoryId);
+    Optional<IntangibleAssetCategory> findByIdAndCompany_Id(UUID categoryId, UUID companyId);
+
+    boolean existsByParent_IdAndCompany_Id(UUID categoryId, UUID companyId);
 }

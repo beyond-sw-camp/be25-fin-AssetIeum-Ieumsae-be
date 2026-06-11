@@ -13,8 +13,6 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 public class TangibleAssetSearchRequest extends PaginationRequest {
-    @NotNull
-    private UUID companyId;
 
     private UUID categoryId;
 

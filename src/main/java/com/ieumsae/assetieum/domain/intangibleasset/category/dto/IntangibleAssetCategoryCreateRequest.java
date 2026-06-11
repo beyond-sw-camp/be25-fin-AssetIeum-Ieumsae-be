@@ -12,9 +12,6 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class IntangibleAssetCategoryCreateRequest {
-    @NotNull
-    private UUID companyId;
-
     private UUID parentId;
 
     @NotBlank

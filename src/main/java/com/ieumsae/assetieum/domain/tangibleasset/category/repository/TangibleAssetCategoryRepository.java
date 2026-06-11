@@ -16,7 +16,7 @@ public interface TangibleAssetCategoryRepository
 
     List<TangibleAssetCategory> findAllByCompany_IdOrderByCreatedAtAsc(UUID companyId);
 
-    boolean existsByParent_Id(UUID categoryId);
-
     Optional<TangibleAssetCategory> findByIdAndCompany_Id(UUID categoryId, UUID companyId);
+
+    boolean existsByParent_IdAndCompany_Id(UUID categoryId, UUID companyId);
 }

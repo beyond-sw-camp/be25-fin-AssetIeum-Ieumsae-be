@@ -15,7 +15,6 @@ import com.ieumsae.assetieum.domain.intangibleasset.item.repository.IntangibleAs
 import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
@@ -39,13 +38,13 @@ public class IntangibleAssetItemService {
      * 삭제를 제한한다.
      */
     @Transactional
-    public IntangibleAssetItemDeleteResponse deleteItem(UUID itemId) {
+    public IntangibleAssetItemDeleteResponse deleteItem(UUID itemId, UUID companyId) {
         // 1. 입력값 검증
-        IntangibleAssetItem item = intangibleAssetItemRepository.findByIdAndDeletedAtIsNull(itemId)
+        IntangibleAssetItem item = intangibleAssetItemRepository.findByIdAndCompany_IdAndDeletedAtIsNull(itemId, companyId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.INTANGIBLE_ASSET_ITEM_NOT_FOUND));
 
         if(intangibleAssetRepository.existsByCompany_IdAndIntangibleAssetItem_Id(
-                item.getCompany().getId(),
+                companyId,
                 item.getId()
         )) {
             throw new BusinessException(ErrorCode.INTANGIBLE_ASSET_ITEM_HAS_ASSETS);
@@ -71,21 +70,22 @@ public class IntangibleAssetItemService {
     @Transactional
     public IntangibleAssetItemResponse updateItem(
             UUID itemId,
-            IntangibleAssetItemUpdateRequest request
+            IntangibleAssetItemUpdateRequest request,
+            UUID companyId
     ) {
         // 1. 입력값 검증
-        IntangibleAssetItem item = intangibleAssetItemRepository.findByIdAndDeletedAtIsNull(itemId)
+        IntangibleAssetItem item = intangibleAssetItemRepository.findByIdAndCompany_IdAndDeletedAtIsNull(itemId, companyId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.INTANGIBLE_ASSET_ITEM_NOT_FOUND));
 
         IntangibleAssetCategory category = null;
 
         if(request.getCategoryId() != null) {
-            category = intangibleAssetCategoryRepository.findById(item.getIntangibleAssetCategory().getId())
+            category = intangibleAssetCategoryRepository.findByIdAndCompany_Id(request.getCategoryId(), companyId)
                     .orElseThrow(() -> new BusinessException(ErrorCode.INTANGIBLE_ASSET_CATEGORY_NOT_FOUND));
         }
 
         if(intangibleAssetItemRepository.existsByCompany_IdAndProductName(
-                item.getCompany().getId(),
+                companyId,
                 request.getProductName()
         )) {
             throw new BusinessException(ErrorCode.INTANGIBLE_ASSET_ITEM_DUPLICATED_PRODUCT_NAME);
@@ -103,21 +103,21 @@ public class IntangibleAssetItemService {
      */
     @Transactional
     public IntangibleAssetItemResponse createItem(
-            IntangibleAssetItemCreateRequest request
+            IntangibleAssetItemCreateRequest request,
+            UUID companyId
     ) {
         // 1. 입력값 검증
-        Company company = companyRepository.findById(request.getCompanyId())
+        Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
 
-        IntangibleAssetCategory category = intangibleAssetCategoryRepository.findById(request.getCategoryId())
+        IntangibleAssetCategory category = intangibleAssetCategoryRepository.findByIdAndCompany_Id(
+                request.getCategoryId(),
+                companyId
+        )
                 .orElseThrow(() -> new BusinessException(ErrorCode.INTANGIBLE_ASSET_CATEGORY_NOT_FOUND));
 
-        if (!category.getCompany().getId().equals(request.getCompanyId())) {
-            throw new BusinessException(ErrorCode.ACCESS_DENIED_COMPANY_SCOPE);
-        }
-
         if(intangibleAssetItemRepository.existsByCompany_IdAndProductName(
-                request.getCompanyId(),
+                companyId,
                 request.getProductName()
         )){
             throw new BusinessException(ErrorCode.INTANGIBLE_ASSET_ITEM_DUPLICATED_PRODUCT_NAME);
@@ -144,16 +144,17 @@ public class IntangibleAssetItemService {
      * 해당하는 품목만 조회하여 반환한다.
      */
     public PaginationResponse<IntangibleAssetItemResponse> getItems(
-            IntangibleAssetItemSearchRequest request
+            IntangibleAssetItemSearchRequest request,
+            UUID companyId
     ) {
         // 1. 입력값 검증
-        Company company = companyRepository.findById(request.getCompanyId())
+        Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
 
         // 2. 페이징 처리 및 필터링 후 품목 목록 반환
         Page<IntangibleAssetItem> itemPage =
                 intangibleAssetItemRepository.search(
-                        request.getCompanyId(),
+                        companyId,
                         request.getCategoryId(),
                         request.getKeyword(),
                         request.getIsStandard(),
