@@ -2,6 +2,7 @@ package com.ieumsae.assetieum.domain.ticket.purchaserequest.service;
 
 import com.ieumsae.assetieum.domain.intangibleasset.category.entity.IntangibleAssetCategory;
 import com.ieumsae.assetieum.domain.intangibleasset.category.repository.IntangibleAssetCategoryRepository;
+import com.ieumsae.assetieum.domain.intangibleasset.item.type.LicenseType;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
 import com.ieumsae.assetieum.domain.member.type.MemberRole;
@@ -11,6 +12,9 @@ import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
 import com.ieumsae.assetieum.domain.ticket.common.repository.TicketRepository;
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketNoGenerator;
 import com.ieumsae.assetieum.domain.ticket.common.type.AssetType;
+import com.ieumsae.assetieum.domain.ticket.common.type.RequestMethod;
+import com.ieumsae.assetieum.domain.ticket.common.type.RequestedUsageType;
+import com.ieumsae.assetieum.domain.ticket.purchaserequest.dto.DirectPurchaseRequestTicketCreateRequest;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.dto.PurchaseRequestTicketCreateRequest;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.dto.PurchaseRequestTicketCreateResponse;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.entity.PurchaseRequestTicket;
@@ -18,6 +22,7 @@ import com.ieumsae.assetieum.domain.ticket.purchaserequest.repository.PurchaseRe
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
+import java.math.BigDecimal;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -37,9 +42,60 @@ public class PurchaseRequestTicketService {
 	private final TicketNoGenerator ticketNoGenerator;
 
 	@Transactional
-	public PurchaseRequestTicketCreateResponse createPurchaseRequestTicket(
+	public PurchaseRequestTicketCreateResponse createTeamPurchaseRequestTicket(
 		AuthenticatedMember authenticatedMember,
 		PurchaseRequestTicketCreateRequest request
+	) {
+		return createPurchaseRequestTicket(
+			authenticatedMember,
+			RequestMethod.TEAM_PURCHASE,
+			request.getRequestedUsageType(),
+			request.getAssetType(),
+			request.getCategoryId(),
+			request.getRequestedItemDetail(),
+			request.getManufacturer(),
+			request.getLicenseType(),
+			request.getPurchaseUrl(),
+			request.getQuantity(),
+			request.getExpectedPrice(),
+			request.getRequestReason()
+		);
+	}
+
+	@Transactional
+	public PurchaseRequestTicketCreateResponse createDirectPurchaseRequestTicket(
+		AuthenticatedMember authenticatedMember,
+		DirectPurchaseRequestTicketCreateRequest request
+	) {
+		return createPurchaseRequestTicket(
+			authenticatedMember,
+			RequestMethod.DIRECT_PURCHASE,
+			request.getRequestedUsageType(),
+			request.getAssetType(),
+			request.getCategoryId(),
+			request.getRequestedItemDetail(),
+			request.getManufacturer(),
+			request.getLicenseType(),
+			null,
+			request.getQuantity(),
+			request.getExpectedPrice(),
+			request.getRequestReason()
+		);
+	}
+
+	private PurchaseRequestTicketCreateResponse createPurchaseRequestTicket(
+		AuthenticatedMember authenticatedMember,
+		RequestMethod requestMethod,
+		RequestedUsageType requestedUsageType,
+		AssetType assetType,
+		UUID categoryId,
+		String requestedItemDetail,
+		String manufacturer,
+		LicenseType licenseType,
+		String purchaseUrl,
+		int quantity,
+		BigDecimal expectedPrice,
+		String requestReason
 	) {
 		UUID companyId = authenticatedMember.companyId();
 		Member requester = findActiveRequester(authenticatedMember.id(), companyId);
@@ -47,15 +103,15 @@ public class PurchaseRequestTicketService {
 		TangibleAssetCategory tangibleAssetCategory = null;
 		IntangibleAssetCategory intangibleAssetCategory = null;
 
-		if (request.getAssetType() == AssetType.TANGIBLE) {
-			validateTangiblePurchaseRequest(request);
+		if (assetType == AssetType.TANGIBLE) {
+			validateTangiblePurchaseRequest(licenseType);
 			tangibleAssetCategory = findTangibleAssetCategory(
-				request.getCategoryId(),
+				categoryId,
 				companyId
 			);
 		} else {
 			intangibleAssetCategory = findIntangibleAssetCategory(
-				request.getCategoryId(),
+				categoryId,
 				companyId
 			);
 		}
@@ -66,31 +122,31 @@ public class PurchaseRequestTicketService {
 			requester,
 			requester.getDepartment(),
 			approver,
-			normalize(request.getRequestReason())
+			normalize(requestReason)
 		));
 
 		PurchaseRequestTicket purchaseRequestTicket = purchaseRequestTicketRepository.save(
 			PurchaseRequestTicket.create(
 				ticket,
 				requester.getCompany(),
-				request.getRequestMethod(),
-				request.getRequestedUsageType(),
+				requestMethod,
+				requestedUsageType,
 				tangibleAssetCategory,
 				intangibleAssetCategory,
-				normalize(request.getRequestedItemDetail()),
-				normalize(request.getManufacturer()),
-				request.getLicenseType(),
-				normalize(request.getPurchaseUrl()),
-				request.getQuantity(),
-				request.getExpectedPrice()
+				normalize(requestedItemDetail),
+				normalize(manufacturer),
+				licenseType,
+				normalize(purchaseUrl),
+				quantity,
+				expectedPrice
 			)
 		);
 
 		return PurchaseRequestTicketCreateResponse.from(
 			ticket,
 			purchaseRequestTicket,
-			request.getAssetType(),
-			request.getCategoryId()
+			assetType,
+			categoryId
 		);
 	}
 
@@ -134,8 +190,8 @@ public class PurchaseRequestTicketService {
 		return category;
 	}
 
-	private void validateTangiblePurchaseRequest(PurchaseRequestTicketCreateRequest request) {
-		if (request.getLicenseType() != null) {
+	private void validateTangiblePurchaseRequest(LicenseType licenseType) {
+		if (licenseType != null) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "유형 자산 요청에는 라이선스 유형을 입력할 수 없습니다.");
 		}
 	}

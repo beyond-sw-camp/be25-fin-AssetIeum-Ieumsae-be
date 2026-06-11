@@ -13,12 +13,11 @@ import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.validator.constraints.URL;
 
 @Getter
 @Setter
 @NoArgsConstructor
-public class PurchaseRequestTicketCreateRequest {
+public class DirectPurchaseRequestTicketCreateRequest {
 
 	@NotNull(message = "요청 사용 유형은 필수입니다.")
 	private RequestedUsageType requestedUsageType;
@@ -37,10 +36,6 @@ public class PurchaseRequestTicketCreateRequest {
 	private String manufacturer;
 
 	private LicenseType licenseType;
-
-	@URL(message = "구매 URL 형식이 올바르지 않습니다.")
-	@Size(max = 500, message = "구매 URL은 500자 이하여야 합니다.")
-	private String purchaseUrl;
 
 	@Min(value = 1, message = "수량은 1 이상이어야 합니다.")
 	private int quantity = 1;
