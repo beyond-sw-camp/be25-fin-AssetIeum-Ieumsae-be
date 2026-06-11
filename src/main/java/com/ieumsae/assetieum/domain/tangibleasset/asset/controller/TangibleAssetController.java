@@ -12,6 +12,7 @@ import com.ieumsae.assetieum.global.response.ApiResponse;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -31,20 +32,25 @@ public class TangibleAssetController {
 
     private final TangibleAssetService tangibleAssetService;
 
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
     @PostMapping
     public ApiResponse<TangibleAssetResponse> createAsset(
+            @AuthenticationPrincipal AuthenticatedMember member,
             @Valid @RequestBody TangibleAssetCreateRequest request
     ) {
-        TangibleAssetResponse response = tangibleAssetService.createAsset(request);
+        TangibleAssetResponse response =
+                tangibleAssetService.createAsset(request, member.companyId());
 
         return ApiResponse.ok("유형자산이 등록되었습니다.", response);
     }
 
     @GetMapping
     public ApiResponse<PaginationResponse<TangibleAssetSearchResponse>> getAssets(
+            @AuthenticationPrincipal AuthenticatedMember member,
             @Valid @ModelAttribute TangibleAssetSearchRequest request
     ) {
-        PaginationResponse<TangibleAssetSearchResponse> response = tangibleAssetService.getAssets(request);
+        PaginationResponse<TangibleAssetSearchResponse> response =
+                tangibleAssetService.getAssets(request, member.companyId());
 
         return ApiResponse.ok("유형자산 목록 조회에 성공했습니다.", response);
     }
@@ -58,6 +64,7 @@ public class TangibleAssetController {
         return ApiResponse.ok("유형자산 상세 조회에 성공했습니다.", response);
     }
 
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
     @PatchMapping("/{assetId}")
     public ApiResponse<TangibleAssetResponse> updateAsset(
             @AuthenticationPrincipal AuthenticatedMember member,

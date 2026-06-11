@@ -51,19 +51,19 @@ public class TangibleAssetService {
      * 회사, 품목, 시리얼 번호 중복 여부를 검증하고 자산을 생성한다.
      */
     @Transactional
-    public TangibleAssetResponse createAsset(TangibleAssetCreateRequest request) {
+    public TangibleAssetResponse createAsset(TangibleAssetCreateRequest request, UUID companyId) {
         // 1. 입력값 검증
-        Company company = companyRepository.findById(request.getCompanyId())
+        Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
 
         TangibleAssetItem item = tangibleAssetItemRepository.findByIdAndCompany_IdAndDeletedAtIsNull(
                         request.getTangibleItemId(),
-                        request.getCompanyId()
+                        companyId
                 )
                 .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_ITEM_NOT_FOUND));
 
         if (tangibleAssetRepository.existsByCompany_IdAndSerialNumberAndTangibleAssetItem_Id(
-                request.getCompanyId(),
+                companyId,
                 request.getSerialNumber(),
                 request.getTangibleItemId()
         )) {
@@ -71,8 +71,8 @@ public class TangibleAssetService {
         }
 
         TangibleAssetStatus status = resolveCreateStatus(request);
-        Department department = findDepartment(request.getDepartmentId(), request.getCompanyId());
-        Member member = findMember(request.getMemberId(), request.getCompanyId());
+        Department department = findDepartment(request.getDepartmentId(), companyId);
+        Member member = findMember(request.getMemberId(), companyId);
 
         validateMemberDepartment(member, department);
         validateRequiredUsageInfo(status, member, department, request.getUsedStartedAt());
@@ -107,29 +107,31 @@ public class TangibleAssetService {
      * 회사 기준 유형자산 목록 조회.
      * 카테고리, 상태, 키워드, 현재 사용자, 부서 조건을 기준으로 필터링한다.
      */
-    public PaginationResponse<TangibleAssetSearchResponse> getAssets(TangibleAssetSearchRequest request) {
+    public PaginationResponse<TangibleAssetSearchResponse> getAssets(
+            TangibleAssetSearchRequest request,
+            UUID companyId) {
         // 1. 입력값 검증
-        companyRepository.findById(request.getCompanyId())
+        companyRepository.findById(companyId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
 
         if (request.getCategoryId() != null) {
-            tangibleAssetCategoryRepository.findByIdAndCompany_Id(request.getCategoryId(), request.getCompanyId())
+            tangibleAssetCategoryRepository.findByIdAndCompany_Id(request.getCategoryId(), companyId)
                     .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_CATEGORY_NOT_FOUND));
         }
 
         if (request.getCurrentUserId() != null) {
-            memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(request.getCurrentUserId(), request.getCompanyId())
+            memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(request.getCurrentUserId(), companyId)
                     .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
         }
 
         if (request.getDepartmentId() != null) {
-            departmentRepository.findByIdAndCompany_IdAndDeletedAtIsNull(request.getDepartmentId(), request.getCompanyId())
+            departmentRepository.findByIdAndCompany_IdAndDeletedAtIsNull(request.getDepartmentId(), companyId)
                     .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
         }
 
         // 2. 페이징 처리 및 필터링 후 자산 목록 반환
         Page<TangibleAssetSearchResponse> assetPage = tangibleAssetRepository.search(
-                request.getCompanyId(),
+                companyId,
                 request.getCategoryId(),
                 request.getStatus(),
                 request.getKeyword(),
