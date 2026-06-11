@@ -1,6 +1,7 @@
 package com.ieumsae.assetieum.domain.tangibleasset.asset.dto;
 
 import com.ieumsae.assetieum.domain.tangibleasset.asset.type.AssetUsageType;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.type.TangibleAssetStatus;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.type.UsageType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -31,8 +32,18 @@ public class TangibleAssetCreateRequest {
     @NotNull
     private AssetUsageType assetUsageType;
 
+    private TangibleAssetStatus tangibleAssetStatus;
+
+    private UUID memberId;
+
+    private UUID departmentId;
+
     @NotBlank
     private String location;
+
+    private LocalDateTime usedStartedAt;
+
+    private LocalDateTime returnDueDate;
 
     @NotNull
     private LocalDateTime purchaseDate;

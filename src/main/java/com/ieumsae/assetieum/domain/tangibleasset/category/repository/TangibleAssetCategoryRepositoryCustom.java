@@ -10,6 +10,6 @@ public interface TangibleAssetCategoryRepositoryCustom {
      * 선택한 카테고리 하위의 전체 트리를 순회하며
      * 자식, 손자 카테고리까지 포함한 카테고리 ID 목록을 반환한다.
      */
-    List<UUID> findAllDescendantIds(UUID categoryId);
+    List<UUID> findAllDescendantIds(UUID categoryId, UUID companyId);
 
 }
