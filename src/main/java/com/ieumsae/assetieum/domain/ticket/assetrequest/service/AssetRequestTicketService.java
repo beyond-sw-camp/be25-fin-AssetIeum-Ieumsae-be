@@ -4,6 +4,7 @@ import com.ieumsae.assetieum.domain.intangibleasset.item.entity.IntangibleAssetI
 import com.ieumsae.assetieum.domain.intangibleasset.item.repository.IntangibleAssetItemRepository;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
+import com.ieumsae.assetieum.domain.member.type.MemberRole;
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
 import com.ieumsae.assetieum.domain.tangibleasset.item.repository.TangibleAssetItemRepository;
 import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.StandardAssetRequestCreateRequest;
@@ -40,17 +41,18 @@ public class AssetRequestTicketService {
 		AuthenticatedMember authenticatedMember,
 		StandardAssetRequestCreateRequest request
 	) {
-		Member requester = findActiveRequester(authenticatedMember.id());
+		UUID companyId = authenticatedMember.companyId();
+		Member requester = findActiveRequester(authenticatedMember.id(), companyId);
 		Member approver = findDepartmentManager(requester);
 		TangibleAssetItem tangibleAssetItem = null;
 		IntangibleAssetItem intangibleAssetItem = null;
 
 		if (request.getAssetType() == AssetType.TANGIBLE) {
-			tangibleAssetItem = findStandardTangibleAssetItem(request.getAssetItemId(), requester.getCompany().getId());
+			tangibleAssetItem = findStandardTangibleAssetItem(request.getAssetItemId(), companyId);
 		} else {
 			intangibleAssetItem = findStandardIntangibleAssetItem(
 				request.getAssetItemId(),
-				requester.getCompany().getId()
+				companyId
 			);
 		}
 
@@ -83,8 +85,8 @@ public class AssetRequestTicketService {
 		);
 	}
 
-	private Member findActiveRequester(UUID memberId) {
-		Member member = memberRepository.findById(memberId)
+	private Member findActiveRequester(UUID memberId, UUID companyId) {
+		Member member = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(memberId, companyId)
 			.orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
 		if (!member.isActive()) {
@@ -95,7 +97,9 @@ public class AssetRequestTicketService {
 
 	private Member findDepartmentManager(Member requester) {
 		Member departmentManager = requester.getDepartment().getDepartmentManager();
-		if (departmentManager == null || !departmentManager.isActive()) {
+		if (departmentManager == null
+			|| !departmentManager.isActive()
+			|| departmentManager.getRole() != MemberRole.DEPARTMENT_MANAGER) {
 			throw new BusinessException(ErrorCode.INVALID_DEPARTMENT_MANAGER, "부서장이 지정되지 않았거나 활성 상태가 아닙니다.");
 		}
 		return departmentManager;
