@@ -85,4 +85,8 @@ public class Member extends BaseEntity {
 	public void changeDepartment(Department department) {
 		this.department = department;
 	}
+
+	public void changeRole(MemberRole role) {
+		this.role = role;
+	}
 }

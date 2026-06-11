@@ -1,6 +1,7 @@
 package com.ieumsae.assetieum.domain.department.service;
 
 import com.ieumsae.assetieum.domain.company.entity.Company;
+import com.ieumsae.assetieum.domain.company.repository.CompanyRepository;
 import com.ieumsae.assetieum.domain.department.dto.DepartmentCreateRequest;
 import com.ieumsae.assetieum.domain.department.dto.DepartmentCreateResponse;
 import com.ieumsae.assetieum.domain.department.dto.DepartmentDeleteResponse;
@@ -35,10 +36,11 @@ public class DepartmentService {
 
 	private final DepartmentRepository departmentRepository;
 	private final MemberRepository memberRepository;
+	private final CompanyRepository companyRepository;
 
 	public DepartmentListResponse getDepartments(AuthenticatedMember authenticatedMember) {
-		Member requester = validateSuperAdmin(authenticatedMember);
-		UUID companyId = requester.getCompany().getId();
+		validateAdmin(authenticatedMember);
+		UUID companyId = authenticatedMember.companyId();
 		List<Department> departments =
 			departmentRepository.findAllByCompany_IdAndDeletedAtIsNullOrderByCreatedAtAsc(companyId);
 		Map<UUID, Long> memberCountMap = getMemberCountMap(companyId);
@@ -75,8 +77,8 @@ public class DepartmentService {
 		AuthenticatedMember authenticatedMember,
 		UUID departmentId
 	) {
-		Member requester = validateSuperAdmin(authenticatedMember);
-		Department department = findActiveDepartment(departmentId, requester.getCompany().getId());
+		validateAdmin(authenticatedMember);
+		Department department = findActiveDepartment(departmentId, authenticatedMember.companyId());
 		long memberCount = memberRepository.countByDepartment_IdAndDeletedAtIsNull(department.getId());
 
 		return DepartmentDetailResponse.from(department, memberCount);
@@ -87,10 +89,12 @@ public class DepartmentService {
 		AuthenticatedMember authenticatedMember,
 		DepartmentCreateRequest request
 	) {
-		Member requester = validateSuperAdmin(authenticatedMember);
-		Company company = requester.getCompany();
-		Department parentDepartment = findParentDepartment(request.getParentDepartmentId(), company.getId());
-		Member departmentManager = findDepartmentManager(request.getDepartmentManagerId(), company.getId());
+		validateAdmin(authenticatedMember);
+		UUID companyId = authenticatedMember.companyId();
+		Company company = findActiveCompany(companyId);
+		Department parentDepartment = findParentDepartment(request.getParentDepartmentId(), companyId);
+		Member departmentManager = findDepartmentManager(request.getDepartmentManagerId(), companyId);
+		assignDepartmentManagerRoleIfNeeded(departmentManager);
 
 		Department department = departmentRepository.save(Department.builder()
 			.company(company)
@@ -108,16 +112,18 @@ public class DepartmentService {
 		UUID departmentId,
 		DepartmentUpdateRequest request
 	) {
-		Member requester = validateSuperAdmin(authenticatedMember);
-		Department department = findActiveDepartment(departmentId, requester.getCompany().getId());
+		validateAdmin(authenticatedMember);
+		UUID companyId = authenticatedMember.companyId();
+		Department department = findActiveDepartment(departmentId, companyId);
 		Department parentDepartment = department.getParentDepartment();
 		String name = department.getName();
+		Member previousDepartmentManager = department.getDepartmentManager();
 		Member departmentManager = department.getDepartmentManager();
 
 		if (request.parentDepartmentIdProvided()) {
 			parentDepartment = findParentDepartment(
 				request.getParentDepartmentId(),
-				requester.getCompany().getId()
+				companyId
 			);
 			validateParentDepartment(department, parentDepartment);
 		}
@@ -130,8 +136,9 @@ public class DepartmentService {
 		if (request.departmentManagerIdProvided()) {
 			departmentManager = findDepartmentManager(
 				request.getDepartmentManagerId(),
-				requester.getCompany().getId()
+				companyId
 			);
+			changeDepartmentManagerRole(previousDepartmentManager, departmentManager);
 		}
 
 		department.update(parentDepartment, name, departmentManager);
@@ -144,27 +151,33 @@ public class DepartmentService {
 		AuthenticatedMember authenticatedMember,
 		UUID departmentId
 	) {
-		Member requester = validateSuperAdmin(authenticatedMember);
-		Department department = findActiveDepartment(departmentId, requester.getCompany().getId());
+		validateAdmin(authenticatedMember);
+		Department department = findActiveDepartment(departmentId, authenticatedMember.companyId());
 		validateDeletable(department);
 		LocalDateTime deletedAt = department.delete();
 
 		return DepartmentDeleteResponse.from(department, deletedAt);
 	}
 
-	private Member validateSuperAdmin(AuthenticatedMember authenticatedMember) {
-		Member member = memberRepository.findById(authenticatedMember.id())
+	private void validateAdmin(AuthenticatedMember authenticatedMember) {
+		Member member = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(
+				authenticatedMember.id(),
+				authenticatedMember.companyId()
+			)
 			.orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
 		if (!member.isActive()) {
 			throw new BusinessException(ErrorCode.INACTIVE_MEMBER);
 		}
 
-		if (member.getRole() != MemberRole.SUPER_ADMIN) {
+		if (member.getRole() != MemberRole.ADMIN) {
 			throw new BusinessException(ErrorCode.ACCESS_DENIED);
 		}
+	}
 
-		return member;
+	private Company findActiveCompany(UUID companyId) {
+		return companyRepository.findByIdAndDeletedAtIsNull(companyId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
 	}
 
 	private Department findParentDepartment(UUID parentDepartmentId, UUID companyId) {
@@ -193,6 +206,24 @@ public class DepartmentService {
 		}
 
 		return departmentManager;
+	}
+
+	private void assignDepartmentManagerRoleIfNeeded(Member departmentManager) {
+		if (departmentManager == null || departmentManager.getRole() == MemberRole.DEPARTMENT_MANAGER) {
+			return;
+		}
+
+		departmentManager.changeRole(MemberRole.DEPARTMENT_MANAGER);
+	}
+
+	private void changeDepartmentManagerRole(Member previousDepartmentManager, Member currentDepartmentManager) {
+		if (previousDepartmentManager != null
+			&& (currentDepartmentManager == null
+			|| !previousDepartmentManager.getId().equals(currentDepartmentManager.getId()))) {
+			previousDepartmentManager.changeRole(MemberRole.EMPLOYEE);
+		}
+
+		assignDepartmentManagerRoleIfNeeded(currentDepartmentManager);
 	}
 
 	private void validateParentDepartment(Department department, Department parentDepartment) {

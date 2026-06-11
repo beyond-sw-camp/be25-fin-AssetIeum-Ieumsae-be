@@ -1,0 +1,9 @@
+ALTER TABLE `members` DROP CONSTRAINT `CK_members_role_1`;
+
+UPDATE `members`
+SET `role` = 'ADMIN'
+WHERE `role` = 'SUPER_ADMIN';
+
+ALTER TABLE `members`
+	ADD CONSTRAINT `CK_members_role_1`
+	CHECK (`role` IN ('SUPER_ADMIN','ADMIN','DEPARTMENT_MANAGER','ASSET_MANAGER','EMPLOYEE'));

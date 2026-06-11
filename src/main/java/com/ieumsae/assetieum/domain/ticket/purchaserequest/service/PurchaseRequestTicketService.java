@@ -4,6 +4,7 @@ import com.ieumsae.assetieum.domain.intangibleasset.category.entity.IntangibleAs
 import com.ieumsae.assetieum.domain.intangibleasset.category.repository.IntangibleAssetCategoryRepository;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
+import com.ieumsae.assetieum.domain.member.type.MemberRole;
 import com.ieumsae.assetieum.domain.tangibleasset.category.entity.TangibleAssetCategory;
 import com.ieumsae.assetieum.domain.tangibleasset.category.repository.TangibleAssetCategoryRepository;
 import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
@@ -40,7 +41,8 @@ public class PurchaseRequestTicketService {
 		AuthenticatedMember authenticatedMember,
 		PurchaseRequestTicketCreateRequest request
 	) {
-		Member requester = findActiveRequester(authenticatedMember.id());
+		UUID companyId = authenticatedMember.companyId();
+		Member requester = findActiveRequester(authenticatedMember.id(), companyId);
 		Member approver = findDepartmentManager(requester);
 		TangibleAssetCategory tangibleAssetCategory = null;
 		IntangibleAssetCategory intangibleAssetCategory = null;
@@ -49,12 +51,12 @@ public class PurchaseRequestTicketService {
 			validateTangiblePurchaseRequest(request);
 			tangibleAssetCategory = findTangibleAssetCategory(
 				request.getCategoryId(),
-				requester.getCompany().getId()
+				companyId
 			);
 		} else {
 			intangibleAssetCategory = findIntangibleAssetCategory(
 				request.getCategoryId(),
-				requester.getCompany().getId()
+				companyId
 			);
 		}
 
@@ -92,8 +94,8 @@ public class PurchaseRequestTicketService {
 		);
 	}
 
-	private Member findActiveRequester(UUID memberId) {
-		Member member = memberRepository.findById(memberId)
+	private Member findActiveRequester(UUID memberId, UUID companyId) {
+		Member member = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(memberId, companyId)
 			.orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
 		if (!member.isActive()) {
@@ -104,7 +106,9 @@ public class PurchaseRequestTicketService {
 
 	private Member findDepartmentManager(Member requester) {
 		Member departmentManager = requester.getDepartment().getDepartmentManager();
-		if (departmentManager == null || !departmentManager.isActive()) {
+		if (departmentManager == null
+			|| !departmentManager.isActive()
+			|| departmentManager.getRole() != MemberRole.DEPARTMENT_MANAGER) {
 			throw new BusinessException(ErrorCode.INVALID_DEPARTMENT_MANAGER, "부서장이 지정되지 않았거나 활성 상태가 아닙니다.");
 		}
 		return departmentManager;
