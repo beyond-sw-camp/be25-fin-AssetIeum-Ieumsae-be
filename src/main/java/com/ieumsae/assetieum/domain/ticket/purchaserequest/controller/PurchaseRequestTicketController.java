@@ -1,5 +1,6 @@
 package com.ieumsae.assetieum.domain.ticket.purchaserequest.controller;
 
+import com.ieumsae.assetieum.domain.ticket.purchaserequest.dto.DirectPurchaseRequestTicketCreateRequest;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.dto.PurchaseRequestTicketCreateRequest;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.dto.PurchaseRequestTicketCreateResponse;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.service.PurchaseRequestTicketService;
@@ -25,10 +26,22 @@ public class PurchaseRequestTicketController {
 		@AuthenticationPrincipal AuthenticatedMember authenticatedMember,
 		@Valid @RequestBody PurchaseRequestTicketCreateRequest request
 	) {
-		PurchaseRequestTicketCreateResponse response = purchaseRequestTicketService.createPurchaseRequestTicket(
+		PurchaseRequestTicketCreateResponse response = purchaseRequestTicketService.createTeamPurchaseRequestTicket(
 			authenticatedMember,
 			request
 		);
 		return ApiResponse.ok("구매 요청 티켓 등록에 성공했습니다.", response);
+	}
+
+	@PostMapping("/direct-purchase")
+	public ApiResponse<PurchaseRequestTicketCreateResponse> createDirectPurchaseRequestTicket(
+		@AuthenticationPrincipal AuthenticatedMember authenticatedMember,
+		@Valid @RequestBody DirectPurchaseRequestTicketCreateRequest request
+	) {
+		PurchaseRequestTicketCreateResponse response = purchaseRequestTicketService.createDirectPurchaseRequestTicket(
+			authenticatedMember,
+			request
+		);
+		return ApiResponse.ok("직접 구매 요청 티켓 등록에 성공했습니다.", response);
 	}
 }
