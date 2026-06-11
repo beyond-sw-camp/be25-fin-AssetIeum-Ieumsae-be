@@ -12,8 +12,6 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class TangibleAssetCategoryCreateRequest {
-    @NotNull
-    private UUID companyId;
 
     private UUID parentId;
 

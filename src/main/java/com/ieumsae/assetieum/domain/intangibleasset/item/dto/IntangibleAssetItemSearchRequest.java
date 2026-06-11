@@ -1,7 +1,6 @@
 package com.ieumsae.assetieum.domain.intangibleasset.item.dto;
 
 import com.ieumsae.assetieum.global.common.page.PaginationRequest;
-import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -12,8 +11,6 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 public class IntangibleAssetItemSearchRequest extends PaginationRequest {
-    @NotNull
-    private UUID companyId;
 
     private UUID categoryId;
 

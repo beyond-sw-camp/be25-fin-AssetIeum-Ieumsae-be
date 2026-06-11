@@ -26,8 +26,6 @@ import java.util.UUID;
 public class TangibleAssetItemResponse {
     private UUID itemId;
 
-    private UUID companyId;
-
     private UUID categoryId;
 
     private String productName;
@@ -47,7 +45,6 @@ public class TangibleAssetItemResponse {
     public static TangibleAssetItemResponse from(TangibleAssetItem item) {
         return TangibleAssetItemResponse.builder()
                 .itemId(item.getId())
-                .companyId(item.getCompany().getId())
                 .categoryId(item.getTangibleAssetCategory().getId())
                 .productName(item.getProductName())
                 .manufacturer(item.getManufacturer())

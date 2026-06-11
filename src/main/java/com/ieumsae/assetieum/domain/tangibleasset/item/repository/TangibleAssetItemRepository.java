@@ -13,9 +13,9 @@ public interface TangibleAssetItemRepository
 
     boolean existsByCompany_IdAndModelName(UUID companyId, String modelName);
 
-    boolean existsByTangibleAssetCategory_Id(UUID tangibleAssetCategoryId);
+    boolean existsByCompany_IdAndTangibleAssetCategory_Id(UUID companyId, UUID tangibleAssetCategoryId);
 
     Optional<TangibleAssetItem> findByIdAndDeletedAtIsNull(UUID itemId);
 
-    Optional<TangibleAssetItem> findByIdAndCompany_IdAndDeletedAtIsNull(UUID tangibleItemId, UUID companyId);
+    Optional<TangibleAssetItem> findByIdAndCompany_IdAndDeletedAtIsNull(UUID itemId, UUID companyId);
 }

@@ -6,7 +6,6 @@ import com.ieumsae.assetieum.domain.tangibleasset.asset.repository.TangibleAsset
 import com.ieumsae.assetieum.domain.tangibleasset.category.entity.TangibleAssetCategory;
 import com.ieumsae.assetieum.domain.tangibleasset.category.repository.TangibleAssetCategoryRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.item.dto.TangibleAssetItemCreateRequest;
-import com.ieumsae.assetieum.domain.tangibleasset.item.dto.TangibleAssetItemDeleteResponse;
 import com.ieumsae.assetieum.domain.tangibleasset.item.dto.TangibleAssetItemResponse;
 import com.ieumsae.assetieum.domain.tangibleasset.item.dto.TangibleAssetItemSearchRequest;
 import com.ieumsae.assetieum.domain.tangibleasset.item.dto.TangibleAssetItemUpdateRequest;
@@ -38,28 +37,28 @@ public class TangibleAssetItemService {
      */
     @Transactional
     public TangibleAssetItemResponse createItem(
-            TangibleAssetItemCreateRequest request
+            TangibleAssetItemCreateRequest request,
+            UUID companyId
     ) {
         // 1. 입력값 검증
-        Company company = companyRepository.findById(request.getCompanyId())
+        Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
 
-        TangibleAssetCategory category = tangibleAssetCategoryRepository.findById(request.getCategoryId())
+        TangibleAssetCategory category = tangibleAssetCategoryRepository.findByIdAndCompany_Id(
+                        request.getCategoryId(),
+                        companyId
+                )
                 .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_CATEGORY_NOT_FOUND));
 
-        if (!category.getCompany().getId().equals(request.getCompanyId())) {
-            throw new BusinessException(ErrorCode.ACCESS_DENIED_COMPANY_SCOPE);
-        }
-
         if(tangibleAssetItemRepository.existsByCompany_IdAndProductName(
-                request.getCompanyId(),
+                companyId,
                 request.getProductName()
         )){
             throw new BusinessException(ErrorCode.TANGIBLE_ASSET_ITEM_DUPLICATED_PRODUCT_NAME);
         }
 
         if(tangibleAssetItemRepository.existsByCompany_IdAndModelName(
-                request.getCompanyId(),
+                companyId,
                 request.getModelName()
         )) {
             throw new BusinessException(ErrorCode.TANGIBLE_ASSET_ITEM_DUPLICATED_MODEL_NAME);
@@ -88,16 +87,17 @@ public class TangibleAssetItemService {
      * 해당하는 품목만 조회하여 반환한다.
      */
     public PaginationResponse<TangibleAssetItemResponse> getItems(
-            TangibleAssetItemSearchRequest request
+            TangibleAssetItemSearchRequest request,
+            UUID companyId
     ) {
         // 1. 입력값 검증
-        Company company = companyRepository.findById(request.getCompanyId())
+        Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
 
         // 2. 페이징 처리 및 필터링 후 품목 목록 반환
         Page<TangibleAssetItem> itemPage =
                 tangibleAssetItemRepository.search(
-                        request.getCompanyId(),
+                        companyId,
                         request.getCategoryId(),
                         request.getKeyword(),
                         request.getIsStandard(),
@@ -118,28 +118,29 @@ public class TangibleAssetItemService {
     @Transactional
     public TangibleAssetItemResponse updateItem(
             UUID itemId,
-            TangibleAssetItemUpdateRequest request
+            TangibleAssetItemUpdateRequest request,
+            UUID companyId
     ) {
         // 1. 입력값 검증
-        TangibleAssetItem item = tangibleAssetItemRepository.findByIdAndDeletedAtIsNull(itemId)
+        TangibleAssetItem item = tangibleAssetItemRepository.findByIdAndCompany_IdAndDeletedAtIsNull(itemId, companyId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_ITEM_NOT_FOUND));
 
         TangibleAssetCategory category = null;
 
         if(request.getCategoryId() != null) {
-            category = tangibleAssetCategoryRepository.findById(request.getCategoryId())
+            category = tangibleAssetCategoryRepository.findByIdAndCompany_Id(request.getCategoryId(), companyId)
                     .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_CATEGORY_NOT_FOUND));
         }
 
         if(tangibleAssetItemRepository.existsByCompany_IdAndProductName(
-                item.getCompany().getId(),
+                companyId,
                 request.getProductName()
         )){
             throw new BusinessException(ErrorCode.TANGIBLE_ASSET_ITEM_DUPLICATED_PRODUCT_NAME);
         }
 
         if(tangibleAssetItemRepository.existsByCompany_IdAndModelName(
-                item.getCompany().getId(),
+                companyId,
                 request.getModelName()
         )) {
             throw new BusinessException(ErrorCode.TANGIBLE_ASSET_ITEM_DUPLICATED_MODEL_NAME);
@@ -157,13 +158,13 @@ public class TangibleAssetItemService {
      * 삭제를 제한한다.
      */
     @Transactional
-    public TangibleAssetItemDeleteResponse deleteItem(UUID itemId) {
+    public void deleteItem(UUID itemId, UUID companyId) {
         // 1. 입력값 검증
-        TangibleAssetItem item = tangibleAssetItemRepository.findByIdAndDeletedAtIsNull(itemId)
+        TangibleAssetItem item = tangibleAssetItemRepository.findByIdAndCompany_IdAndDeletedAtIsNull(itemId, companyId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_ITEM_NOT_FOUND));
 
         if(tangibleAssetRepository.existsByCompany_IdAndTangibleAssetItem_Id(
-                item.getCompany().getId(),
+                companyId,
                 item.getId()
         )){
             throw new BusinessException(ErrorCode.TANGIBLE_ASSET_ITEM_HAS_ASSETS);
@@ -172,10 +173,5 @@ public class TangibleAssetItemService {
         // 2. 품목 삭제
         item.delete();
 
-        return TangibleAssetItemDeleteResponse.builder()
-                .tangibleAssetItemId(item.getId())
-                .companyId(item.getCompany().getId())
-                .deletedAt(item.getDeletedAt())
-                .build();
     }
 }
