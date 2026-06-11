@@ -11,7 +11,6 @@ public interface TangibleAssetRepositoryCustom {
     Page<TangibleAssetSearchResponse> search(
             UUID companyId,
             UUID categoryId,
-            UUID tangibleItemId,
             TangibleAssetStatus status,
             String keyword,
             UUID currentUserId,

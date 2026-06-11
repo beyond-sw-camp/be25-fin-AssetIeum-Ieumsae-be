@@ -18,8 +18,6 @@ public class TangibleAssetSearchRequest extends PaginationRequest {
 
     private UUID categoryId;
 
-    private UUID tangibleItemId;
-
     private TangibleAssetStatus status;
 
     private String keyword;
