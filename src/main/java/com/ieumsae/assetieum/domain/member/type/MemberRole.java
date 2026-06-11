@@ -5,5 +5,6 @@ public enum MemberRole {
 	ADMIN,
 	DEPARTMENT_MANAGER,
 	ASSET_MANAGER,
+	ASSET_TEAM,
 	EMPLOYEE
 }
