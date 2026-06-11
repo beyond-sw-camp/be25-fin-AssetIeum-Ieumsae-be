@@ -16,4 +16,6 @@ public interface TangibleAssetItemRepository
     boolean existsByTangibleAssetCategory_Id(UUID tangibleAssetCategoryId);
 
     Optional<TangibleAssetItem> findByIdAndDeletedAtIsNull(UUID itemId);
+
+    Optional<TangibleAssetItem> findByIdAndCompany_IdAndDeletedAtIsNull(UUID tangibleItemId, UUID companyId);
 }

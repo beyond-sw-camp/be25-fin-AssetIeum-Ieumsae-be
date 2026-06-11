@@ -47,7 +47,7 @@ public class TangibleAssetItemRepositoryImpl implements TangibleAssetItemReposit
         Map<String, Object> params = new HashMap<>();
         params.put("companyId", companyId);
 
-        List<UUID> categoryIds = getCategoryIds(categoryId);
+        List<UUID> categoryIds = getCategoryIds(categoryId, companyId);
         if (categoryIds != null && !categoryIds.isEmpty()) {
             jpql.append(" AND t.tangibleAssetCategory.id IN :categoryIds");
             countJpql.append(" AND t.tangibleAssetCategory.id IN :categoryIds");
@@ -93,13 +93,13 @@ public class TangibleAssetItemRepositoryImpl implements TangibleAssetItemReposit
         return new PageImpl<>(content, pageable, total);
     }
 
-    private List<UUID> getCategoryIds(UUID categoryId) {
+    private List<UUID> getCategoryIds(UUID categoryId, UUID companyId) {
         if (categoryId == null) {
             return null;
         }
 
         List<UUID> categoryIds = new ArrayList<>(
-                categoryRepository.findAllDescendantIds(categoryId)
+                categoryRepository.findAllDescendantIds(categoryId, companyId)
         );
 
         categoryIds.add(categoryId);
