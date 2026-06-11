@@ -5,6 +5,7 @@ import com.ieumsae.assetieum.domain.tangibleasset.asset.dto.TangibleAssetDetailR
 import com.ieumsae.assetieum.domain.tangibleasset.asset.dto.TangibleAssetResponse;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.dto.TangibleAssetSearchRequest;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.dto.TangibleAssetSearchResponse;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.dto.TangibleAssetUpdateRequest;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.service.TangibleAssetService;
 import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.response.ApiResponse;
@@ -14,11 +15,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
@@ -55,6 +56,18 @@ public class TangibleAssetController {
     ) {
         TangibleAssetDetailResponse response = tangibleAssetService.getAssetDetail(assetId, member.companyId());
         return ApiResponse.ok("유형자산 상세 조회에 성공했습니다.", response);
+    }
+
+    @PatchMapping("/{assetId}")
+    public ApiResponse<TangibleAssetResponse> updateAsset(
+            @AuthenticationPrincipal AuthenticatedMember member,
+            @PathVariable UUID assetId,
+            @Valid @RequestBody TangibleAssetUpdateRequest request
+    ){
+        TangibleAssetResponse response =
+                tangibleAssetService.updateAsset(assetId, request, member.companyId());
+
+        return ApiResponse.ok("유형자산이 수정되었습니다.", response);
     }
 
 }

@@ -2,15 +2,19 @@ package com.ieumsae.assetieum.domain.tangibleasset.asset.service;
 
 import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.company.repository.CompanyRepository;
+import com.ieumsae.assetieum.domain.department.entity.Department;
 import com.ieumsae.assetieum.domain.department.repository.DepartmentRepository;
+import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.dto.TangibleAssetCreateRequest;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.dto.TangibleAssetDetailResponse;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.dto.TangibleAssetResponse;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.dto.TangibleAssetSearchRequest;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.dto.TangibleAssetSearchResponse;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.dto.TangibleAssetUpdateRequest;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.entity.TangibleAsset;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.repository.TangibleAssetRepository;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.type.UsageType;
 import com.ieumsae.assetieum.domain.tangibleasset.category.repository.TangibleAssetCategoryRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
 import com.ieumsae.assetieum.domain.tangibleasset.item.repository.TangibleAssetItemRepository;
@@ -18,12 +22,12 @@ import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.common.util.CodeGenerator;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
+import java.time.LocalDateTime;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -41,15 +45,10 @@ public class TangibleAssetService {
     private final MemberRepository memberRepository;
     private final DepartmentRepository departmentRepository;
 
-    /**
-     * 유형자산 등록
-     * 동일 회사 내 시리얼 번호 중복 여부를 검증한다.
-     */
     @Transactional
     public TangibleAssetResponse createAsset(
             TangibleAssetCreateRequest request
     ) {
-        // 1. 입력값 검증
         Company company = companyRepository.findById(request.getCompanyId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
 
@@ -61,10 +60,9 @@ public class TangibleAssetService {
                 request.getSerialNumber(),
                 request.getTangibleItemId()
         )) {
-            throw new BusinessException(ErrorCode.INTANGIBLE_ASSET_ITEM_DUPLICATED_SERIAL_NUMBER);
+            throw new BusinessException(ErrorCode.TANGIBLE_ASSET_ITEM_DUPLICATED_SERIAL_NUMBER);
         }
 
-        // 2. 자산 생성 및 저장
         TangibleAsset asset = TangibleAsset.builder()
                 .company(company)
                 .tangibleAssetItem(item)
@@ -84,18 +82,11 @@ public class TangibleAssetService {
         return TangibleAssetResponse.from(savedAsset);
     }
 
-    /**
-     * 회사 기준 유형자산 목록 조회
-     * 카테고리, 품목 ID, 상태, 키워드, 현재 사용자, 부서를 기준으로 필터링하여
-     * 해당하는 자산만 조회하여 반환한다.
-     */
     public PaginationResponse<TangibleAssetSearchResponse> getAssets(
             TangibleAssetSearchRequest request
     ) {
-        // 1. 입력값 검증
         companyRepository.findById(request.getCompanyId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
-
 
         if(request.getCategoryId() != null) {
             tangibleAssetCategoryRepository.findByIdAndCompany_Id(request.getCategoryId(), request.getCompanyId())
@@ -112,7 +103,6 @@ public class TangibleAssetService {
                     .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
         }
 
-        // 2. 페이징 처리 및 필터링 후 자산 목록 반환
         Page<TangibleAssetSearchResponse> assetPage =
                 tangibleAssetRepository.search(
                         request.getCompanyId(),
@@ -125,16 +115,69 @@ public class TangibleAssetService {
                 );
 
         return PaginationResponse.from(assetPage);
-
     }
 
     public TangibleAssetDetailResponse getAssetDetail(UUID assetId, UUID companyId) {
+        companyRepository.findById(companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
+
+        return tangibleAssetRepository.findDetailByIdAndCompanyId(assetId, companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_ITEM_NOT_FOUND));
+    }
+
+    @Transactional
+    public TangibleAssetResponse updateAsset(UUID assetId, TangibleAssetUpdateRequest request, UUID companyId) {
+
         // 1. 입력값 검증
         companyRepository.findById(companyId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
 
-        // 2. 자산 상세 조회
-        return tangibleAssetRepository.findDetailByIdAndCompanyId(assetId, companyId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_ITEM_NOT_FOUND));
+        TangibleAsset asset = tangibleAssetRepository.findByIdAndCompany_Id(assetId, companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_NOT_FOUND));
+
+        Department department = null;
+        if (request.getDepartmentId() != null) {
+            department = departmentRepository.findByIdAndCompany_IdAndDeletedAtIsNull(request.getDepartmentId(),companyId)
+                    .orElseThrow(() -> new BusinessException(ErrorCode.DEPARTMENT_NOT_FOUND));
+        }
+
+        Member member = null;
+        if (request.getMemberId() != null) {
+            member = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(request.getMemberId(),companyId)
+                    .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+        }
+
+        validateReturnDueDate(request, asset);
+
+        // 2. 유형자산 수정
+        asset.update(request, department, member);
+
+        return TangibleAssetResponse.from(asset);
+    }
+
+    private void validateReturnDueDate(TangibleAssetUpdateRequest request, TangibleAsset asset) {
+        if (request.getReturnDueDate() == null) {
+            return;
+        }
+
+        UsageType usageType = request.getUsageType() != null
+                ? request.getUsageType()
+                : asset.getUsageType();
+
+        if (usageType == UsageType.PERMANENT) {
+            throw new BusinessException(ErrorCode.TANGIBLE_ASSET_INVALID_REQUEST);
+        }
+
+        LocalDateTime usedStartedAt = request.getUsedStartedAt() != null
+                ? request.getUsedStartedAt()
+                : asset.getUsedStartedAt();
+
+        if (usedStartedAt == null) {
+            throw new BusinessException(ErrorCode.TANGIBLE_ASSET_INVALID_REQUEST);
+        }
+
+        if (usedStartedAt.isAfter(request.getReturnDueDate())) {
+            throw new BusinessException(ErrorCode.TANGIBLE_ASSET_INVALID_REQUEST);
+        }
     }
 }

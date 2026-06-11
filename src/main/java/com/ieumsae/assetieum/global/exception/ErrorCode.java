@@ -43,7 +43,9 @@ public enum ErrorCode {
 	TANGIBLE_ASSET_ITEM_HAS_ASSETS(HttpStatus.CONFLICT, "tangible-asset-009", "자산이 존재하는 경우 삭제할 수 없습니다."),
 
 	// 유형 자산
-	INTANGIBLE_ASSET_ITEM_DUPLICATED_SERIAL_NUMBER(HttpStatus.BAD_REQUEST, "tangible-asset-010", "이미 존재하는 시리얼넘버입니다."),
+	TANGIBLE_ASSET_ITEM_DUPLICATED_SERIAL_NUMBER(HttpStatus.BAD_REQUEST, "tangible-asset-010", "이미 존재하는 시리얼넘버입니다."),
+	TANGIBLE_ASSET_NOT_FOUND(HttpStatus.NOT_FOUND, "tangible-asset-011", "해당 유형 자산이 존재하지 않습니다."),
+	TANGIBLE_ASSET_INVALID_REQUEST(HttpStatus.BAD_REQUEST, "tangible-asset-012", "자산 수정 요청값이 유효하지 않습니다."),
 
 	// 무형 자산 카테고리
 	INTANGIBLE_ASSET_CATEGORY_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "intangible-asset-001", "이미 존재하는 카테고리명입니다."),
