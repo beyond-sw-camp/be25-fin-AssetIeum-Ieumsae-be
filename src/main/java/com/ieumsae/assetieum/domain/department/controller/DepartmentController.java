@@ -14,6 +14,7 @@ import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -30,6 +31,7 @@ public class DepartmentController {
 
 	private final DepartmentService departmentService;
 
+	@PreAuthorize("hasRole('ADMIN')")
 	@GetMapping
 	public ApiResponse<DepartmentListResponse> getDepartments(
 		@AuthenticationPrincipal AuthenticatedMember authenticatedMember
@@ -38,6 +40,7 @@ public class DepartmentController {
 		return ApiResponse.ok("부서 목록 조회에 성공했습니다.", response);
 	}
 
+	@PreAuthorize("hasRole('ADMIN')")
 	@GetMapping("/{departmentId}")
 	public ApiResponse<DepartmentDetailResponse> getDepartment(
 		@AuthenticationPrincipal AuthenticatedMember authenticatedMember,
@@ -47,6 +50,7 @@ public class DepartmentController {
 		return ApiResponse.ok("부서 상세 조회에 성공했습니다.", response);
 	}
 
+	@PreAuthorize("hasRole('ADMIN')")
 	@PostMapping
 	public ApiResponse<DepartmentCreateResponse> createDepartment(
 		@AuthenticationPrincipal AuthenticatedMember authenticatedMember,
@@ -56,6 +60,7 @@ public class DepartmentController {
 		return ApiResponse.ok("부서 등록에 성공했습니다.", response);
 	}
 
+	@PreAuthorize("hasRole('ADMIN')")
 	@PatchMapping("/{departmentId}")
 	public ApiResponse<DepartmentUpdateResponse> updateDepartment(
 		@AuthenticationPrincipal AuthenticatedMember authenticatedMember,
@@ -70,6 +75,7 @@ public class DepartmentController {
 		return ApiResponse.ok("부서 수정에 성공했습니다.", response);
 	}
 
+	@PreAuthorize("hasRole('ADMIN')")
 	@DeleteMapping("/{departmentId}")
 	public ApiResponse<DepartmentDeleteResponse> deleteDepartment(
 		@AuthenticationPrincipal AuthenticatedMember authenticatedMember,

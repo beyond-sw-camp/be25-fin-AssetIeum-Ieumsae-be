@@ -116,4 +116,24 @@ public class Ticket extends BaseEntity {
 			.requestReason(requestReason)
 			.build();
 	}
+
+	public static Ticket createRental(
+		Company company,
+		String ticketNo,
+		Member requester,
+		Department department,
+		Member approver,
+		String requestReason
+	) {
+		return Ticket.builder()
+			.company(company)
+			.ticketNo(ticketNo)
+			.ticketType(TicketType.RENTAL)
+			.ticketStatus(TicketStatus.REQUESTED)
+			.requester(requester)
+			.department(department)
+			.approver(approver)
+			.requestReason(requestReason)
+			.build();
+	}
 }
