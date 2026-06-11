@@ -3,7 +3,6 @@ package com.ieumsae.assetieum.domain.tangibleasset.category.service;
 import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.company.repository.CompanyRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.category.dto.TangibleAssetCategoryCreateRequest;
-import com.ieumsae.assetieum.domain.tangibleasset.category.dto.TangibleAssetCategoryDeleteResponse;
 import com.ieumsae.assetieum.domain.tangibleasset.category.dto.TangibleAssetCategoryResponse;
 import com.ieumsae.assetieum.domain.tangibleasset.category.dto.TangibleAssetCategoryTreeResponse;
 import com.ieumsae.assetieum.domain.tangibleasset.category.entity.TangibleAssetCategory;
@@ -38,31 +37,29 @@ public class TangibleAssetCategoryService {
      */
     @Transactional
     public TangibleAssetCategoryResponse createCategory(
-            TangibleAssetCategoryCreateRequest request
+            TangibleAssetCategoryCreateRequest request,
+            UUID companyId
     ) {
         // 1. 입력값 검증
         if (tangibleAssetCategoryRepository.existsByCompany_IdAndName(
-                request.getCompanyId(),
+                companyId,
                 request.getName()
         )) {
             throw new BusinessException(ErrorCode.TANGIBLE_ASSET_CATEGORY_ALREADY_EXISTS);
         }
 
-        Company company = companyRepository.findById(request.getCompanyId())
+        Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
 
         TangibleAssetCategory parent = null;
         if(request.getParentId() != null){
-            parent = tangibleAssetCategoryRepository.findById(
-                    request.getParentId()
+            parent = tangibleAssetCategoryRepository.findByIdAndCompany_Id(
+                    request.getParentId(),
+                    companyId
             ).orElseThrow(() ->
                     new BusinessException(
                             ErrorCode.TANGIBLE_ASSET_CATEGORY_NOT_FOUND
                     ));
-
-            if(!parent.getCompany().getId().equals(request.getCompanyId())) {
-                throw new BusinessException(ErrorCode.TANGIBLE_ASSET_INVALID_PARENT);
-            }
         }
 
         // 2. 카테고리 생성 및 저장
@@ -141,26 +138,22 @@ public class TangibleAssetCategoryService {
      * 삭제를 제한한다.
      */
     @Transactional
-    public TangibleAssetCategoryDeleteResponse deleteCategory(UUID categoryId) {
+    public void deleteCategory(UUID categoryId, UUID companyId) {
         // 1. 입력값 검증
         TangibleAssetCategory category =
-                tangibleAssetCategoryRepository.findById(categoryId)
+                tangibleAssetCategoryRepository.findByIdAndCompany_Id(categoryId, companyId)
                         .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_CATEGORY_NOT_FOUND));
 
-        if(tangibleAssetCategoryRepository.existsByParent_Id(categoryId)) {
+        if(tangibleAssetCategoryRepository.existsByParent_IdAndCompany_Id(categoryId, companyId)) {
             throw new BusinessException(ErrorCode.TANGIBLE_ASSET_CATEGORY_HAS_CHILDREN);
         }
 
-        if(tangibleAssetItemRepository.existsByTangibleAssetCategory_Id(categoryId)) {
+        if(tangibleAssetItemRepository.existsByCompany_IdAndTangibleAssetCategory_Id(companyId, categoryId)) {
             throw new BusinessException(ErrorCode.TANGIBLE_ASSET_CATEGORY_HAS_ITEMS);
         }
 
         // 2. 카테고리 삭제
         tangibleAssetCategoryRepository.delete(category);
 
-        return TangibleAssetCategoryDeleteResponse.builder()
-                .categoryId(category.getId())
-                .companyId(category.getCompany().getId())
-                .build();
     }
 }

@@ -3,7 +3,6 @@ package com.ieumsae.assetieum.domain.intangibleasset.category.service;
 import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.company.repository.CompanyRepository;
 import com.ieumsae.assetieum.domain.intangibleasset.category.dto.IntangibleAssetCategoryCreateRequest;
-import com.ieumsae.assetieum.domain.intangibleasset.category.dto.IntangibleAssetCategoryDeleteResponse;
 import com.ieumsae.assetieum.domain.intangibleasset.category.dto.IntangibleAssetCategoryResponse;
 import com.ieumsae.assetieum.domain.intangibleasset.category.dto.IntangibleAssetCategoryTreeResponse;
 import com.ieumsae.assetieum.domain.intangibleasset.category.entity.IntangibleAssetCategory;
@@ -136,7 +135,7 @@ public class IntangibleAssetCategoryService {
      * 하위 카테고리가 존재하는 경우 삭제를 제한한다.
      */
     @Transactional
-    public IntangibleAssetCategoryDeleteResponse deleteCategory(UUID categoryId, UUID companyId) {
+    public void deleteCategory(UUID categoryId, UUID companyId) {
         // 1. 입력값 검증
         IntangibleAssetCategory category =
                 intangibleAssetCategoryRepository.findByIdAndCompany_Id(categoryId, companyId)
@@ -153,9 +152,5 @@ public class IntangibleAssetCategoryService {
         // 2. 카테고리 삭제
         intangibleAssetCategoryRepository.delete(category);
 
-        return IntangibleAssetCategoryDeleteResponse.builder()
-                .categoryId(category.getId())
-                .companyId(category.getCompany().getId())
-                .build();
     }
 }

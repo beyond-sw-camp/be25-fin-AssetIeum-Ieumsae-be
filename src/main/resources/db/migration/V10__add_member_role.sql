@@ -5,4 +5,4 @@ ALTER TABLE `members`
         CHECK (`role` IN ('SUPER_ADMIN','ADMIN','DEPARTMENT_MANAGER','ASSET_MANAGER','ASSET_TEAM','EMPLOYEE'));
 
 ALTER TABLE `purchase_request_tickets`
-    MODIFY COLUMN `expected_price` DECIMAL(15,2) NULL COMMENT 'Expected price';
+    MODIFY COLUMN `expected_price` DECIMAL(15,2) NOT NULL COMMENT 'Expected price';

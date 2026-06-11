@@ -1,7 +1,6 @@
 package com.ieumsae.assetieum.domain.intangibleasset.category.controller;
 
 import com.ieumsae.assetieum.domain.intangibleasset.category.dto.IntangibleAssetCategoryCreateRequest;
-import com.ieumsae.assetieum.domain.intangibleasset.category.dto.IntangibleAssetCategoryDeleteResponse;
 import com.ieumsae.assetieum.domain.intangibleasset.category.dto.IntangibleAssetCategoryResponse;
 import com.ieumsae.assetieum.domain.intangibleasset.category.dto.IntangibleAssetCategoryTreeResponse;
 import com.ieumsae.assetieum.domain.intangibleasset.category.service.IntangibleAssetCategoryService;
@@ -51,13 +50,12 @@ public class IntangibleAssetCategoryController {
 
     @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
     @DeleteMapping("/{categoryId}")
-    public ApiResponse<IntangibleAssetCategoryDeleteResponse> deleteCategory(
+    public ApiResponse<Void> deleteCategory(
             @AuthenticationPrincipal AuthenticatedMember member,
             @PathVariable UUID categoryId
     ) {
-        IntangibleAssetCategoryDeleteResponse response =
-                intangibleAssetCategoryService.deleteCategory(categoryId, member.companyId());
+        intangibleAssetCategoryService.deleteCategory(categoryId, member.companyId());
 
-        return ApiResponse.ok("무형자산 카테고리가 삭제되었습니다.", response);
+        return ApiResponse.ok("무형자산 카테고리가 삭제되었습니다.", null);
     }
 }
