@@ -2,17 +2,15 @@ package com.ieumsae.assetieum.domain.tangibleasset.asset.service;
 
 import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.company.repository.CompanyRepository;
-import com.ieumsae.assetieum.domain.department.entity.Department;
 import com.ieumsae.assetieum.domain.department.repository.DepartmentRepository;
-import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.dto.TangibleAssetCreateRequest;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.dto.TangibleAssetDetailResponse;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.dto.TangibleAssetResponse;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.dto.TangibleAssetSearchRequest;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.dto.TangibleAssetSearchResponse;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.entity.TangibleAsset;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.repository.TangibleAssetRepository;
-import com.ieumsae.assetieum.domain.tangibleasset.category.entity.TangibleAssetCategory;
 import com.ieumsae.assetieum.domain.tangibleasset.category.repository.TangibleAssetCategoryRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
 import com.ieumsae.assetieum.domain.tangibleasset.item.repository.TangibleAssetItemRepository;
@@ -24,6 +22,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -102,12 +102,6 @@ public class TangibleAssetService {
                     .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_CATEGORY_NOT_FOUND));
         }
 
-
-        if(request.getTangibleItemId() != null) {
-            tangibleAssetItemRepository.findByIdAndCompany_IdAndDeletedAtIsNull(request.getTangibleItemId(), request.getCompanyId())
-                    .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_ITEM_NOT_FOUND));
-        }
-
         if(request.getCurrentUserId() != null) {
             memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(request.getCurrentUserId(), request.getCompanyId())
                     .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
@@ -123,7 +117,6 @@ public class TangibleAssetService {
                 tangibleAssetRepository.search(
                         request.getCompanyId(),
                         request.getCategoryId(),
-                        request.getTangibleItemId(),
                         request.getStatus(),
                         request.getKeyword(),
                         request.getCurrentUserId(),
@@ -133,5 +126,15 @@ public class TangibleAssetService {
 
         return PaginationResponse.from(assetPage);
 
+    }
+
+    public TangibleAssetDetailResponse getAssetDetail(UUID assetId, UUID companyId) {
+        // 1. 입력값 검증
+        companyRepository.findById(companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
+
+        // 2. 자산 상세 조회
+        return tangibleAssetRepository.findDetailByIdAndCompanyId(assetId, companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_ITEM_NOT_FOUND));
     }
 }

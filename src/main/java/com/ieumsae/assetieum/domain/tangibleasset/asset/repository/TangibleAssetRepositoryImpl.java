@@ -1,5 +1,6 @@
 package com.ieumsae.assetieum.domain.tangibleasset.asset.repository;
 
+import com.ieumsae.assetieum.domain.tangibleasset.asset.dto.TangibleAssetDetailResponse;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.dto.TangibleAssetSearchResponse;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.type.TangibleAssetStatus;
 import com.ieumsae.assetieum.domain.tangibleasset.category.repository.TangibleAssetCategoryRepository;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static com.ieumsae.assetieum.domain.department.entity.QDepartment.department;
@@ -110,6 +112,40 @@ public class TangibleAssetRepositoryImpl implements TangibleAssetRepositoryCusto
                 .fetchOne();
 
         return new PageImpl<>(content, pageable, total == null ? 0 : total);
+    }
+
+    @Override
+    public Optional<TangibleAssetDetailResponse> findDetailByIdAndCompanyId(UUID assetId, UUID companyId) {
+        TangibleAssetDetailResponse response = queryFactory
+                .select(Projections.constructor(
+                        TangibleAssetDetailResponse.class,
+                        tangibleAssetItem.productName,
+                        tangibleAsset.assetCode,
+                        tangibleAsset.serialNumber,
+                        tangibleAsset.tangibleAssetStatus,
+                        tangibleAsset.assetUsageType,
+                        tangibleAsset.usageType,
+                        tangibleAsset.location,
+                        tangibleAsset.usedStartedAt,
+                        tangibleAsset.returnDueDate,
+                        department.name,
+                        member.name,
+                        tangibleAsset.purchaseDate,
+                        tangibleAsset.purchasePrice,
+                        tangibleAsset.purchaseVendor,
+                        tangibleAsset.warrantyExpiredAt
+                ))
+                .from(tangibleAsset)
+                .join(tangibleAsset.tangibleAssetItem, tangibleAssetItem)
+                .leftJoin(tangibleAsset.member, member)
+                .leftJoin(tangibleAsset.department, department)
+                .where(
+                        tangibleAsset.id.eq(assetId),
+                        tangibleAsset.company.id.eq(companyId)
+                )
+                .fetchOne();
+
+        return Optional.ofNullable(response);
     }
 
     private List<UUID> getCategoryIds(UUID categoryId, UUID companyId) {
