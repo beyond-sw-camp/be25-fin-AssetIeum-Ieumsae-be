@@ -41,7 +41,6 @@ public class TangibleAssetRepositoryImpl implements TangibleAssetRepositoryCusto
     public Page<TangibleAssetSearchResponse> search(
             UUID companyId,
             UUID categoryId,
-            UUID tangibleItemId,
             TangibleAssetStatus status,
             String keyword,
             UUID currentUserId,
@@ -51,13 +50,9 @@ public class TangibleAssetRepositoryImpl implements TangibleAssetRepositoryCusto
         BooleanBuilder condition = new BooleanBuilder();
         condition.and(tangibleAsset.company.id.eq(companyId));
 
-        List<UUID> categoryIds = getCategoryIds(categoryId);
+        List<UUID> categoryIds = getCategoryIds(categoryId, companyId);
         if (categoryIds != null && !categoryIds.isEmpty()) {
             condition.and(tangibleAssetCategory.id.in(categoryIds));
-        }
-
-        if (tangibleItemId != null) {
-            condition.and(tangibleAssetItem.id.eq(tangibleItemId));
         }
 
         if (status != null) {
@@ -117,13 +112,13 @@ public class TangibleAssetRepositoryImpl implements TangibleAssetRepositoryCusto
         return new PageImpl<>(content, pageable, total == null ? 0 : total);
     }
 
-    private List<UUID> getCategoryIds(UUID categoryId) {
+    private List<UUID> getCategoryIds(UUID categoryId, UUID companyId) {
         if (categoryId == null) {
             return null;
         }
 
         List<UUID> categoryIds = new ArrayList<>(
-                categoryRepository.findAllDescendantIds(categoryId)
+                categoryRepository.findAllDescendantIds(categoryId, companyId)
         );
 
         categoryIds.add(categoryId);

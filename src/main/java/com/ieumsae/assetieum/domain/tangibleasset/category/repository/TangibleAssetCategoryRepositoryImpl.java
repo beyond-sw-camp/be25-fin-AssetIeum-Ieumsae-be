@@ -27,10 +27,13 @@ public class TangibleAssetCategoryRepositoryImpl implements TangibleAssetCategor
      * 자식, 손자 카테고리까지 포함한 카테고리 ID 목록을 반환한다.
      */
     @Override
-    public List<UUID> findAllDescendantIds(UUID categoryId) {
+    public List<UUID> findAllDescendantIds(UUID categoryId, UUID companyId) {
         List<TangibleAssetCategory> categories = em.createQuery(
-                "SELECT c FROM TangibleAssetCategory c", TangibleAssetCategory.class
-        ).getResultList();
+                        "SELECT c FROM TangibleAssetCategory c WHERE c.company.id = :companyId",
+                        TangibleAssetCategory.class
+                )
+                .setParameter("companyId", companyId)
+                .getResultList();
 
         List<UUID> descendantIds = new ArrayList<>();
 
