@@ -1,4 +1,4 @@
-package com.ieumsae.assetieum.domain.ticket.service;
+package com.ieumsae.assetieum.domain.ticket.common.service;
 
 import java.time.Duration;
 import java.time.LocalDate;

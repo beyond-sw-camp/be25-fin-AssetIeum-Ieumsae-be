@@ -1,7 +1,7 @@
-package com.ieumsae.assetieum.domain.ticket.dto;
+package com.ieumsae.assetieum.domain.ticket.assetrequest.dto;
 
-import com.ieumsae.assetieum.domain.ticket.type.AssetType;
-import com.ieumsae.assetieum.domain.ticket.type.RequestedUsageType;
+import com.ieumsae.assetieum.domain.ticket.common.type.AssetType;
+import com.ieumsae.assetieum.domain.ticket.common.type.RequestedUsageType;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;

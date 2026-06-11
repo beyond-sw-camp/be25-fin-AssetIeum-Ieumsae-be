@@ -1,10 +1,10 @@
-package com.ieumsae.assetieum.domain.ticket.dto;
+package com.ieumsae.assetieum.domain.ticket.assetrequest.dto;
 
-import com.ieumsae.assetieum.domain.ticket.entity.Ticket;
-import com.ieumsae.assetieum.domain.ticket.type.AssetType;
-import com.ieumsae.assetieum.domain.ticket.type.RequestedUsageType;
-import com.ieumsae.assetieum.domain.ticket.type.TicketStatus;
-import com.ieumsae.assetieum.domain.ticket.type.TicketType;
+import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
+import com.ieumsae.assetieum.domain.ticket.common.type.AssetType;
+import com.ieumsae.assetieum.domain.ticket.common.type.RequestedUsageType;
+import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
+import com.ieumsae.assetieum.domain.ticket.common.type.TicketType;
 import java.util.UUID;
 import lombok.Builder;
 import lombok.Getter;

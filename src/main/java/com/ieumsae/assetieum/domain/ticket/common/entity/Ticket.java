@@ -1,10 +1,10 @@
-package com.ieumsae.assetieum.domain.ticket.entity;
+package com.ieumsae.assetieum.domain.ticket.common.entity;
 
 import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.department.entity.Department;
 import com.ieumsae.assetieum.domain.member.entity.Member;
-import com.ieumsae.assetieum.domain.ticket.type.TicketStatus;
-import com.ieumsae.assetieum.domain.ticket.type.TicketType;
+import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
+import com.ieumsae.assetieum.domain.ticket.common.type.TicketType;
 import com.ieumsae.assetieum.global.common.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -89,6 +89,26 @@ public class Ticket extends BaseEntity {
 			.company(company)
 			.ticketNo(ticketNo)
 			.ticketType(TicketType.ASSET_REQUEST)
+			.ticketStatus(TicketStatus.REQUESTED)
+			.requester(requester)
+			.department(department)
+			.approver(approver)
+			.requestReason(requestReason)
+			.build();
+	}
+
+	public static Ticket createPurchaseRequest(
+		Company company,
+		String ticketNo,
+		Member requester,
+		Department department,
+		Member approver,
+		String requestReason
+	) {
+		return Ticket.builder()
+			.company(company)
+			.ticketNo(ticketNo)
+			.ticketType(TicketType.PURCHASE_REQUEST)
 			.ticketStatus(TicketStatus.REQUESTED)
 			.requester(requester)
 			.department(department)

@@ -19,6 +19,9 @@ import org.springframework.stereotype.Component;
 public class JwtProvider {
 
 	private static final String MEMBER_NO_CLAIM = "memberNo";
+	private static final String COMPANY_ID_CLAIM = "companyId";
+	private static final String NAME_CLAIM = "name";
+	private static final String EMAIL_CLAIM = "email";
 	private static final String ROLE_CLAIM = "role";
 	private static final String TOKEN_TYPE_CLAIM = "tokenType";
 	private static final String TOKEN_ID_CLAIM = "jti";
@@ -43,7 +46,10 @@ public class JwtProvider {
 			.add(jwtProperties.getAudience())
 			.and()
 			.subject(member.getId().toString())
+			.claim(COMPANY_ID_CLAIM, member.getCompany().getId().toString())
 			.claim(MEMBER_NO_CLAIM, member.getMemberNo())
+			.claim(NAME_CLAIM, member.getName())
+			.claim(EMAIL_CLAIM, member.getEmail())
 			.claim(ROLE_CLAIM, member.getRole().name())
 			.claim(TOKEN_TYPE_CLAIM, ACCESS_TOKEN_TYPE)
 			.issuedAt(Date.from(now))
@@ -62,7 +68,10 @@ public class JwtProvider {
 			.add(jwtProperties.getAudience())
 			.and()
 			.subject(member.getId().toString())
+			.claim(COMPANY_ID_CLAIM, member.getCompany().getId().toString())
 			.claim(MEMBER_NO_CLAIM, member.getMemberNo())
+			.claim(NAME_CLAIM, member.getName())
+			.claim(EMAIL_CLAIM, member.getEmail())
 			.claim(ROLE_CLAIM, member.getRole().name())
 			.claim(TOKEN_TYPE_CLAIM, REFRESH_TOKEN_TYPE)
 			.claim(TOKEN_ID_CLAIM, UUID.randomUUID().toString())
@@ -121,7 +130,10 @@ public class JwtProvider {
 	private AuthenticatedMember toAuthenticatedMember(Claims claims) {
 		return new AuthenticatedMember(
 			UUID.fromString(claims.getSubject()),
+			UUID.fromString(readStringClaim(claims, COMPANY_ID_CLAIM)),
 			readStringClaim(claims, MEMBER_NO_CLAIM),
+			readStringClaim(claims, NAME_CLAIM),
+			readNullableStringClaim(claims, EMAIL_CLAIM),
 			MemberRole.valueOf(readStringClaim(claims, ROLE_CLAIM))
 		);
 	}
@@ -132,5 +144,9 @@ public class JwtProvider {
 			throw new BusinessException(ErrorCode.INVALID_TOKEN);
 		}
 		return value;
+	}
+
+	private String readNullableStringClaim(Claims claims, String name) {
+		return claims.get(name, String.class);
 	}
 }

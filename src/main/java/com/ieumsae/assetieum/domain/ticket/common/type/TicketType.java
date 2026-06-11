@@ -1,4 +1,4 @@
-package com.ieumsae.assetieum.domain.ticket.type;
+package com.ieumsae.assetieum.domain.ticket.common.type;
 
 public enum TicketType {
 	ASSET_REQUEST,

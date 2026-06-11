@@ -1,8 +1,8 @@
-package com.ieumsae.assetieum.domain.ticket.controller;
+package com.ieumsae.assetieum.domain.ticket.assetrequest.controller;
 
-import com.ieumsae.assetieum.domain.ticket.dto.StandardAssetRequestCreateRequest;
-import com.ieumsae.assetieum.domain.ticket.dto.StandardAssetRequestCreateResponse;
-import com.ieumsae.assetieum.domain.ticket.service.AssetRequestTicketService;
+import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.StandardAssetRequestCreateRequest;
+import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.StandardAssetRequestCreateResponse;
+import com.ieumsae.assetieum.domain.ticket.assetrequest.service.AssetRequestTicketService;
 import com.ieumsae.assetieum.global.response.ApiResponse;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
 import jakarta.validation.Valid;

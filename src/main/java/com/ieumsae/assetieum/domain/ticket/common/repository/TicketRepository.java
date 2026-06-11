@@ -1,6 +1,6 @@
-package com.ieumsae.assetieum.domain.ticket.repository;
+package com.ieumsae.assetieum.domain.ticket.common.repository;
 
-import com.ieumsae.assetieum.domain.ticket.entity.Ticket;
+import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
