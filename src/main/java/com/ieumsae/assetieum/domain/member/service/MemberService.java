@@ -66,6 +66,7 @@ public class MemberService {
 		validateEmailNotDuplicated(companyId, request.getEmail());
 		validateAssignableRole(request.getRole());
 		validateDepartmentManagerAssignable(department, request.getRole());
+		validateAssetManagerAssignable(companyId, request.getRole());
 
 		Member member = memberRepository.save(Member.builder()
 			.company(company)
@@ -169,6 +170,16 @@ public class MemberService {
 
 		if (department.getDepartmentManager() != null) {
 			throw new BusinessException(ErrorCode.INVALID_DEPARTMENT_MANAGER, "이미 부서장이 지정된 부서입니다.");
+		}
+	}
+
+	private void validateAssetManagerAssignable(UUID companyId, MemberRole role) {
+		if (role != MemberRole.ASSET_MANAGER) {
+			return;
+		}
+
+		if (memberRepository.existsByCompany_IdAndRoleAndDeletedAtIsNull(companyId, MemberRole.ASSET_MANAGER)) {
+			throw new BusinessException(ErrorCode.ASSET_MANAGER_ALREADY_EXISTS);
 		}
 	}
 

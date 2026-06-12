@@ -9,6 +9,7 @@ import com.ieumsae.assetieum.global.security.AuthenticatedMember;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,6 +22,7 @@ public class PurchaseRequestTicketController {
 
 	private final PurchaseRequestTicketService purchaseRequestTicketService;
 
+	@PreAuthorize("hasAnyRole('EMPLOYEE', 'DEPARTMENT_MANAGER', 'ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
 	@PostMapping("/non-standard")
 	public ApiResponse<PurchaseRequestTicketCreateResponse> createNonStandardPurchaseRequestTicket(
 		@AuthenticationPrincipal AuthenticatedMember authenticatedMember,
@@ -33,6 +35,7 @@ public class PurchaseRequestTicketController {
 		return ApiResponse.ok("구매 요청 티켓 등록에 성공했습니다.", response);
 	}
 
+	@PreAuthorize("hasAnyRole('EMPLOYEE', 'DEPARTMENT_MANAGER', 'ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
 	@PostMapping("/direct-purchase")
 	public ApiResponse<PurchaseRequestTicketCreateResponse> createDirectPurchaseRequestTicket(
 		@AuthenticationPrincipal AuthenticatedMember authenticatedMember,
