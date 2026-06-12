@@ -15,7 +15,6 @@ import java.util.UUID;
 @Builder
 @JsonPropertyOrder({
         "categoryId",
-        "companyId",
         "parentId",
         "name",
         "createdAt",
@@ -24,8 +23,6 @@ import java.util.UUID;
 })
 public class TangibleAssetCategoryTreeResponse {
     private UUID categoryId;
-
-    private UUID companyId;
 
     private UUID parentId;
 
@@ -45,7 +42,6 @@ public class TangibleAssetCategoryTreeResponse {
     ) {
         return TangibleAssetCategoryTreeResponse.builder()
                 .categoryId(category.getId())
-                .companyId(category.getCompany().getId())
                 .parentId(
                         category.getParent() != null
                                 ? category.getParent().getId()

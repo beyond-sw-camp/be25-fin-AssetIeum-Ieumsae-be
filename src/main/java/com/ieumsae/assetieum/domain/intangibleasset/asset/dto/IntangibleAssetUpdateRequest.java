@@ -1,5 +1,6 @@
 package com.ieumsae.assetieum.domain.intangibleasset.asset.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.type.IntangibleAssetStatus;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -19,8 +20,10 @@ public class IntangibleAssetUpdateRequest {
 
     private Boolean isAutoRenewal;
 
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime startedAt;
 
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime expiredAt;
 
     private UUID memberId;

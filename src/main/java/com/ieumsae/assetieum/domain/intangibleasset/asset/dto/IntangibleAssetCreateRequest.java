@@ -1,5 +1,6 @@
 package com.ieumsae.assetieum.domain.intangibleasset.asset.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.type.BillingCycle;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.type.IntangibleAssetStatus;
 import jakarta.validation.constraints.NotBlank;
@@ -29,6 +30,7 @@ public class IntangibleAssetCreateRequest {
     private Boolean isAutoRenewal;
 
     @NotNull
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime purchaseDate;
 
     @NotNull
@@ -43,8 +45,10 @@ public class IntangibleAssetCreateRequest {
 
     private UUID departmentId;
 
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime startedAt;
 
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime expiredAt;
 
     private BillingCycle billingCycle;

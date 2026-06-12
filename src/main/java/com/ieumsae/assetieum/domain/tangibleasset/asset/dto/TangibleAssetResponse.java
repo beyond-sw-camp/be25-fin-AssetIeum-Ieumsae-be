@@ -20,19 +20,28 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonPropertyOrder({
-        "companyId",
+        "tangibleAssetId",
         "tangibleItemId",
+        "assetCode",
         "serialNumber",
+        "usageType",
+        "assetUsageType",
+        "tangibleAssetStatus",
+        "memberId",
+        "departmentId",
         "location",
+        "usedStartedAt",
+        "returnDueDate",
         "purchaseDate",
         "purchasePrice",
         "purchaseVendor",
         "warrantyExpiredAt",
+        "createdAt",
+        "updatedAt"
 })
 public class TangibleAssetResponse {
 
     private UUID tangibleAssetId;
-    private UUID companyId;
     private UUID tangibleItemId;
 
     private String assetCode;
@@ -68,7 +77,6 @@ public class TangibleAssetResponse {
     public static TangibleAssetResponse from(TangibleAsset tangibleAsset) {
         return TangibleAssetResponse.builder()
                 .tangibleAssetId(tangibleAsset.getId())
-                .companyId(tangibleAsset.getCompany().getId())
                 .tangibleItemId(tangibleAsset.getTangibleAssetItem().getId())
                 .assetCode(tangibleAsset.getAssetCode())
                 .serialNumber(tangibleAsset.getSerialNumber())

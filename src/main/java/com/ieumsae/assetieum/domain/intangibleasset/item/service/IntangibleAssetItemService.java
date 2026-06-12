@@ -56,7 +56,6 @@ public class IntangibleAssetItemService {
 
         return IntangibleAssetItemDeleteResponse.builder()
                 .intangibleAssetItemId(item.getId())
-                .companyId(item.getCompany().getId())
                 .deletedAt(item.getDeletedAt())
                 .build();
 
@@ -148,11 +147,11 @@ public class IntangibleAssetItemService {
             UUID companyId
     ) {
         // 1. 입력값 검증
-        Company company = companyRepository.findById(companyId)
+        companyRepository.findById(companyId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
 
         // 2. 페이징 처리 및 필터링 후 품목 목록 반환
-        Page<IntangibleAssetItem> itemPage =
+        Page<IntangibleAssetItemResponse> responsePage =
                 intangibleAssetItemRepository.search(
                         companyId,
                         request.getCategoryId(),
@@ -160,9 +159,6 @@ public class IntangibleAssetItemService {
                         request.getIsStandard(),
                         request.toPageable()
                 );
-
-        Page<IntangibleAssetItemResponse> responsePage =
-                itemPage.map(IntangibleAssetItemResponse::from);
 
         return PaginationResponse.from(responsePage);
     }
