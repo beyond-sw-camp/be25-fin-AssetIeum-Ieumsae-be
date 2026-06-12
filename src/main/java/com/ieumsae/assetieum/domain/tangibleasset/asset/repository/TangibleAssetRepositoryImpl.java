@@ -83,6 +83,7 @@ public class TangibleAssetRepositoryImpl implements TangibleAssetRepositoryCusto
         List<TangibleAssetSearchResponse> content = queryFactory
                 .select(Projections.constructor(
                         TangibleAssetSearchResponse.class,
+                        tangibleAsset.id,
                         tangibleAssetItem.productName,
                         tangibleAsset.assetCode,
                         member.name,
@@ -119,7 +120,6 @@ public class TangibleAssetRepositoryImpl implements TangibleAssetRepositoryCusto
         TangibleAssetDetailResponse response = queryFactory
                 .select(Projections.constructor(
                         TangibleAssetDetailResponse.class,
-                        tangibleAsset.id,
                         tangibleAssetItem.productName,
                         tangibleAsset.assetCode,
                         tangibleAsset.serialNumber,

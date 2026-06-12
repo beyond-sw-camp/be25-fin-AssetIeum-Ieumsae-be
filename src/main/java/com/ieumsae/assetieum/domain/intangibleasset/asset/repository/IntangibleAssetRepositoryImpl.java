@@ -1,5 +1,6 @@
 package com.ieumsae.assetieum.domain.intangibleasset.asset.repository;
 
+import com.ieumsae.assetieum.domain.intangibleasset.asset.dto.IntangibleAssetDetailResponse;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.dto.IntangibleAssetSearchResponse;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.type.IntangibleAssetStatus;
 import com.ieumsae.assetieum.domain.intangibleasset.assignment.type.AssignmentStatus;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import com.ieumsae.assetieum.domain.department.entity.QDepartment;
@@ -26,6 +28,7 @@ import static com.ieumsae.assetieum.domain.intangibleasset.assignment.entity.QAs
 import static com.ieumsae.assetieum.domain.intangibleasset.category.entity.QIntangibleAssetCategory.intangibleAssetCategory;
 import static com.ieumsae.assetieum.domain.intangibleasset.item.entity.QIntangibleAssetItem.intangibleAssetItem;
 import static com.ieumsae.assetieum.domain.member.entity.QMember.member;
+import static com.ieumsae.assetieum.domain.tangibleasset.asset.entity.QTangibleAsset.tangibleAsset;
 
 /**
  * 무형자산 Repository 구현체
@@ -147,6 +150,40 @@ public class IntangibleAssetRepositoryImpl implements IntangibleAssetRepositoryC
 
         return new PageImpl<>(content, pageable, total == null ? 0 : total);
 
+    }
+
+    @Override
+    public Optional<IntangibleAssetDetailResponse> findDetailByIdAndCompanyId(UUID assetId, UUID companyId) {
+
+        IntangibleAssetDetailResponse response = queryFactory
+                .select(Projections.constructor(
+                        IntangibleAssetDetailResponse.class,
+                        intangibleAssetItem.productName,
+                        intangibleAsset.assetCode,
+                        intangibleAsset.licenseCode,
+                        intangibleAsset.intangibleAssetStatus,
+                        intangibleAsset.seatCount,
+                        intangibleAsset.startedAt,
+                        intangibleAsset.expiredAt,
+                        intangibleAsset.isAutoRenewal,
+                        intangibleAsset.billingCycle,
+                        department.name,
+                        member.name,
+                        intangibleAsset.purchaseDate,
+                        intangibleAsset.purchasePrice,
+                        intangibleAsset.purchaseVendor
+                ))
+                .from(intangibleAsset)
+                .join(intangibleAsset.intangibleAssetItem, intangibleAssetItem)
+                .leftJoin(intangibleAsset.member, member)
+                .leftJoin(intangibleAsset.department, department)
+                .where(
+                        intangibleAsset.id.eq(assetId),
+                        intangibleAsset.company.id.eq(companyId)
+                )
+                .fetchOne();
+
+        return Optional.ofNullable(response);
     }
 
     private List<UUID> getCategoryIds(UUID categoryId, UUID companyId) {

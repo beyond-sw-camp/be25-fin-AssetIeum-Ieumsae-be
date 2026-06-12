@@ -5,6 +5,7 @@ import com.ieumsae.assetieum.domain.company.repository.CompanyRepository;
 import com.ieumsae.assetieum.domain.department.entity.Department;
 import com.ieumsae.assetieum.domain.department.repository.DepartmentRepository;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.dto.IntangibleAssetCreateRequest;
+import com.ieumsae.assetieum.domain.intangibleasset.asset.dto.IntangibleAssetDetailResponse;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.dto.IntangibleAssetResponse;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.dto.IntangibleAssetSearchRequest;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.dto.IntangibleAssetSearchResponse;
@@ -227,5 +228,23 @@ public class IntangibleAssetService {
         );
 
         return PaginationResponse.from(assetPage);
+    }
+
+    /**
+     * 무형자산 상세 조회.
+     * 회사 범위 내에서 자산 ID에 해당하는 무형자산 상세 정보를 조회한다.
+     */
+    public IntangibleAssetDetailResponse getAssetDetail(
+            UUID assetId,
+            UUID companyId
+    ) {
+        // 1. 입력값 검증
+        companyRepository.findById(companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
+
+        // 2. 무형자산 상세 조회
+        return intangibleAssetRepository.findDetailByIdAndCompanyId(assetId, companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.INTANGIBLE_ASSET_ITEM_NOT_FOUND));
+
     }
 }
