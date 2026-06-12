@@ -65,6 +65,9 @@ public enum ErrorCode {
 	INTANGIBLE_ASSET_INVALID_REQUEST(HttpStatus.BAD_REQUEST, "intangible-asset-010", "잘못된 자산 요청 값입니다."),
 	INTANGIBLE_ASSET_NOT_FOUND(HttpStatus.NOT_FOUND, "intangible-asset-011", "해당 무형 자산이 존재하지 않습니다."),
 
+	// 티켓
+	INVALID_RENTAL_PERIOD(HttpStatus.BAD_REQUEST, "ticket-001", "유효하지 않은 대여 기간입니다."),
+
 	// 공통
 	INVALID_INPUT_VALUE(HttpStatus.BAD_REQUEST, "COMMON_001", "잘못된 요청입니다."),
 	INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "COMMON_002", "서버 내부 오류가 발생했습니다.");
