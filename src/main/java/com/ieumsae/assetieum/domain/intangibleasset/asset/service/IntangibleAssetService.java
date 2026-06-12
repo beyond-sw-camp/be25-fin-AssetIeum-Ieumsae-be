@@ -6,18 +6,23 @@ import com.ieumsae.assetieum.domain.department.entity.Department;
 import com.ieumsae.assetieum.domain.department.repository.DepartmentRepository;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.dto.IntangibleAssetCreateRequest;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.dto.IntangibleAssetResponse;
+import com.ieumsae.assetieum.domain.intangibleasset.asset.dto.IntangibleAssetSearchRequest;
+import com.ieumsae.assetieum.domain.intangibleasset.asset.dto.IntangibleAssetSearchResponse;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.entity.IntangibleAsset;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.repository.IntangibleAssetRepository;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.type.BillingCycle;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.type.IntangibleAssetStatus;
+import com.ieumsae.assetieum.domain.intangibleasset.category.repository.IntangibleAssetCategoryRepository;
 import com.ieumsae.assetieum.domain.intangibleasset.item.entity.IntangibleAssetItem;
 import com.ieumsae.assetieum.domain.intangibleasset.item.repository.IntangibleAssetItemRepository;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
+import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.common.util.CodeGenerator;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +40,7 @@ public class IntangibleAssetService {
     private final CompanyRepository companyRepository;
     private final IntangibleAssetRepository intangibleAssetRepository;
     private final IntangibleAssetItemRepository intangibleAssetItemRepository;
+    private final IntangibleAssetCategoryRepository intangibleAssetCategoryRepository;
     private final DepartmentRepository departmentRepository;
     private final MemberRepository memberRepository;
 
@@ -186,5 +192,40 @@ public class IntangibleAssetService {
     }
 
 
+    public PaginationResponse<IntangibleAssetSearchResponse> getAssets(
+            IntangibleAssetSearchRequest request,
+            UUID companyId
+    ) {
+        // 1. 입력값 검증
+        companyRepository.findById(companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
 
+        if (request.getCategoryId() != null) {
+            intangibleAssetCategoryRepository.findByIdAndCompany_Id(request.getCategoryId(), companyId)
+                    .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_CATEGORY_NOT_FOUND));
+        }
+
+        if (request.getCurrentUserId() != null) {
+            memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(request.getCurrentUserId(), companyId)
+                    .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+        }
+
+        if (request.getDepartmentId() != null) {
+            departmentRepository.findByIdAndCompany_IdAndDeletedAtIsNull(request.getDepartmentId(), companyId)
+                    .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+        }
+
+        // 2. 페이징 처리 및 필터링 후 자산 목록 반환
+        Page<IntangibleAssetSearchResponse> assetPage = intangibleAssetRepository.search(
+                companyId,
+                request.getCategoryId(),
+                request.getStatus(),
+                request.getKeyword(),
+                request.getCurrentUserId(),
+                request.getDepartmentId(),
+                request.toPageable()
+        );
+
+        return PaginationResponse.from(assetPage);
+    }
 }

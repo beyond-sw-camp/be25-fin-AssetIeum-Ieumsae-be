@@ -26,7 +26,7 @@ import static com.ieumsae.assetieum.domain.tangibleasset.item.entity.QTangibleAs
 
 /**
  * 유형자산 Repository 구현체
- * JPA EntityManager를 사용하여 동적 쿼리를 처리한다.
+ * QueryDSL을 사용하여 동적 쿼리를 처리한다.
  */
 @Repository
 @RequiredArgsConstructor

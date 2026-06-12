@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.UUID;
 
-public interface IntangibleAssetRepository extends JpaRepository<IntangibleAsset, UUID> {
+public interface IntangibleAssetRepository extends JpaRepository<IntangibleAsset, UUID>, IntangibleAssetRepositoryCustom {
 
     boolean existsByCompany_IdAndIntangibleAssetItem_Id(UUID id, UUID id1);
 
