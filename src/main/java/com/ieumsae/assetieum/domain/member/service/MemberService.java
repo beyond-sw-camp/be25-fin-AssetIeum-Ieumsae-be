@@ -93,6 +93,7 @@ public class MemberService {
 		validateAdmin(authenticatedMember);
 		UUID companyId = authenticatedMember.companyId();
 		Member member = findActiveMember(memberId, companyId);
+		validateDepartmentChangeAllowed(member);
 		Department previousDepartment = member.getDepartment();
 		Department currentDepartment = findActiveDepartment(request.getDepartmentId(), companyId);
 
@@ -133,6 +134,13 @@ public class MemberService {
 		return member;
 	}
 
+	private void validateDepartmentChangeAllowed(Member member) {
+		if (member.getRole() == MemberRole.DEPARTMENT_MANAGER
+			|| member.getRole() == MemberRole.ASSET_MANAGER) {
+			throw new BusinessException(ErrorCode.MEMBER_DEPARTMENT_CHANGE_NOT_ALLOWED);
+		}
+	}
+
 	private void validateMemberNoNotDuplicated(UUID companyId, String memberNo) {
 		if (memberRepository.existsByCompany_IdAndMemberNo(companyId, memberNo)) {
 			throw new BusinessException(ErrorCode.MEMBER_ALREADY_EXISTS);
@@ -164,7 +172,7 @@ public class MemberService {
 	}
 
 	private void validateDepartmentManagerAssignable(Department department, MemberRole role) {
-		if (role != MemberRole.DEPARTMENT_MANAGER) {
+		if (!isManagerRole(role)) {
 			return;
 		}
 
@@ -184,11 +192,15 @@ public class MemberService {
 	}
 
 	private void assignDepartmentManagerIfNeeded(Department department, Member member) {
-		if (member.getRole() != MemberRole.DEPARTMENT_MANAGER) {
+		if (!isManagerRole(member.getRole())) {
 			return;
 		}
 
 		department.changeDepartmentManager(member);
+	}
+
+	private boolean isManagerRole(MemberRole role) {
+		return role == MemberRole.DEPARTMENT_MANAGER || role == MemberRole.ASSET_MANAGER;
 	}
 
 	private String normalizeKeyword(String keyword) {
