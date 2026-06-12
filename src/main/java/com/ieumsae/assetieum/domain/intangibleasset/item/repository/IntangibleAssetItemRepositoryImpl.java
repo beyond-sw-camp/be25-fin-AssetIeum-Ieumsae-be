@@ -1,28 +1,34 @@
 package com.ieumsae.assetieum.domain.intangibleasset.item.repository;
 
 import com.ieumsae.assetieum.domain.intangibleasset.category.repository.IntangibleAssetCategoryRepository;
+import com.ieumsae.assetieum.domain.intangibleasset.item.dto.IntangibleAssetItemResponse;
 import com.ieumsae.assetieum.domain.intangibleasset.item.entity.IntangibleAssetItem;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
-import jakarta.persistence.TypedQuery;
+import com.querydsl.core.BooleanBuilder;
+import com.querydsl.core.Tuple;
+import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
+
+import static com.ieumsae.assetieum.domain.intangibleasset.asset.entity.QIntangibleAsset.intangibleAsset;
+import static com.ieumsae.assetieum.domain.intangibleasset.category.entity.QIntangibleAssetCategory.intangibleAssetCategory;
+import static com.ieumsae.assetieum.domain.intangibleasset.item.entity.QIntangibleAssetItem.intangibleAssetItem;
 
 @Repository
 @RequiredArgsConstructor
 public class IntangibleAssetItemRepositoryImpl implements IntangibleAssetItemRepositoryCustom {
 
-    @PersistenceContext
-    private final EntityManager em;
+    private final JPAQueryFactory queryFactory;
     private final IntangibleAssetCategoryRepository categoryRepository;
 
     /**
@@ -30,63 +36,102 @@ public class IntangibleAssetItemRepositoryImpl implements IntangibleAssetItemRep
      * 카테고리, 품목명, 제공사, 라이선스 유형, 표준 여부 조건을 동적으로 적용한다.
      */
     @Override
-    public Page<IntangibleAssetItem> search(
+    public Page<IntangibleAssetItemResponse> search(
             UUID companyId,
             UUID categoryId,
             String keyword,
             Boolean isStandard,
             Pageable pageable
     ) {
-        StringBuilder jpql = new StringBuilder("SELECT t FROM IntangibleAssetItem t WHERE t.company.id = :companyId AND t.deletedAt IS NULL");
-        StringBuilder countJpql = new StringBuilder("SELECT COUNT(t) FROM IntangibleAssetItem t WHERE t.company.id = :companyId AND t.deletedAt IS NULL");
-
-        Map<String, Object> params = new HashMap<>();
-        params.put("companyId", companyId);
+        BooleanBuilder condition = new BooleanBuilder();
+        condition.and(intangibleAssetItem.company.id.eq(companyId));
+        condition.and(intangibleAssetItem.deletedAt.isNull());
 
         List<UUID> categoryIds = getCategoryIds(categoryId, companyId);
         if (categoryIds != null && !categoryIds.isEmpty()) {
-            jpql.append(" AND t.intangibleAssetCategory.id IN :categoryIds");
-            countJpql.append(" AND t.intangibleAssetCategory.id IN :categoryIds");
-            params.put("categoryIds", categoryIds);
+            condition.and(intangibleAssetCategory.id.in(categoryIds));
         }
 
         if (keyword != null && !keyword.isBlank()) {
-            String keywordCondition = """
-                     AND (
-                        LOWER(t.productName) LIKE LOWER(:keyword)
-                        OR LOWER(t.provider) LIKE LOWER(:keyword)
-                        OR LOWER(CAST(t.licenseType AS string)) LIKE LOWER(:keyword)
-                        OR LOWER(t.intangibleAssetCategory.name) LIKE LOWER(:keyword)
-                    )
-                    """;
-            jpql.append(keywordCondition);
-            countJpql.append(keywordCondition);
-            params.put("keyword", "%" + keyword + "%");
+            String trimmedKeyword = keyword.trim();
+            condition.and(
+                    intangibleAssetItem.productName.containsIgnoreCase(trimmedKeyword)
+                            .or(intangibleAssetItem.provider.containsIgnoreCase(trimmedKeyword))
+                            .or(intangibleAssetItem.licenseType.stringValue().containsIgnoreCase(trimmedKeyword))
+                            .or(intangibleAssetCategory.name.containsIgnoreCase(trimmedKeyword))
+            );
         }
 
         if (isStandard != null) {
-            jpql.append(" AND t.isStandard = :isStandard");
-            countJpql.append(" AND t.isStandard = :isStandard");
-            params.put("isStandard", isStandard);
+            condition.and(intangibleAssetItem.isStandard.eq(isStandard));
         }
 
-        jpql.append(" ORDER BY t.createdAt DESC");
+        List<IntangibleAssetItem> items = queryFactory
+                .selectFrom(intangibleAssetItem)
+                .join(intangibleAssetItem.intangibleAssetCategory, intangibleAssetCategory)
+                .where(condition)
+                .orderBy(intangibleAssetItem.createdAt.desc())
+                .offset(pageable.getOffset())
+                .limit(pageable.getPageSize())
+                .fetch();
 
-        TypedQuery<IntangibleAssetItem> query = em.createQuery(jpql.toString(), IntangibleAssetItem.class);
-        TypedQuery<Long> countQuery = em.createQuery(countJpql.toString(), Long.class);
+        Map<UUID, BigDecimal> prePurchasePriceByItemId = findPrePurchasePriceByItemId(companyId, items);
 
-        for (Map.Entry<String, Object> entry : params.entrySet()) {
-            query.setParameter(entry.getKey(), entry.getValue());
-            countQuery.setParameter(entry.getKey(), entry.getValue());
+        List<IntangibleAssetItemResponse> content = items.stream()
+                .map(item -> IntangibleAssetItemResponse.from(
+                        item,
+                        prePurchasePriceByItemId.get(item.getId())
+                ))
+                .collect(Collectors.toList());
+
+        Long total = queryFactory
+                .select(intangibleAssetItem.count())
+                .from(intangibleAssetItem)
+                .join(intangibleAssetItem.intangibleAssetCategory, intangibleAssetCategory)
+                .where(condition)
+                .fetchOne();
+
+        return new PageImpl<>(content, pageable, total == null ? 0 : total);
+    }
+
+    private Map<UUID, BigDecimal> findPrePurchasePriceByItemId(
+            UUID companyId,
+            List<IntangibleAssetItem> items
+    ) {
+        if (items.isEmpty()) {
+            return Map.of();
         }
 
-        query.setFirstResult((int) pageable.getOffset());
-        query.setMaxResults(pageable.getPageSize());
+        List<UUID> itemIds = items.stream()
+                .map(IntangibleAssetItem::getId)
+                .collect(Collectors.toList());
 
-        List<IntangibleAssetItem> content = query.getResultList();
-        Long total = countQuery.getSingleResult();
+        List<Tuple> latestAssets = queryFactory
+                .select(
+                        intangibleAsset.intangibleAssetItem.id,
+                        intangibleAsset.purchasePrice
+                )
+                .from(intangibleAsset)
+                .where(
+                        intangibleAsset.company.id.eq(companyId),
+                        intangibleAsset.intangibleAssetItem.id.in(itemIds),
+                        intangibleAsset.purchaseDate.isNotNull()
+                )
+                .orderBy(
+                        intangibleAsset.intangibleAssetItem.id.asc(),
+                        intangibleAsset.purchaseDate.desc(),
+                        intangibleAsset.createdAt.desc()
+                )
+                .fetch();
 
-        return new PageImpl<>(content, pageable, total);
+        Map<UUID, BigDecimal> prePurchasePriceByItemId = new HashMap<>();
+        for (Tuple latestAsset : latestAssets) {
+            UUID itemId = latestAsset.get(intangibleAsset.intangibleAssetItem.id);
+            BigDecimal purchasePrice = latestAsset.get(intangibleAsset.purchasePrice);
+            prePurchasePriceByItemId.putIfAbsent(itemId, purchasePrice);
+        }
+
+        return prePurchasePriceByItemId;
     }
 
     private List<UUID> getCategoryIds(UUID categoryId, UUID companyId) {

@@ -152,7 +152,7 @@ public class IntangibleAssetItemService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
 
         // 2. 페이징 처리 및 필터링 후 품목 목록 반환
-        Page<IntangibleAssetItem> itemPage =
+        Page<IntangibleAssetItemResponse> responsePage =
                 intangibleAssetItemRepository.search(
                         companyId,
                         request.getCategoryId(),
@@ -160,9 +160,6 @@ public class IntangibleAssetItemService {
                         request.getIsStandard(),
                         request.toPageable()
                 );
-
-        Page<IntangibleAssetItemResponse> responsePage =
-                itemPage.map(IntangibleAssetItemResponse::from);
 
         return PaginationResponse.from(responsePage);
     }

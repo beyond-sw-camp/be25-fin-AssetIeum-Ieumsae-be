@@ -1,32 +1,38 @@
 package com.ieumsae.assetieum.domain.tangibleasset.item.repository;
 
 import com.ieumsae.assetieum.domain.tangibleasset.category.repository.TangibleAssetCategoryRepository;
+import com.ieumsae.assetieum.domain.tangibleasset.item.dto.TangibleAssetItemResponse;
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
-import jakarta.persistence.TypedQuery;
+import com.querydsl.core.BooleanBuilder;
+import com.querydsl.core.Tuple;
+import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
+
+import static com.ieumsae.assetieum.domain.tangibleasset.asset.entity.QTangibleAsset.tangibleAsset;
+import static com.ieumsae.assetieum.domain.tangibleasset.category.entity.QTangibleAssetCategory.tangibleAssetCategory;
+import static com.ieumsae.assetieum.domain.tangibleasset.item.entity.QTangibleAssetItem.tangibleAssetItem;
 
 /**
  * 유형자산 품목 Repository 구현체.
- * JPA EntityManager를 사용하여 동적 쿼리를 처리한다.
+ * QueryDSL 사용하여 동적 쿼리를 처리한다.
  */
 @Repository
 @RequiredArgsConstructor
 public class TangibleAssetItemRepositoryImpl implements TangibleAssetItemRepositoryCustom {
 
-    @PersistenceContext
-    private final EntityManager em;
+    private final JPAQueryFactory queryFactory;
     private final TangibleAssetCategoryRepository categoryRepository;
 
     /**
@@ -34,63 +40,102 @@ public class TangibleAssetItemRepositoryImpl implements TangibleAssetItemReposit
      * 카테고리, 품목명, 제조사, 모델명, 표준 여부 조건을 동적으로 적용한다.
      */
     @Override
-    public Page<TangibleAssetItem> search(
+    public Page<TangibleAssetItemResponse> search(
             UUID companyId,
             UUID categoryId,
             String keyword,
             Boolean isStandard,
             Pageable pageable
     ) {
-        StringBuilder jpql = new StringBuilder("SELECT t FROM TangibleAssetItem t WHERE t.company.id = :companyId AND t.deletedAt IS NULL");
-        StringBuilder countJpql = new StringBuilder("SELECT COUNT(t) FROM TangibleAssetItem t WHERE t.company.id = :companyId AND t.deletedAt IS NULL");
-        
-        Map<String, Object> params = new HashMap<>();
-        params.put("companyId", companyId);
+        BooleanBuilder condition = new BooleanBuilder();
+        condition.and(tangibleAssetItem.company.id.eq(companyId));
+        condition.and(tangibleAssetItem.deletedAt.isNull());
 
         List<UUID> categoryIds = getCategoryIds(categoryId, companyId);
         if (categoryIds != null && !categoryIds.isEmpty()) {
-            jpql.append(" AND t.tangibleAssetCategory.id IN :categoryIds");
-            countJpql.append(" AND t.tangibleAssetCategory.id IN :categoryIds");
-            params.put("categoryIds", categoryIds);
+            condition.and(tangibleAssetCategory.id.in(categoryIds));
         }
 
         if (keyword != null && !keyword.isBlank()) {
-            String keywordCondition = """
-                     AND (
-                        LOWER(t.productName) LIKE LOWER(:keyword)
-                        OR LOWER(t.manufacturer) LIKE LOWER(:keyword)
-                        OR LOWER(t.modelName) LIKE LOWER(:keyword)
-                        OR LOWER(t.tangibleAssetCategory.name) LIKE LOWER(:keyword)
-                    )
-                    """;
-            jpql.append(keywordCondition);
-            countJpql.append(keywordCondition);
-            params.put("keyword", "%" + keyword + "%");
+            String trimmedKeyword = keyword.trim();
+            condition.and(
+                    tangibleAssetItem.productName.containsIgnoreCase(trimmedKeyword)
+                            .or(tangibleAssetItem.manufacturer.containsIgnoreCase(trimmedKeyword))
+                            .or(tangibleAssetItem.modelName.containsIgnoreCase(trimmedKeyword))
+                            .or(tangibleAssetCategory.name.containsIgnoreCase(trimmedKeyword))
+            );
         }
 
         if (isStandard != null) {
-            jpql.append(" AND t.isStandard = :isStandard");
-            countJpql.append(" AND t.isStandard = :isStandard");
-            params.put("isStandard", isStandard);
+            condition.and(tangibleAssetItem.isStandard.eq(isStandard));
         }
 
-        jpql.append(" ORDER BY t.createdAt DESC");
+        List<TangibleAssetItem> items = queryFactory
+                .selectFrom(tangibleAssetItem)
+                .join(tangibleAssetItem.tangibleAssetCategory, tangibleAssetCategory)
+                .where(condition)
+                .orderBy(tangibleAssetItem.createdAt.desc())
+                .offset(pageable.getOffset())
+                .limit(pageable.getPageSize())
+                .fetch();
 
-        TypedQuery<TangibleAssetItem> query = em.createQuery(jpql.toString(), TangibleAssetItem.class);
-        TypedQuery<Long> countQuery = em.createQuery(countJpql.toString(), Long.class);
+        Map<UUID, BigDecimal> prePurchasePriceByItemId = findPrePurchasePriceByItemId(companyId, items);
 
-        for (Map.Entry<String, Object> entry : params.entrySet()) {
-            query.setParameter(entry.getKey(), entry.getValue());
-            countQuery.setParameter(entry.getKey(), entry.getValue());
+        List<TangibleAssetItemResponse> content = items.stream()
+                .map(item -> TangibleAssetItemResponse.from(
+                        item,
+                        prePurchasePriceByItemId.get(item.getId())
+                ))
+                .collect(Collectors.toList());
+
+        Long total = queryFactory
+                .select(tangibleAssetItem.count())
+                .from(tangibleAssetItem)
+                .join(tangibleAssetItem.tangibleAssetCategory, tangibleAssetCategory)
+                .where(condition)
+                .fetchOne();
+
+        return new PageImpl<>(content, pageable, total == null ? 0 : total);
+    }
+
+    private Map<UUID, BigDecimal> findPrePurchasePriceByItemId(
+            UUID companyId,
+            List<TangibleAssetItem> items
+    ) {
+        if (items.isEmpty()) {
+            return Map.of();
         }
 
-        query.setFirstResult((int) pageable.getOffset());
-        query.setMaxResults(pageable.getPageSize());
+        List<UUID> itemIds = items.stream()
+                .map(TangibleAssetItem::getId)
+                .collect(Collectors.toList());
 
-        List<TangibleAssetItem> content = query.getResultList();
-        Long total = countQuery.getSingleResult();
+        List<Tuple> latestAssets = queryFactory
+                .select(
+                        tangibleAsset.tangibleAssetItem.id,
+                        tangibleAsset.purchasePrice
+                )
+                .from(tangibleAsset)
+                .where(
+                        tangibleAsset.company.id.eq(companyId),
+                        tangibleAsset.tangibleAssetItem.id.in(itemIds),
+                        tangibleAsset.purchaseDate.isNotNull()
+                )
+                .orderBy(
+                        tangibleAsset.tangibleAssetItem.id.asc(),
+                        tangibleAsset.purchaseDate.desc(),
+                        tangibleAsset.createdAt.desc()
+                )
+                .fetch();
 
-        return new PageImpl<>(content, pageable, total);
+        Map<UUID, BigDecimal> prePurchasePriceByItemId = new HashMap<>();
+        for (Tuple latestAsset : latestAssets) {
+            UUID itemId = latestAsset.get(tangibleAsset.tangibleAssetItem.id);
+            BigDecimal purchasePrice = latestAsset.get(tangibleAsset.purchasePrice);
+            prePurchasePriceByItemId.putIfAbsent(itemId, purchasePrice);
+        }
+
+        return prePurchasePriceByItemId;
     }
 
     private List<UUID> getCategoryIds(UUID categoryId, UUID companyId) {

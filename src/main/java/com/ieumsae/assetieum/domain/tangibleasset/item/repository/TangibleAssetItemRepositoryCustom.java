@@ -1,6 +1,6 @@
 package com.ieumsae.assetieum.domain.tangibleasset.item.repository;
 
-import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
+import com.ieumsae.assetieum.domain.tangibleasset.item.dto.TangibleAssetItemResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -17,7 +17,7 @@ import java.util.UUID;
  * 하위 카테고리 품목까지 함께 조회한다.
  */
 public interface TangibleAssetItemRepositoryCustom {
-    Page<TangibleAssetItem> search(
+    Page<TangibleAssetItemResponse> search(
             UUID companyId,
             UUID categoryId,
             String keyword,

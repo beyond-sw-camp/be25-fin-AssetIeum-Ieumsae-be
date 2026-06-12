@@ -95,7 +95,7 @@ public class TangibleAssetItemService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
 
         // 2. 페이징 처리 및 필터링 후 품목 목록 반환
-        Page<TangibleAssetItem> itemPage =
+        Page<TangibleAssetItemResponse> responsePage =
                 tangibleAssetItemRepository.search(
                         companyId,
                         request.getCategoryId(),
@@ -103,9 +103,6 @@ public class TangibleAssetItemService {
                         request.getIsStandard(),
                         request.toPageable()
                 );
-
-        Page<TangibleAssetItemResponse> responsePage =
-                itemPage.map(TangibleAssetItemResponse::from);
 
         return PaginationResponse.from(responsePage);
     }
