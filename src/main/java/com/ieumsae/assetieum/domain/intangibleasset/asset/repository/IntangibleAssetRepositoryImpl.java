@@ -5,8 +5,8 @@ import com.ieumsae.assetieum.domain.intangibleasset.asset.type.IntangibleAssetSt
 import com.ieumsae.assetieum.domain.intangibleasset.assignment.type.AssignmentStatus;
 import com.ieumsae.assetieum.domain.intangibleasset.category.repository.IntangibleAssetCategoryRepository;
 import com.querydsl.core.BooleanBuilder;
+import com.querydsl.core.types.dsl.CaseBuilder;
 import com.querydsl.core.types.Projections;
-import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -18,6 +18,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import com.ieumsae.assetieum.domain.department.entity.QDepartment;
+import com.ieumsae.assetieum.domain.member.entity.QMember;
 import static com.ieumsae.assetieum.domain.department.entity.QDepartment.department;
 import static com.ieumsae.assetieum.domain.intangibleasset.asset.entity.QIntangibleAsset.intangibleAsset;
 import static com.ieumsae.assetieum.domain.intangibleasset.assignment.entity.QAssignment.assignment;
@@ -50,6 +52,9 @@ public class IntangibleAssetRepositoryImpl implements IntangibleAssetRepositoryC
             UUID departmentId,
             Pageable pageable
     ) {
+        QMember assignedMember = new QMember("assignedMember");
+        QDepartment assignedDepartment = new QDepartment("assignedDepartment");
+
         BooleanBuilder condition = new BooleanBuilder();
         condition.and(intangibleAsset.company.id.eq(companyId));
 
@@ -75,35 +80,15 @@ public class IntangibleAssetRepositoryImpl implements IntangibleAssetRepositoryC
 
         if (currentUserId != null) {
             condition.and(
-                    member.id.eq(currentUserId)
-                            .or(
-                                    JPAExpressions
-                                            .selectOne()
-                                            .from(assignment)
-                                            .where(
-                                                    assignment.intangibleAsset.id.eq(intangibleAsset.id),
-                                                    assignment.member.id.eq(currentUserId),
-                                                    assignment.assignmentStatus.eq(AssignmentStatus.ACTIVE)
-                                            )
-                                            .exists()
-                            )
+                    assignedMember.id.eq(currentUserId)
+                            .or(assignment.id.isNull().and(member.id.eq(currentUserId)))
             );
         }
 
         if (departmentId != null) {
             condition.and(
-                    department.id.eq(departmentId)
-                            .or(
-                                    JPAExpressions
-                                            .selectOne()
-                                            .from(assignment)
-                                            .where(
-                                                    assignment.intangibleAsset.id.eq(intangibleAsset.id),
-                                                    assignment.department.id.eq(departmentId),
-                                                    assignment.assignmentStatus.eq(AssignmentStatus.ACTIVE)
-                                            )
-                                            .exists()
-                            )
+                    assignedDepartment.id.eq(departmentId)
+                            .or(assignment.id.isNull().and(department.id.eq(departmentId)))
             );
         }
 
@@ -113,16 +98,31 @@ public class IntangibleAssetRepositoryImpl implements IntangibleAssetRepositoryC
                         intangibleAsset.id,
                         intangibleAssetItem.productName,
                         intangibleAsset.assetCode,
-                        member.name,
-                        member.memberNo,
+                        new CaseBuilder()
+                                .when(assignment.id.isNotNull())
+                                .then(assignedMember.name)
+                                .otherwise(member.name),
+                        new CaseBuilder()
+                                .when(assignment.id.isNotNull())
+                                .then(assignedMember.memberNo)
+                                .otherwise(member.memberNo),
                         intangibleAsset.intangibleAssetStatus,
-                        department.name
+                        new CaseBuilder()
+                                .when(assignment.id.isNotNull())
+                                .then(assignedDepartment.name)
+                                .otherwise(department.name)
                 ))
                 .from(intangibleAsset)
                 .join(intangibleAsset.intangibleAssetItem, intangibleAssetItem)
                 .join(intangibleAssetItem.intangibleAssetCategory, intangibleAssetCategory)
                 .leftJoin(intangibleAsset.member, member)
                 .leftJoin(intangibleAsset.department, department)
+                .leftJoin(assignment).on(
+                        assignment.intangibleAsset.id.eq(intangibleAsset.id),
+                        assignment.assignmentStatus.eq(AssignmentStatus.ACTIVE)
+                )
+                .leftJoin(assignment.member, assignedMember)
+                .leftJoin(assignment.department, assignedDepartment)
                 .where(condition)
                 .orderBy(intangibleAsset.createdAt.desc())
                 .offset(pageable.getOffset())
@@ -136,6 +136,12 @@ public class IntangibleAssetRepositoryImpl implements IntangibleAssetRepositoryC
                 .join(intangibleAssetItem.intangibleAssetCategory, intangibleAssetCategory)
                 .leftJoin(intangibleAsset.member, member)
                 .leftJoin(intangibleAsset.department, department)
+                .leftJoin(assignment).on(
+                        assignment.intangibleAsset.id.eq(intangibleAsset.id),
+                        assignment.assignmentStatus.eq(AssignmentStatus.ACTIVE)
+                )
+                .leftJoin(assignment.member, assignedMember)
+                .leftJoin(assignment.department, assignedDepartment)
                 .where(condition)
                 .fetchOne();
 
