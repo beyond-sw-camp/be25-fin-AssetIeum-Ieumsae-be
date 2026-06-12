@@ -12,8 +12,6 @@ import java.util.UUID;
 public class IntangibleAssetItemDeleteResponse {
     private UUID intangibleAssetItemId;
 
-    private UUID companyId;
-
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime deletedAt;
 }

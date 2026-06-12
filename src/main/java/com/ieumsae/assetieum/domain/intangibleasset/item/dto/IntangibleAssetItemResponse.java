@@ -3,18 +3,16 @@ package com.ieumsae.assetieum.domain.intangibleasset.item.dto;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.ieumsae.assetieum.domain.intangibleasset.item.entity.IntangibleAssetItem;
-import lombok.Builder;
-import lombok.Getter;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
+import lombok.Builder;
+import lombok.Getter;
 
 @Getter
 @Builder
 @JsonPropertyOrder({
         "itemId",
-        "companyId",
         "categoryId",
         "productName",
         "provider",
@@ -28,8 +26,6 @@ import java.util.UUID;
 public class IntangibleAssetItemResponse {
 
     private UUID itemId;
-
-    private UUID companyId;
 
     private UUID categoryId;
 
@@ -54,7 +50,6 @@ public class IntangibleAssetItemResponse {
     ) {
         return IntangibleAssetItemResponse.builder()
                 .itemId(item.getId())
-                .companyId(item.getCompany().getId())
                 .categoryId(
                         item.getIntangibleAssetCategory().getId()
                 )
@@ -75,7 +70,6 @@ public class IntangibleAssetItemResponse {
     ) {
         return IntangibleAssetItemResponse.builder()
                 .itemId(item.getId())
-                .companyId(item.getCompany().getId())
                 .categoryId(
                         item.getIntangibleAssetCategory().getId()
                 )

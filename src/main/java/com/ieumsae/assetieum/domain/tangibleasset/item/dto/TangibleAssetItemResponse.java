@@ -14,7 +14,6 @@ import java.util.UUID;
 @Builder
 @JsonPropertyOrder({
         "itemId",
-        "companyId",
         "categoryId",
         "productName",
         "manufacturer",
