@@ -1,5 +1,6 @@
 package com.ieumsae.assetieum.domain.tangibleasset.asset.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.type.AssetUsageType;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.type.TangibleAssetStatus;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.type.UsageType;
@@ -39,11 +40,14 @@ public class TangibleAssetCreateRequest {
     @NotBlank
     private String location;
 
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime usedStartedAt;
 
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime returnDueDate;
 
     @NotNull
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime purchaseDate;
 
     @NotNull
@@ -53,5 +57,6 @@ public class TangibleAssetCreateRequest {
     private String purchaseVendor;
 
     @NotNull
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime warrantyExpiredAt;
 }

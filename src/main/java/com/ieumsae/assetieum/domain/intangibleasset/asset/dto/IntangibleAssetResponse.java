@@ -20,7 +20,6 @@ import java.util.UUID;
 @AllArgsConstructor
 @JsonPropertyOrder({
         "intangibleAssetId",
-        "companyId",
         "intangibleItemId",
         "assetCode",
         "licenseCode",
@@ -40,7 +39,6 @@ import java.util.UUID;
 })
 public class IntangibleAssetResponse {
     private UUID intangibleAssetId;
-    private UUID companyId;
     private UUID intangibleItemId;
 
     private String assetCode;
@@ -75,7 +73,6 @@ public class IntangibleAssetResponse {
     public static IntangibleAssetResponse from(IntangibleAsset intangibleAsset) {
         return IntangibleAssetResponse.builder()
                 .intangibleAssetId(intangibleAsset.getId())
-                .companyId(intangibleAsset.getCompany().getId())
                 .intangibleItemId(intangibleAsset.getIntangibleAssetItem().getId())
                 .assetCode(intangibleAsset.getAssetCode())
                 .licenseCode(intangibleAsset.getLicenseCode())
