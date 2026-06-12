@@ -19,7 +19,7 @@ public class RentalTicketCreateResponse {
 	private final UUID ticketId;
 	private final String ticketNo;
 	private final TicketType ticketType;
-	private final TicketStatus status;
+	private final TicketStatus ticketStatus;
 	private final RentalTicketStatus rentalStatus;
 	private final RequestedUsageType requestedUsageType;
 	private final UUID tangibleAssetItemId;
@@ -37,7 +37,7 @@ public class RentalTicketCreateResponse {
 			.ticketId(ticket.getId())
 			.ticketNo(ticket.getTicketNo())
 			.ticketType(ticket.getTicketType())
-			.status(ticket.getTicketStatus())
+			.ticketStatus(ticket.getTicketStatus())
 			.rentalStatus(rentalTicket.getStatus())
 			.requestedUsageType(rentalTicket.getRequestedUsageType())
 			.tangibleAssetItemId(item.getId())
