@@ -110,6 +110,7 @@ public class IntangibleAssetRepositoryImpl implements IntangibleAssetRepositoryC
         List<IntangibleAssetSearchResponse> content = queryFactory
                 .select(Projections.constructor(
                         IntangibleAssetSearchResponse.class,
+                        intangibleAsset.id,
                         intangibleAssetItem.productName,
                         intangibleAsset.assetCode,
                         member.name,

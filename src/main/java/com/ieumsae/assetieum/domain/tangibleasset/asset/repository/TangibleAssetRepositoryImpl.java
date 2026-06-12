@@ -119,6 +119,7 @@ public class TangibleAssetRepositoryImpl implements TangibleAssetRepositoryCusto
         TangibleAssetDetailResponse response = queryFactory
                 .select(Projections.constructor(
                         TangibleAssetDetailResponse.class,
+                        tangibleAsset.id,
                         tangibleAssetItem.productName,
                         tangibleAsset.assetCode,
                         tangibleAsset.serialNumber,
