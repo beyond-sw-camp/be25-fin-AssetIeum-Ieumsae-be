@@ -1,6 +1,6 @@
-package com.ieumsae.assetieum.domain.tangibleasset.asset.dto;
+package com.ieumsae.assetieum.domain.intangibleasset.asset.dto;
 
-import com.ieumsae.assetieum.domain.tangibleasset.asset.type.TangibleAssetStatus;
+import com.ieumsae.assetieum.domain.intangibleasset.asset.type.IntangibleAssetStatus;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -10,9 +10,9 @@ import java.util.UUID;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-public class TangibleAssetSearchResponse {
+public class IntangibleAssetSearchResponse {
 
-    private UUID tangibleAssetId;
+    private UUID intangibleAssetId;
 
     private String productName;
 
@@ -22,7 +22,8 @@ public class TangibleAssetSearchResponse {
 
     private String currentUserMemberNo;
 
-    private TangibleAssetStatus tangibleAssetStatus;
+    private IntangibleAssetStatus intangibleAssetStatus;
 
     private String departmentName;
+
 }
