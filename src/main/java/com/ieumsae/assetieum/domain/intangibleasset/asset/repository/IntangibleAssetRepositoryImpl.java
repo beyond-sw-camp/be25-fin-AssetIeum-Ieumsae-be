@@ -24,7 +24,7 @@ import java.util.UUID;
 
 import static com.ieumsae.assetieum.domain.department.entity.QDepartment.department;
 import static com.ieumsae.assetieum.domain.intangibleasset.asset.entity.QIntangibleAsset.intangibleAsset;
-import static com.ieumsae.assetieum.domain.intangibleasset.assignment.entity.QAssignment.assignment;
+import static com.ieumsae.assetieum.domain.intangibleasset.assignment.entity.QIntangibleAssetAssignment.intangibleAssetAssignment;
 import static com.ieumsae.assetieum.domain.intangibleasset.category.entity.QIntangibleAssetCategory.intangibleAssetCategory;
 import static com.ieumsae.assetieum.domain.intangibleasset.item.entity.QIntangibleAssetItem.intangibleAssetItem;
 import static com.ieumsae.assetieum.domain.member.entity.QMember.member;
@@ -83,14 +83,14 @@ public class IntangibleAssetRepositoryImpl implements IntangibleAssetRepositoryC
         if (currentUserId != null) {
             condition.and(
                     assignedMember.id.eq(currentUserId)
-                            .or(assignment.id.isNull().and(member.id.eq(currentUserId)))
+                            .or(intangibleAssetAssignment.id.isNull().and(member.id.eq(currentUserId)))
             );
         }
 
         if (departmentId != null) {
             condition.and(
                     assignedDepartment.id.eq(departmentId)
-                            .or(assignment.id.isNull().and(department.id.eq(departmentId)))
+                            .or(intangibleAssetAssignment.id.isNull().and(department.id.eq(departmentId)))
             );
         }
 
@@ -101,16 +101,16 @@ public class IntangibleAssetRepositoryImpl implements IntangibleAssetRepositoryC
                         intangibleAssetItem.productName,
                         intangibleAsset.assetCode,
                         new CaseBuilder()
-                                .when(assignment.id.isNotNull())
+                                .when(intangibleAssetAssignment.id.isNotNull())
                                 .then(assignedMember.name)
                                 .otherwise(member.name),
                         new CaseBuilder()
-                                .when(assignment.id.isNotNull())
+                                .when(intangibleAssetAssignment.id.isNotNull())
                                 .then(assignedMember.memberNo)
                                 .otherwise(member.memberNo),
                         intangibleAsset.intangibleAssetStatus,
                         new CaseBuilder()
-                                .when(assignment.id.isNotNull())
+                                .when(intangibleAssetAssignment.id.isNotNull())
                                 .then(assignedDepartment.name)
                                 .otherwise(department.name)
                 ))
@@ -119,12 +119,12 @@ public class IntangibleAssetRepositoryImpl implements IntangibleAssetRepositoryC
                 .join(intangibleAssetItem.intangibleAssetCategory, intangibleAssetCategory)
                 .leftJoin(intangibleAsset.member, member)
                 .leftJoin(intangibleAsset.department, department)
-                .leftJoin(assignment).on(
-                        assignment.intangibleAsset.id.eq(intangibleAsset.id),
-                        assignment.assignmentStatus.eq(AssignmentStatus.ACTIVE)
+                .leftJoin(intangibleAssetAssignment).on(
+                        intangibleAssetAssignment.intangibleAsset.id.eq(intangibleAsset.id),
+                        intangibleAssetAssignment.assignmentStatus.eq(AssignmentStatus.ACTIVE)
                 )
-                .leftJoin(assignment.member, assignedMember)
-                .leftJoin(assignment.department, assignedDepartment)
+                .leftJoin(intangibleAssetAssignment.member, assignedMember)
+                .leftJoin(intangibleAssetAssignment.department, assignedDepartment)
                 .where(condition)
                 .orderBy(intangibleAsset.createdAt.desc())
                 .offset(pageable.getOffset())
@@ -138,12 +138,12 @@ public class IntangibleAssetRepositoryImpl implements IntangibleAssetRepositoryC
                 .join(intangibleAssetItem.intangibleAssetCategory, intangibleAssetCategory)
                 .leftJoin(intangibleAsset.member, member)
                 .leftJoin(intangibleAsset.department, department)
-                .leftJoin(assignment).on(
-                        assignment.intangibleAsset.id.eq(intangibleAsset.id),
-                        assignment.assignmentStatus.eq(AssignmentStatus.ACTIVE)
+                .leftJoin(intangibleAssetAssignment).on(
+                        intangibleAssetAssignment.intangibleAsset.id.eq(intangibleAsset.id),
+                        intangibleAssetAssignment.assignmentStatus.eq(AssignmentStatus.ACTIVE)
                 )
-                .leftJoin(assignment.member, assignedMember)
-                .leftJoin(assignment.department, assignedDepartment)
+                .leftJoin(intangibleAssetAssignment.member, assignedMember)
+                .leftJoin(intangibleAssetAssignment.department, assignedDepartment)
                 .where(condition)
                 .fetchOne();
 
