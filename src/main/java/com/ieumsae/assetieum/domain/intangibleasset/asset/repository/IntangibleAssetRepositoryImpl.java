@@ -1,13 +1,15 @@
 package com.ieumsae.assetieum.domain.intangibleasset.asset.repository;
 
+import com.ieumsae.assetieum.domain.department.entity.QDepartment;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.dto.IntangibleAssetDetailResponse;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.dto.IntangibleAssetSearchResponse;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.type.IntangibleAssetStatus;
 import com.ieumsae.assetieum.domain.intangibleasset.assignment.type.AssignmentStatus;
 import com.ieumsae.assetieum.domain.intangibleasset.category.repository.IntangibleAssetCategoryRepository;
+import com.ieumsae.assetieum.domain.member.entity.QMember;
 import com.querydsl.core.BooleanBuilder;
-import com.querydsl.core.types.dsl.CaseBuilder;
 import com.querydsl.core.types.Projections;
+import com.querydsl.core.types.dsl.CaseBuilder;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -20,15 +22,12 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import com.ieumsae.assetieum.domain.department.entity.QDepartment;
-import com.ieumsae.assetieum.domain.member.entity.QMember;
 import static com.ieumsae.assetieum.domain.department.entity.QDepartment.department;
 import static com.ieumsae.assetieum.domain.intangibleasset.asset.entity.QIntangibleAsset.intangibleAsset;
 import static com.ieumsae.assetieum.domain.intangibleasset.assignment.entity.QAssignment.assignment;
 import static com.ieumsae.assetieum.domain.intangibleasset.category.entity.QIntangibleAssetCategory.intangibleAssetCategory;
 import static com.ieumsae.assetieum.domain.intangibleasset.item.entity.QIntangibleAssetItem.intangibleAssetItem;
 import static com.ieumsae.assetieum.domain.member.entity.QMember.member;
-import static com.ieumsae.assetieum.domain.tangibleasset.asset.entity.QTangibleAsset.tangibleAsset;
 
 /**
  * 무형자산 Repository 구현체

@@ -127,7 +127,7 @@ public class TangibleAssetService {
 
         if (request.getDepartmentId() != null) {
             departmentRepository.findByIdAndCompany_IdAndDeletedAtIsNull(request.getDepartmentId(), companyId)
-                    .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+                    .orElseThrow(() -> new BusinessException(ErrorCode.DEPARTMENT_NOT_FOUND));
         }
 
         // 2. 페이징 처리 및 필터링 후 자산 목록 반환

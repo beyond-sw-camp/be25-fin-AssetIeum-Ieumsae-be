@@ -62,7 +62,7 @@ public class IntangibleAssetController {
     ) {
         IntangibleAssetDetailResponse response = intangibleAssetService.getAssetDetail(assetId, member.companyId());
 
-        return ApiResponse.ok("무형자산 상세 조회에 성곧했습니다.", response);
+        return ApiResponse.ok("무형자산 상세 조회에 성공했습니다.", response);
     }
 
     @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
