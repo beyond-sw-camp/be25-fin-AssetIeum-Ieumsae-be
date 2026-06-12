@@ -2,6 +2,7 @@ package com.ieumsae.assetieum.domain.intangibleasset.asset.entity;
 
 import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.department.entity.Department;
+import com.ieumsae.assetieum.domain.intangibleasset.asset.type.BillingCycle;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.type.IntangibleAssetStatus;
 import com.ieumsae.assetieum.domain.intangibleasset.item.entity.IntangibleAssetItem;
 import com.ieumsae.assetieum.domain.member.entity.Member;
@@ -50,7 +51,10 @@ public class IntangibleAsset extends BaseEntity {
     @JoinColumn(name = "intangible_item_id", nullable = false)
     private IntangibleAssetItem intangibleAssetItem;
 
-    @Column(name = "license_code", nullable = false, length = 50)
+    @Column(name = "asset_code", nullable = false, length = 50)
+    private String assetCode;
+
+    @Column(name = "license_code", length = 50)
     private String licenseCode;
 
     @Enumerated(EnumType.STRING)
@@ -78,8 +82,9 @@ public class IntangibleAsset extends BaseEntity {
     @Column(name = "is_auto_renewal")
     private Boolean isAutoRenewal;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "billing_cycle")
-    private String billingCycle;
+    private BillingCycle billingCycle;
 
     @Column(name = "purchase_date")
     private LocalDateTime purchaseDate;
