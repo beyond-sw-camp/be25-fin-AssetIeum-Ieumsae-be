@@ -9,6 +9,7 @@ import com.ieumsae.assetieum.domain.intangibleasset.asset.dto.IntangibleAssetDet
 import com.ieumsae.assetieum.domain.intangibleasset.asset.dto.IntangibleAssetResponse;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.dto.IntangibleAssetSearchRequest;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.dto.IntangibleAssetSearchResponse;
+import com.ieumsae.assetieum.domain.intangibleasset.asset.dto.IntangibleAssetUpdateRequest;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.entity.IntangibleAsset;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.repository.IntangibleAssetRepository;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.type.BillingCycle;
@@ -81,7 +82,7 @@ public class IntangibleAssetService {
 
         validateMemberDepartment(member, department);
         validateRequiredUsageInfo(status, member, department, request.getStartedAt());
-        validateCreateExpiredAt(request);
+        validateExpiredAt(request.getExpiredAt(), request.getBillingCycle(), request.getStartedAt());
 
 
         // 2. 무형자산 생성 및 저장
@@ -172,21 +173,28 @@ public class IntangibleAssetService {
     /**
      * 등록 시 만료일 입력 조건을 검증한다.
      */
-    private void validateCreateExpiredAt(IntangibleAssetCreateRequest request) {
-        if(request.getExpiredAt() == null) {
+    private void validateExpiredAt(LocalDateTime expiredAt, BillingCycle billingCycle, LocalDateTime startedAt) {
+        if(expiredAt == null) {
             return;
         }
 
-        if(request.getBillingCycle() == BillingCycle.ONE_TIME){
+        if(billingCycle == BillingCycle.ONE_TIME){
             throw new BusinessException(
                     ErrorCode.INTANGIBLE_ASSET_INVALID_REQUEST,
                     "영구 사용 자산은 만료일을 입력할 수 없습니다."
             );
         }
 
-        if (request.getStartedAt().isAfter(request.getExpiredAt())) {
+        if (startedAt == null) {
             throw new BusinessException(
-                    ErrorCode.TANGIBLE_ASSET_INVALID_REQUEST,
+                    ErrorCode.INTANGIBLE_ASSET_INVALID_REQUEST,
+                    "만료일을 입력하려면 사용 시작일이 필요합니다."
+            );
+        }
+
+        if (startedAt.isAfter(expiredAt)) {
+            throw new BusinessException(
+                    ErrorCode.INTANGIBLE_ASSET_INVALID_REQUEST,
                     "시작일은 만료일보다 늦을 수 없습니다."
             );
         }
@@ -246,5 +254,46 @@ public class IntangibleAssetService {
         return intangibleAssetRepository.findDetailByIdAndCompanyId(assetId, companyId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.INTANGIBLE_ASSET_ITEM_NOT_FOUND));
 
+    }
+
+    /**
+     * 무형자산 수정.
+     * 요청값과 기존 자산 값을 조합한 최종 상태 기준으로 사용 정보 필수 여부를 검증한다.
+     */
+    @Transactional
+    public IntangibleAssetResponse updateAsset(
+            UUID assetId,
+            IntangibleAssetUpdateRequest request,
+            UUID companyId
+    ) {
+        // 1. 입력값 검증
+        companyRepository.findById(companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
+
+        IntangibleAsset asset = intangibleAssetRepository.findByIdAndCompany_Id(assetId, companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.INTANGIBLE_ASSET_NOT_FOUND));
+
+        Department requestedDepartment = findDepartment(request.getDepartmentId(), companyId);
+        Member requestedMember = findMember(request.getMemberId(), companyId);
+
+        Member finalMember = requestedMember != null ? requestedMember : asset.getMember();
+        Department finalDepartment = requestedDepartment != null ? requestedDepartment : asset.getDepartment();
+        LocalDateTime finalStartedAt = request.getStartedAt() != null
+                ? request.getStartedAt()
+                : asset.getStartedAt();
+        IntangibleAssetStatus finalStatus = request.getIntangibleAssetStatus() != null
+                ? request.getIntangibleAssetStatus()
+                : asset.getIntangibleAssetStatus();
+
+        validateMemberDepartment(finalMember, finalDepartment);
+        validateRequiredUsageInfo(finalStatus, finalMember, finalDepartment, finalStartedAt);
+        if (request.getExpiredAt() != null) {
+            validateExpiredAt(request.getExpiredAt(), asset.getBillingCycle(), finalStartedAt);
+        }
+
+        // 2. 무형자산 수정
+        asset.update(request, requestedDepartment, requestedMember);
+
+        return IntangibleAssetResponse.from(asset);
     }
 }

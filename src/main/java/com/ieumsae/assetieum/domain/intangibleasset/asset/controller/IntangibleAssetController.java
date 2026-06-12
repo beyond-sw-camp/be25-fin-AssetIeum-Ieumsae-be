@@ -5,6 +5,7 @@ import com.ieumsae.assetieum.domain.intangibleasset.asset.dto.IntangibleAssetDet
 import com.ieumsae.assetieum.domain.intangibleasset.asset.dto.IntangibleAssetResponse;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.dto.IntangibleAssetSearchRequest;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.dto.IntangibleAssetSearchResponse;
+import com.ieumsae.assetieum.domain.intangibleasset.asset.dto.IntangibleAssetUpdateRequest;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.service.IntangibleAssetService;
 import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.response.ApiResponse;
@@ -15,6 +16,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -63,17 +65,17 @@ public class IntangibleAssetController {
         return ApiResponse.ok("무형자산 상세 조회에 성곧했습니다.", response);
     }
 
-//    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
-//    @PatchMapping("/{assetId}")
-//    public ApiResponse<IntangibleAssetResponse> updateAsset(
-//            @AuthenticationPrincipal AuthenticatedMember member,
-//            @PathVariable UUID assetId,
-//            @Valid @RequestBody IntangibleAssetUpdateRequest request
-//    ) {
-//        IntangibleAssetResponse response =
-//                intangibleAssetService.updateAsset(assetId, request, member.companyId());
-//
-//        return ApiResponse.ok("무형자산이 수정되었습니다.", response);
-//    }
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
+    @PatchMapping("/{assetId}")
+    public ApiResponse<IntangibleAssetResponse> updateAsset(
+            @AuthenticationPrincipal AuthenticatedMember member,
+            @PathVariable UUID assetId,
+            @Valid @RequestBody IntangibleAssetUpdateRequest request
+    ) {
+        IntangibleAssetResponse response =
+                intangibleAssetService.updateAsset(assetId, request, member.companyId());
+
+        return ApiResponse.ok("무형자산이 수정되었습니다.", response);
+    }
 
 }

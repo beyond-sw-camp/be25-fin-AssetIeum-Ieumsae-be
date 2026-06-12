@@ -23,12 +23,13 @@ import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.common.util.CodeGenerator;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
-import java.time.LocalDateTime;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -76,7 +77,7 @@ public class TangibleAssetService {
 
         validateMemberDepartment(member, department);
         validateRequiredUsageInfo(status, member, department, request.getUsedStartedAt());
-        validateCreateReturnDueDate(request);
+        validateReturnDueDate(request.getReturnDueDate(), request.getUsageType(), request.getUsedStartedAt());
 
         // 2. 유형자산 생성 및 저장
         TangibleAsset asset = TangibleAsset.builder()
@@ -181,10 +182,15 @@ public class TangibleAssetService {
         TangibleAssetStatus finalStatus = request.getTangibleAssetStatus() != null
                 ? request.getTangibleAssetStatus()
                 : asset.getTangibleAssetStatus();
+        UsageType finalUsageType = request.getUsageType() != null
+                ? request.getUsageType()
+                : asset.getUsageType();
 
         validateMemberDepartment(finalMember, finalDepartment);
         validateRequiredUsageInfo(finalStatus, finalMember, finalDepartment, finalUsedStartedAt);
-        validateReturnDueDate(request, asset);
+        if (request.getReturnDueDate() != null) {
+            validateReturnDueDate(request.getReturnDueDate(), finalUsageType, finalUsedStartedAt);
+        }
 
         // 2. 유형자산 수정
         asset.update(request, requestedDepartment, requestedMember);
@@ -257,44 +263,10 @@ public class TangibleAssetService {
     /**
      * 등록 시 반납 예정일 입력 조건을 검증한다.
      */
-    private void validateCreateReturnDueDate(TangibleAssetCreateRequest request) {
-        if (request.getReturnDueDate() == null) {
+    private void validateReturnDueDate(LocalDateTime returnDueDate, UsageType usageType, LocalDateTime usedStartedAt) {
+        if (returnDueDate == null) {
             return;
         }
-
-        if (request.getUsageType() == UsageType.PERMANENT) {
-            throw new BusinessException(
-                    ErrorCode.TANGIBLE_ASSET_INVALID_REQUEST,
-                    "영구 사용 자산은 반납 예정일을 입력할 수 없습니다."
-            );
-        }
-
-        if (request.getUsedStartedAt() == null) {
-            throw new BusinessException(
-                    ErrorCode.TANGIBLE_ASSET_INVALID_REQUEST,
-                    "반납 예정일을 입력하려면 사용 시작일이 필요합니다."
-            );
-        }
-
-        if (request.getUsedStartedAt().isAfter(request.getReturnDueDate())) {
-            throw new BusinessException(
-                    ErrorCode.TANGIBLE_ASSET_INVALID_REQUEST,
-                    "사용 시작일은 반납 예정일보다 늦을 수 없습니다."
-            );
-        }
-    }
-
-    /**
-     * 수정 시 반납 예정일 입력 조건을 검증한다.
-     */
-    private void validateReturnDueDate(TangibleAssetUpdateRequest request, TangibleAsset asset) {
-        if (request.getReturnDueDate() == null) {
-            return;
-        }
-
-        UsageType usageType = request.getUsageType() != null
-                ? request.getUsageType()
-                : asset.getUsageType();
 
         if (usageType == UsageType.PERMANENT) {
             throw new BusinessException(
@@ -303,10 +275,6 @@ public class TangibleAssetService {
             );
         }
 
-        LocalDateTime usedStartedAt = request.getUsedStartedAt() != null
-                ? request.getUsedStartedAt()
-                : asset.getUsedStartedAt();
-
         if (usedStartedAt == null) {
             throw new BusinessException(
                     ErrorCode.TANGIBLE_ASSET_INVALID_REQUEST,
@@ -314,7 +282,7 @@ public class TangibleAssetService {
             );
         }
 
-        if (usedStartedAt.isAfter(request.getReturnDueDate())) {
+        if (usedStartedAt.isAfter(returnDueDate)) {
             throw new BusinessException(
                     ErrorCode.TANGIBLE_ASSET_INVALID_REQUEST,
                     "사용 시작일은 반납 예정일보다 늦을 수 없습니다."

@@ -63,6 +63,7 @@ public enum ErrorCode {
 	// 무형 자산
 	INTANGIBLE_ASSET_ITEM_DUPLICATED_LICENSE_CODE(HttpStatus.BAD_REQUEST, "intangible-asset-009", "이미 존재하는 라이선스 코드입니다."),
 	INTANGIBLE_ASSET_INVALID_REQUEST(HttpStatus.BAD_REQUEST, "intangible-asset-010", "잘못된 자산 요청 값입니다."),
+	INTANGIBLE_ASSET_NOT_FOUND(HttpStatus.NOT_FOUND, "intangible-asset-011", "해당 무형 자산이 존재하지 않습니다."),
 
 	// 공통
 	INVALID_INPUT_VALUE(HttpStatus.BAD_REQUEST, "COMMON_001", "잘못된 요청입니다."),

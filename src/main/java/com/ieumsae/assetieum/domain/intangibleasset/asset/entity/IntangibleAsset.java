@@ -2,6 +2,7 @@ package com.ieumsae.assetieum.domain.intangibleasset.asset.entity;
 
 import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.department.entity.Department;
+import com.ieumsae.assetieum.domain.intangibleasset.asset.dto.IntangibleAssetUpdateRequest;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.type.BillingCycle;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.type.IntangibleAssetStatus;
 import com.ieumsae.assetieum.domain.intangibleasset.item.entity.IntangibleAssetItem;
@@ -94,4 +95,32 @@ public class IntangibleAsset extends BaseEntity {
 
     @Column(name = "purchase_vendor", length = 150)
     private String purchaseVendor;
+
+    public void update(
+            IntangibleAssetUpdateRequest request,
+            Department department,
+            Member member
+    ) {
+        if (request.getIntangibleAssetStatus() != null) {
+            this.intangibleAssetStatus = request.getIntangibleAssetStatus();
+        }
+        if (request.getSeatCount() != null) {
+            this.seatCount = request.getSeatCount();
+        }
+        if (request.getIsAutoRenewal() != null) {
+            this.isAutoRenewal = request.getIsAutoRenewal();
+        }
+        if (request.getStartedAt() != null) {
+            this.startedAt = request.getStartedAt();
+        }
+        if (request.getExpiredAt() != null) {
+            this.expiredAt = request.getExpiredAt();
+        }
+        if (department != null) {
+            this.department = department;
+        }
+        if (member != null) {
+            this.member = member;
+        }
+    }
 }
