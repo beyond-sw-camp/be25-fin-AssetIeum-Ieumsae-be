@@ -8,6 +8,7 @@ import com.ieumsae.assetieum.global.security.AuthenticatedMember;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,6 +21,7 @@ public class RentalTicketController {
 
 	private final RentalTicketService rentalTicketService;
 
+	@PreAuthorize("hasAnyRole('EMPLOYEE', 'DEPARTMENT_MANAGER', 'ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
 	@PostMapping
 	public ApiResponse<RentalTicketCreateResponse> createRentalTicket(
 		@AuthenticationPrincipal AuthenticatedMember authenticatedMember,

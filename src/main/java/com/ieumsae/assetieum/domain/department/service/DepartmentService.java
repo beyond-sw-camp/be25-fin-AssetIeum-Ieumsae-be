@@ -94,6 +94,7 @@ public class DepartmentService {
 		Company company = findActiveCompany(companyId);
 		Department parentDepartment = findParentDepartment(request.getParentDepartmentId(), companyId);
 		Member departmentManager = findDepartmentManager(request.getDepartmentManagerId(), companyId);
+		validateDepartmentManagerAssignable(departmentManager, null);
 		assignDepartmentManagerRoleIfNeeded(departmentManager);
 
 		Department department = departmentRepository.save(Department.builder()
@@ -138,6 +139,7 @@ public class DepartmentService {
 				request.getDepartmentManagerId(),
 				companyId
 			);
+			validateDepartmentManagerAssignable(departmentManager, previousDepartmentManager);
 			changeDepartmentManagerRole(previousDepartmentManager, departmentManager);
 		}
 
@@ -208,8 +210,31 @@ public class DepartmentService {
 		return departmentManager;
 	}
 
+	private void validateDepartmentManagerAssignable(
+		Member departmentManager,
+		Member currentDepartmentManager
+	) {
+		if (departmentManager == null) {
+			return;
+		}
+
+		if (currentDepartmentManager != null
+			&& currentDepartmentManager.getId().equals(departmentManager.getId())) {
+			return;
+		}
+
+		if (!isStaffRole(departmentManager.getRole())) {
+			throw new BusinessException(ErrorCode.INVALID_DEPARTMENT_MANAGER);
+		}
+	}
+
 	private void assignDepartmentManagerRoleIfNeeded(Member departmentManager) {
-		if (departmentManager == null || departmentManager.getRole() == MemberRole.DEPARTMENT_MANAGER) {
+		if (departmentManager == null || isManagerRole(departmentManager.getRole())) {
+			return;
+		}
+
+		if (departmentManager.getRole() == MemberRole.ASSET_TEAM) {
+			departmentManager.changeRole(MemberRole.ASSET_MANAGER);
 			return;
 		}
 
@@ -220,10 +245,27 @@ public class DepartmentService {
 		if (previousDepartmentManager != null
 			&& (currentDepartmentManager == null
 			|| !previousDepartmentManager.getId().equals(currentDepartmentManager.getId()))) {
-			previousDepartmentManager.changeRole(MemberRole.EMPLOYEE);
+			demoteDepartmentManager(previousDepartmentManager);
 		}
 
 		assignDepartmentManagerRoleIfNeeded(currentDepartmentManager);
+	}
+
+	private void demoteDepartmentManager(Member departmentManager) {
+		if (departmentManager.getRole() == MemberRole.ASSET_MANAGER) {
+			departmentManager.changeRole(MemberRole.ASSET_TEAM);
+			return;
+		}
+
+		departmentManager.changeRole(MemberRole.EMPLOYEE);
+	}
+
+	private boolean isStaffRole(MemberRole role) {
+		return role == MemberRole.EMPLOYEE || role == MemberRole.ASSET_TEAM;
+	}
+
+	private boolean isManagerRole(MemberRole role) {
+		return role == MemberRole.DEPARTMENT_MANAGER || role == MemberRole.ASSET_MANAGER;
 	}
 
 	private void validateParentDepartment(Department department, Department parentDepartment) {

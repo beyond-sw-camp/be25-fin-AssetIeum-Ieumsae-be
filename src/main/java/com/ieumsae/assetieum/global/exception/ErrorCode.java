@@ -16,6 +16,8 @@ public enum ErrorCode {
 	INACTIVE_MEMBER(HttpStatus.FORBIDDEN, "MEMBER_002", "활성 상태가 아닌 멤버입니다."),
 	MEMBER_ALREADY_EXISTS(HttpStatus.CONFLICT, "MEMBER_003", "이미 등록된 사번입니다."),
 	MEMBER_EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, "MEMBER_004", "이미 등록된 이메일입니다."),
+	ASSET_MANAGER_ALREADY_EXISTS(HttpStatus.CONFLICT, "MEMBER_005", "이미 구매자산팀장이 등록되어 있습니다."),
+	MEMBER_DEPARTMENT_CHANGE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "MEMBER_006", "부서장과 구매자산팀장의 부서는 변경할 수 없습니다."),
 
 	// 회사
 	COMPANY_NOT_FOUND(HttpStatus.NOT_FOUND, "company-001", "회사를 찾을 수 없습니다."),

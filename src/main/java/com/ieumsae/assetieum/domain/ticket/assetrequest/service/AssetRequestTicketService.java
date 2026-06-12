@@ -65,7 +65,7 @@ public class AssetRequestTicketService {
 			normalize(request.getRequestReason())
 		));
 
-		assetRequestTicketRepository.save(
+		AssetRequestTicket assetRequestTicket = assetRequestTicketRepository.save(
 			AssetRequestTicket.createStandardRequest(
 				ticket,
 				requester.getCompany(),
@@ -78,10 +78,9 @@ public class AssetRequestTicketService {
 
 		return StandardAssetRequestCreateResponse.from(
 			ticket,
-			request.getRequestedUsageType(),
+			assetRequestTicket,
 			request.getAssetType(),
-			request.getAssetItemId(),
-			request.getQuantity()
+			request.getAssetItemId()
 		);
 	}
 

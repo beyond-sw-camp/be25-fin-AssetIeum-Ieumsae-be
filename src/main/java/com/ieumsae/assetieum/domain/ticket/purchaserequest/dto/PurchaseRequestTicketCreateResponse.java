@@ -21,7 +21,7 @@ public class PurchaseRequestTicketCreateResponse {
 	private final UUID ticketId;
 	private final String ticketNo;
 	private final TicketType ticketType;
-	private final TicketStatus status;
+	private final TicketStatus ticketStatus;
 	private final PurchaseRequestTicketStatus purchaseRequestStatus;
 	private final RequestedUsageType requestedUsageType;
 	private final RequestMethod requestMethod;
@@ -44,7 +44,7 @@ public class PurchaseRequestTicketCreateResponse {
 			.ticketId(ticket.getId())
 			.ticketNo(ticket.getTicketNo())
 			.ticketType(ticket.getTicketType())
-			.status(ticket.getTicketStatus())
+			.ticketStatus(ticket.getTicketStatus())
 			.purchaseRequestStatus(purchaseRequestTicket.getStatus())
 			.requestedUsageType(purchaseRequestTicket.getRequestedUsageType())
 			.requestMethod(purchaseRequestTicket.getRequestMethod())
