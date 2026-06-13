@@ -1,5 +1,6 @@
 package com.ieumsae.assetieum.domain.intangibleasset.assignment.controller;
 
+import com.ieumsae.assetieum.domain.intangibleasset.assignment.dto.IntangibleAssetCancelRequest;
 import com.ieumsae.assetieum.domain.intangibleasset.assignment.dto.IntangibleAssetAssignmentRequest;
 import com.ieumsae.assetieum.domain.intangibleasset.assignment.dto.IntangibleAssetAssignmentResponse;
 import com.ieumsae.assetieum.domain.intangibleasset.assignment.service.IntangibleAssetAssignmentService;
@@ -42,15 +43,29 @@ public class IntangibleAssetAssignmentController {
 
     @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
     @PostMapping("/{assetId}/assign")
-    public ApiResponse<IntangibleAssetAssignmentResponse> assign(
+    public ApiResponse<IntangibleAssetAssignmentResponse> assignAsset(
             @AuthenticationPrincipal AuthenticatedMember member,
             @PathVariable UUID assetId,
             @Valid @RequestBody IntangibleAssetAssignmentRequest request
     ) {
         IntangibleAssetAssignmentResponse response =
-                intangibleAssetAssignmentService.assign(assetId, request, member.companyId());
+                intangibleAssetAssignmentService.assignAsset(assetId, request, member.companyId());
 
         return ApiResponse.ok("무형자산이 배정되었습니다.", response);
+    }
+
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
+    @PostMapping("/{assetId}/cancel")
+    public ApiResponse<List<IntangibleAssetAssignmentResponse>> cancelAsset(
+            @AuthenticationPrincipal AuthenticatedMember member,
+            @PathVariable UUID assetId,
+            @RequestBody(required = false) IntangibleAssetCancelRequest request
+    ) {
+        UUID memberId = request == null ? null : request.getMemberId();
+        List<IntangibleAssetAssignmentResponse> response =
+                intangibleAssetAssignmentService.cancelAsset(assetId, memberId, member.companyId());
+
+        return ApiResponse.ok("무형자산이 해지되었습니다.", response);
     }
 
 }

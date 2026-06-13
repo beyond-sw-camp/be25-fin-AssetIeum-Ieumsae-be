@@ -67,4 +67,9 @@ public class IntangibleAssetAssignment extends BaseEntity {
 	@Column(name = "assignment_status", nullable = false, length = 30)
 	@Builder.Default
 	private AssignmentStatus assignmentStatus = AssignmentStatus.ACTIVE;
+
+	public void end(LocalDateTime endedAt) {
+		this.endedAt = endedAt;
+		this.assignmentStatus = AssignmentStatus.ENDED;
+	}
 }

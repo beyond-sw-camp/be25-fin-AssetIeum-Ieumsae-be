@@ -67,6 +67,7 @@ public enum ErrorCode {
 	INTANGIBLE_ASSET_INVALID_REQUEST(HttpStatus.BAD_REQUEST, "intangible-asset-010", "잘못된 자산 요청 값입니다."),
 	INTANGIBLE_ASSET_NOT_FOUND(HttpStatus.NOT_FOUND, "intangible-asset-011", "해당 무형 자산이 존재하지 않습니다."),
 	INTANGIBLE_ASSET_NOT_ASSIGNABLE(HttpStatus.CONFLICT, "intangible-asset-012", "해당 무형 자산은 배정할 수 없는 상태입니다."),
+	INTANGIBLE_ASSET_ASSIGNMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "intangible-asset-013", "해당 무형 자산 배정 이력은 존재하지 않습니다."),
 
 	// 티켓
 	INVALID_RENTAL_PERIOD(HttpStatus.BAD_REQUEST, "ticket-001", "유효하지 않은 대여 기간입니다."),
