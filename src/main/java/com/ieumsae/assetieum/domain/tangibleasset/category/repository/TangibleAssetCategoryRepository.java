@@ -4,6 +4,7 @@ import com.ieumsae.assetieum.domain.tangibleasset.category.entity.TangibleAssetC
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface TangibleAssetCategoryRepository
@@ -15,5 +16,7 @@ public interface TangibleAssetCategoryRepository
 
     List<TangibleAssetCategory> findAllByCompany_IdOrderByCreatedAtAsc(UUID companyId);
 
-    boolean existsByParent_Id(UUID categoryId);
+    Optional<TangibleAssetCategory> findByIdAndCompany_Id(UUID categoryId, UUID companyId);
+
+    boolean existsByParent_IdAndCompany_Id(UUID categoryId, UUID companyId);
 }

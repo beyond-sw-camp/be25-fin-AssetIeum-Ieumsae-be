@@ -16,6 +16,8 @@ public enum ErrorCode {
 	INACTIVE_MEMBER(HttpStatus.FORBIDDEN, "MEMBER_002", "활성 상태가 아닌 멤버입니다."),
 	MEMBER_ALREADY_EXISTS(HttpStatus.CONFLICT, "MEMBER_003", "이미 등록된 사번입니다."),
 	MEMBER_EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, "MEMBER_004", "이미 등록된 이메일입니다."),
+	ASSET_MANAGER_ALREADY_EXISTS(HttpStatus.CONFLICT, "MEMBER_005", "이미 구매자산팀장이 등록되어 있습니다."),
+	MEMBER_DEPARTMENT_CHANGE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "MEMBER_006", "부서장과 구매자산팀장의 부서는 변경할 수 없습니다."),
 
 	// 회사
 	COMPANY_NOT_FOUND(HttpStatus.NOT_FOUND, "company-001", "회사를 찾을 수 없습니다."),
@@ -39,8 +41,13 @@ public enum ErrorCode {
 	// 유형 자산 품목
 	TANGIBLE_ASSET_ITEM_DUPLICATED_PRODUCT_NAME(HttpStatus.BAD_REQUEST, "tangible-asset-006", "이미 존재하는 제품명입니다."),
 	TANGIBLE_ASSET_ITEM_DUPLICATED_MODEL_NAME(HttpStatus.BAD_REQUEST, "tangible-asset-007", "이미 존재하는 모델명입니다."),
-	TANGIBLE_ASSET_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "tangible-asset-008", "해당 유형 자산 품목이 존재하지 않습니다."),
+	TANGIBLE_ASSET_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "tangible-asset-008", "해당 유형 자산 품목은 존재하지 않습니다."),
 	TANGIBLE_ASSET_ITEM_HAS_ASSETS(HttpStatus.CONFLICT, "tangible-asset-009", "자산이 존재하는 경우 삭제할 수 없습니다."),
+
+	// 유형 자산
+	TANGIBLE_ASSET_ITEM_DUPLICATED_SERIAL_NUMBER(HttpStatus.BAD_REQUEST, "tangible-asset-010", "이미 존재하는 시리얼넘버입니다."),
+	TANGIBLE_ASSET_NOT_FOUND(HttpStatus.NOT_FOUND, "tangible-asset-011", "해당 유형 자산이 존재하지 않습니다."),
+	TANGIBLE_ASSET_INVALID_REQUEST(HttpStatus.BAD_REQUEST, "tangible-asset-012", "잘못된 자산 요청 값입니다."),
 
 	// 무형 자산 카테고리
 	INTANGIBLE_ASSET_CATEGORY_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "intangible-asset-001", "이미 존재하는 카테고리명입니다."),
@@ -48,7 +55,20 @@ public enum ErrorCode {
 	INTANGIBLE_ASSET_INVALID_PARENT(HttpStatus.BAD_REQUEST, "intangible-asset-003", "유효하지 않은 부모 카테고리입니다."),
 	INTANGIBLE_ASSET_CATEGORY_HAS_CHILDREN(HttpStatus.CONFLICT, "intangible-asset-004", "하위 카테고리가 존재하는 경우 삭제할 수 없습니다."),
 	INTANGIBLE_ASSET_CATEGORY_HAS_ITEMS(HttpStatus.CONFLICT, "intangible-asset-005", "품목이 존재하는 경우 삭제할 수 없습니다."),
-	INTANGIBLE_ASSET_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "intangible-asset-006", "해당 무형 자산 품목이 존재하지 않습니다."),
+
+	// 무형 자산 품목
+	INTANGIBLE_ASSET_ITEM_DUPLICATED_PRODUCT_NAME(HttpStatus.BAD_REQUEST, "intangible-asset-005", "이미 존재하는 제품명입니다."),
+	INTANGIBLE_ASSET_ITEM_DUPLICATED_MODEL_NAME(HttpStatus.BAD_REQUEST, "intangible-asset-006", "이미 존재하는 모델명입니다."),
+	INTANGIBLE_ASSET_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "intangible-asset-007", "해당 무형 자산 품목은 존재하지 않습니다."),
+	INTANGIBLE_ASSET_ITEM_HAS_ASSETS(HttpStatus.CONFLICT, "intangible-asset-008", "자산이 존재하는 경우 삭제할 수 없습니다."),
+
+	// 무형 자산
+	INTANGIBLE_ASSET_ITEM_DUPLICATED_LICENSE_CODE(HttpStatus.BAD_REQUEST, "intangible-asset-009", "이미 존재하는 라이선스 코드입니다."),
+	INTANGIBLE_ASSET_INVALID_REQUEST(HttpStatus.BAD_REQUEST, "intangible-asset-010", "잘못된 자산 요청 값입니다."),
+	INTANGIBLE_ASSET_NOT_FOUND(HttpStatus.NOT_FOUND, "intangible-asset-011", "해당 무형 자산이 존재하지 않습니다."),
+
+	// 티켓
+	INVALID_RENTAL_PERIOD(HttpStatus.BAD_REQUEST, "ticket-001", "유효하지 않은 대여 기간입니다."),
 
 	// 알림
 	NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "notification-001", "알림을 찾을 수 없습니다."),

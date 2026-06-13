@@ -14,6 +14,7 @@ import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -30,6 +31,7 @@ public class MemberController {
 
 	private final MemberService memberService;
 
+	@PreAuthorize("hasRole('ADMIN')")
 	@GetMapping
 	public ApiResponse<PaginationResponse<MemberListItemResponse>> getMembers(
 		@AuthenticationPrincipal AuthenticatedMember authenticatedMember,
@@ -42,6 +44,7 @@ public class MemberController {
 		return ApiResponse.ok("사원 목록 조회에 성공했습니다.", response);
 	}
 
+	@PreAuthorize("hasRole('ADMIN')")
 	@PostMapping
 	public ApiResponse<MemberCreateResponse> createMember(
 		@AuthenticationPrincipal AuthenticatedMember authenticatedMember,
@@ -51,6 +54,7 @@ public class MemberController {
 		return ApiResponse.ok("사원 등록에 성공했습니다.", response);
 	}
 
+	@PreAuthorize("hasRole('ADMIN')")
 	@PatchMapping("/{memberId}/department")
 	public ApiResponse<MemberDepartmentUpdateResponse> updateMemberDepartment(
 		@AuthenticationPrincipal AuthenticatedMember authenticatedMember,

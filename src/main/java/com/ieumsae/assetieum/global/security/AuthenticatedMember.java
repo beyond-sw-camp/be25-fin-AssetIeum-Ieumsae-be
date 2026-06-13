@@ -5,7 +5,10 @@ import java.util.UUID;
 
 public record AuthenticatedMember(
 	UUID id,
+	UUID companyId,
 	String memberNo,
+	String name,
+	String email,
 	MemberRole role
 ) {
 }

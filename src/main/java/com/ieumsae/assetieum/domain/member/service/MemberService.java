@@ -38,10 +38,12 @@ public class MemberService {
 		AuthenticatedMember authenticatedMember,
 		MemberSearchRequest request
 	) {
-		Member requester = validateSuperAdmin(authenticatedMember);
+		validateAdmin(authenticatedMember);
+		UUID companyId = authenticatedMember.companyId();
+		validateSearchDepartment(request.getDepartmentId(), companyId);
 
 		Page<MemberListItemResponse> members = memberRepository.searchMembers(
-			requester.getCompany().getId(),
+			companyId,
 			normalizeKeyword(request.getKeyword()),
 			request.getDepartmentId(),
 			request.getStatus(),
@@ -56,12 +58,15 @@ public class MemberService {
 		AuthenticatedMember authenticatedMember,
 		MemberCreateRequest request
 	) {
-		Member requester = validateSuperAdmin(authenticatedMember);
-		Company company = requester.getCompany();
-		Department department = findActiveDepartment(request.getDepartmentId(), company.getId());
-		validateMemberNoNotDuplicated(company.getId(), request.getMemberNo());
-		validateEmailNotDuplicated(company.getId(), request.getEmail());
+		validateAdmin(authenticatedMember);
+		UUID companyId = authenticatedMember.companyId();
+		Department department = findActiveDepartment(request.getDepartmentId(), companyId);
+		Company company = department.getCompany();
+		validateMemberNoNotDuplicated(companyId, request.getMemberNo());
+		validateEmailNotDuplicated(companyId, request.getEmail());
+		validateAssignableRole(request.getRole());
 		validateDepartmentManagerAssignable(department, request.getRole());
+		validateAssetManagerAssignable(companyId, request.getRole());
 
 		Member member = memberRepository.save(Member.builder()
 			.company(company)
@@ -85,9 +90,10 @@ public class MemberService {
 		UUID memberId,
 		MemberDepartmentUpdateRequest request
 	) {
-		Member requester = validateSuperAdmin(authenticatedMember);
-		UUID companyId = requester.getCompany().getId();
+		validateAdmin(authenticatedMember);
+		UUID companyId = authenticatedMember.companyId();
 		Member member = findActiveMember(memberId, companyId);
+		validateDepartmentChangeAllowed(member);
 		Department previousDepartment = member.getDepartment();
 		Department currentDepartment = findActiveDepartment(request.getDepartmentId(), companyId);
 
@@ -96,19 +102,20 @@ public class MemberService {
 		return MemberDepartmentUpdateResponse.from(member, previousDepartment);
 	}
 
-	private Member validateSuperAdmin(AuthenticatedMember authenticatedMember) {
-		Member member = memberRepository.findById(authenticatedMember.id())
+	private void validateAdmin(AuthenticatedMember authenticatedMember) {
+		Member member = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(
+				authenticatedMember.id(),
+				authenticatedMember.companyId()
+			)
 			.orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
 		if (!member.isActive()) {
 			throw new BusinessException(ErrorCode.INACTIVE_MEMBER);
 		}
 
-		if (member.getRole() != MemberRole.SUPER_ADMIN) {
+		if (member.getRole() != MemberRole.ADMIN) {
 			throw new BusinessException(ErrorCode.ACCESS_DENIED);
 		}
-
-		return member;
 	}
 
 	private Department findActiveDepartment(UUID departmentId, UUID companyId) {
@@ -127,6 +134,13 @@ public class MemberService {
 		return member;
 	}
 
+	private void validateDepartmentChangeAllowed(Member member) {
+		if (member.getRole() == MemberRole.DEPARTMENT_MANAGER
+			|| member.getRole() == MemberRole.ASSET_MANAGER) {
+			throw new BusinessException(ErrorCode.MEMBER_DEPARTMENT_CHANGE_NOT_ALLOWED);
+		}
+	}
+
 	private void validateMemberNoNotDuplicated(UUID companyId, String memberNo) {
 		if (memberRepository.existsByCompany_IdAndMemberNo(companyId, memberNo)) {
 			throw new BusinessException(ErrorCode.MEMBER_ALREADY_EXISTS);
@@ -143,8 +157,22 @@ public class MemberService {
 		}
 	}
 
+	private void validateSearchDepartment(UUID departmentId, UUID companyId) {
+		if (departmentId == null) {
+			return;
+		}
+
+		findActiveDepartment(departmentId, companyId);
+	}
+
+	private void validateAssignableRole(MemberRole role) {
+		if (role == MemberRole.SUPER_ADMIN) {
+			throw new BusinessException(ErrorCode.ACCESS_DENIED);
+		}
+	}
+
 	private void validateDepartmentManagerAssignable(Department department, MemberRole role) {
-		if (role != MemberRole.DEPARTMENT_MANAGER) {
+		if (!isManagerRole(role)) {
 			return;
 		}
 
@@ -153,12 +181,26 @@ public class MemberService {
 		}
 	}
 
+	private void validateAssetManagerAssignable(UUID companyId, MemberRole role) {
+		if (role != MemberRole.ASSET_MANAGER) {
+			return;
+		}
+
+		if (memberRepository.existsByCompany_IdAndRoleAndDeletedAtIsNull(companyId, MemberRole.ASSET_MANAGER)) {
+			throw new BusinessException(ErrorCode.ASSET_MANAGER_ALREADY_EXISTS);
+		}
+	}
+
 	private void assignDepartmentManagerIfNeeded(Department department, Member member) {
-		if (member.getRole() != MemberRole.DEPARTMENT_MANAGER) {
+		if (!isManagerRole(member.getRole())) {
 			return;
 		}
 
 		department.changeDepartmentManager(member);
+	}
+
+	private boolean isManagerRole(MemberRole role) {
+		return role == MemberRole.DEPARTMENT_MANAGER || role == MemberRole.ASSET_MANAGER;
 	}
 
 	private String normalizeKeyword(String keyword) {

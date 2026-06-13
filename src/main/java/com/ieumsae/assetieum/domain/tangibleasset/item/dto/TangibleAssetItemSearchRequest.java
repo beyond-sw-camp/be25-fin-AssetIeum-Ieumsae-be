@@ -12,16 +12,10 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 public class TangibleAssetItemSearchRequest extends PaginationRequest {
-    @NotNull
-    private UUID companyId;
 
     private UUID categoryId;
 
-    private String productName;
-
-    private String manufacturer;
-
-    private String modelName;
+    private String keyword;
 
     private Boolean isStandard;
 }

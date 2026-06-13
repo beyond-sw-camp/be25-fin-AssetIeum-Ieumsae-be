@@ -3,11 +3,12 @@ package com.ieumsae.assetieum.domain.tangibleasset.asset.entity;
 import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.department.entity.Department;
 import com.ieumsae.assetieum.domain.member.entity.Member;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.dto.TangibleAssetUpdateRequest;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.type.AssetUsageType;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.type.TangibleAssetStatus;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.type.UsageType;
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
 import com.ieumsae.assetieum.global.common.BaseEntity;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -63,6 +64,10 @@ public class TangibleAsset extends BaseEntity {
     private UsageType usageType;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "asset_usage_type", length = 30)
+    private AssetUsageType assetUsageType;
+
+    @Enumerated(EnumType.STRING)
     @Column(name = "tangible_asset_status", nullable = false, length = 30)
     @Builder.Default
     private TangibleAssetStatus tangibleAssetStatus = TangibleAssetStatus.AVAILABLE;
@@ -95,4 +100,35 @@ public class TangibleAsset extends BaseEntity {
 
     @Column(name = "warranty_expired_at")
     private LocalDateTime warrantyExpiredAt;
+
+    public void update(
+            TangibleAssetUpdateRequest request,
+            Department department,
+            Member member
+    ) {
+        if (request.getTangibleAssetStatus() != null) {
+            this.tangibleAssetStatus = request.getTangibleAssetStatus();
+        }
+        if (request.getLocation() != null) {
+            this.location = request.getLocation();
+        }
+        if (request.getUsedStartedAt() != null) {
+            this.usedStartedAt = request.getUsedStartedAt();
+        }
+        if (request.getReturnDueDate() != null) {
+            this.returnDueDate = request.getReturnDueDate();
+        }
+        if (request.getUsageType() != null) {
+            this.usageType = request.getUsageType();
+            if(request.getUsageType() == UsageType.PERMANENT){
+                this.returnDueDate = null;
+            }
+        }
+        if (department != null) {
+            this.department = department;
+        }
+        if (member != null) {
+            this.member = member;
+        }
+    }
 }

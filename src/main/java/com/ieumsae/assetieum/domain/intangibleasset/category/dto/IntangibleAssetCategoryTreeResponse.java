@@ -1,5 +1,6 @@
 package com.ieumsae.assetieum.domain.intangibleasset.category.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.ieumsae.assetieum.domain.intangibleasset.category.entity.IntangibleAssetCategory;
 import lombok.Builder;
@@ -14,7 +15,6 @@ import java.util.UUID;
 @Builder
 @JsonPropertyOrder({
         "categoryId",
-        "companyId",
         "parentId",
         "name",
         "createdAt",
@@ -24,14 +24,14 @@ import java.util.UUID;
 public class IntangibleAssetCategoryTreeResponse {
     private UUID categoryId;
 
-    private UUID companyId;
-
     private UUID parentId;
 
     private String name;
 
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime createdAt;
 
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime updatedAt;
 
     @Builder.Default
@@ -42,7 +42,6 @@ public class IntangibleAssetCategoryTreeResponse {
     ) {
         return IntangibleAssetCategoryTreeResponse.builder()
                 .categoryId(category.getId())
-                .companyId(category.getCompany().getId())
                 .parentId(
                         category.getParent() != null
                             ? category.getParent().getId()

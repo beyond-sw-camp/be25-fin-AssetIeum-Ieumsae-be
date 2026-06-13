@@ -6,6 +6,7 @@ import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -13,20 +14,18 @@ import java.util.UUID;
 @Builder
 @JsonPropertyOrder({
         "itemId",
-        "companyId",
         "categoryId",
         "productName",
         "manufacturer",
         "modelName",
         "isStandard",
+        "prePurchasePrice",
         "createdAt",
         "updatedAt",
         "deletedAt"
 })
 public class TangibleAssetItemResponse {
     private UUID itemId;
-
-    private UUID companyId;
 
     private UUID categoryId;
 
@@ -38,6 +37,8 @@ public class TangibleAssetItemResponse {
 
     private Boolean isStandard;
 
+    private BigDecimal prePurchasePrice;
+
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime createdAt;
 
@@ -47,12 +48,25 @@ public class TangibleAssetItemResponse {
     public static TangibleAssetItemResponse from(TangibleAssetItem item) {
         return TangibleAssetItemResponse.builder()
                 .itemId(item.getId())
-                .companyId(item.getCompany().getId())
                 .categoryId(item.getTangibleAssetCategory().getId())
                 .productName(item.getProductName())
                 .manufacturer(item.getManufacturer())
                 .modelName(item.getModelName())
                 .isStandard(item.getIsStandard())
+                .createdAt(item.getCreatedAt())
+                .updatedAt(item.getUpdatedAt())
+                .build();
+    }
+
+    public static TangibleAssetItemResponse from(TangibleAssetItem item, BigDecimal prePurchasePrice) {
+        return TangibleAssetItemResponse.builder()
+                .itemId(item.getId())
+                .categoryId(item.getTangibleAssetCategory().getId())
+                .productName(item.getProductName())
+                .manufacturer(item.getManufacturer())
+                .modelName(item.getModelName())
+                .isStandard(item.getIsStandard())
+                .prePurchasePrice(prePurchasePrice)
                 .createdAt(item.getCreatedAt())
                 .updatedAt(item.getUpdatedAt())
                 .build();
