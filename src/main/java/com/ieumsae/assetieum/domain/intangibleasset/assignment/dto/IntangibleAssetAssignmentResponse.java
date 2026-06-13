@@ -4,10 +4,11 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.ieumsae.assetieum.domain.intangibleasset.assignment.entity.IntangibleAssetAssignment;
 import com.ieumsae.assetieum.domain.intangibleasset.assignment.type.AssignmentStatus;
-import java.time.LocalDateTime;
-import java.util.UUID;
 import lombok.Builder;
 import lombok.Getter;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Getter
 @Builder
@@ -22,7 +23,7 @@ import lombok.Getter;
         "endedAt",
         "assignmentStatus"
 })
-public class IntangibleAssetAssignmentSearchResponse {
+public class IntangibleAssetAssignmentResponse {
 
     private UUID assignmentId;
 
@@ -40,8 +41,8 @@ public class IntangibleAssetAssignmentSearchResponse {
 
     private AssignmentStatus assignmentStatus;
 
-    public static IntangibleAssetAssignmentSearchResponse from(IntangibleAssetAssignment assignment) {
-        return IntangibleAssetAssignmentSearchResponse.builder()
+    public static IntangibleAssetAssignmentResponse from(IntangibleAssetAssignment assignment) {
+        return IntangibleAssetAssignmentResponse.builder()
                 .assignmentId(assignment.getId())
                 .memberName(assignment.getMember().getName())
                 .memberNo(assignment.getMember().getMemberNo())
