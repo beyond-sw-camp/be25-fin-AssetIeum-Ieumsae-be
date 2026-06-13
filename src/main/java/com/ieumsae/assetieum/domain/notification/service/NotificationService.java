@@ -19,6 +19,8 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +29,7 @@ public class NotificationService {
 
 	private final NotificationRepository notificationRepository;
 	private final MemberRepository memberRepository;
+	private final NotificationSseService notificationSseService;
 
 	public PaginationResponse<NotificationListItemResponse> getNotifications(
 		AuthenticatedMember authenticatedMember,
@@ -90,7 +93,7 @@ public class NotificationService {
 		NotificationTargetType targetType,
 		UUID targetId
 	) {
-		notificationRepository.save(Notification.create(
+		Notification notification = notificationRepository.saveAndFlush(Notification.create(
 			receiver.getCompany(),
 			receiver,
 			notificationType,
@@ -99,6 +102,23 @@ public class NotificationService {
 			targetType,
 			targetId
 		));
+		NotificationListItemResponse response = NotificationListItemResponse.from(notification);
+
+		sendAfterCommit(receiver.getId(), response);
+	}
+
+	private void sendAfterCommit(UUID receiverId, NotificationListItemResponse response) {
+		if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+			notificationSseService.send(receiverId, response);
+			return;
+		}
+
+		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+			@Override
+			public void afterCommit() {
+				notificationSseService.send(receiverId, response);
+			}
+		});
 	}
 
 	private Member findActiveMember(UUID memberId) {
