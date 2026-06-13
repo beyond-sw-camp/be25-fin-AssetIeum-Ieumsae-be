@@ -32,7 +32,7 @@ import org.hibernate.type.SqlTypes;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "intangible_asset_assignments")
-public class Assignment extends BaseEntity {
+public class IntangibleAssetAssignment extends BaseEntity {
 
 	@Id
 	@UuidGenerator

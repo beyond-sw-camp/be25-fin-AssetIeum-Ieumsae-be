@@ -219,7 +219,6 @@ public class IntangibleAssetService {
                     .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
         }
 
-        // 에러 확인 필요
         if (request.getDepartmentId() != null) {
             departmentRepository.findByIdAndCompany_IdAndDeletedAtIsNull(request.getDepartmentId(), companyId)
                     .orElseThrow(() -> new BusinessException(ErrorCode.DEPARTMENT_NOT_FOUND));
