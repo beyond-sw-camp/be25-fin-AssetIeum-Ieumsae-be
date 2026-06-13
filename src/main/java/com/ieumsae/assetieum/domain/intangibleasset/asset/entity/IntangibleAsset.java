@@ -123,4 +123,20 @@ public class IntangibleAsset extends BaseEntity {
             this.member = member;
         }
     }
+
+    public void assignTo(Member member, Department department) {
+        this.member = member;
+        this.department = department;
+        this.intangibleAssetStatus = IntangibleAssetStatus.IN_USE;
+    }
+
+    public void markInUse() {
+        this.intangibleAssetStatus = IntangibleAssetStatus.IN_USE;
+    }
+
+    public void cancel() {
+        this.member = null;
+        this.department = null;
+        this.intangibleAssetStatus = IntangibleAssetStatus.CANCELED;
+    }
 }

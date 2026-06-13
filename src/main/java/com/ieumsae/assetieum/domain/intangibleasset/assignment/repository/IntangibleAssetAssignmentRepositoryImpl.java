@@ -1,14 +1,15 @@
 package com.ieumsae.assetieum.domain.intangibleasset.assignment.repository;
 
-import com.ieumsae.assetieum.domain.intangibleasset.assignment.dto.IntangibleAssetAssignmentSearchResponse;
+import com.ieumsae.assetieum.domain.intangibleasset.assignment.dto.IntangibleAssetAssignmentResponse;
 import com.ieumsae.assetieum.domain.intangibleasset.assignment.type.AssignmentStatus;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.jpa.impl.JPAQueryFactory;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Repository;
+
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Repository;
 
 import static com.ieumsae.assetieum.domain.intangibleasset.assignment.entity.QIntangibleAssetAssignment.intangibleAssetAssignment;
 
@@ -19,7 +20,7 @@ public class IntangibleAssetAssignmentRepositoryImpl implements IntangibleAssetA
     private final JPAQueryFactory queryFactory;
 
     @Override
-    public List<IntangibleAssetAssignmentSearchResponse> search(
+    public List<IntangibleAssetAssignmentResponse> search(
             UUID companyId,
             UUID assetId,
             AssignmentStatus assignmentStatus
@@ -43,7 +44,7 @@ public class IntangibleAssetAssignmentRepositoryImpl implements IntangibleAssetA
                 )
                 .fetch()
                 .stream()
-                .map(IntangibleAssetAssignmentSearchResponse::from)
+                .map(IntangibleAssetAssignmentResponse::from)
                 .collect(Collectors.toList());
     }
 }
