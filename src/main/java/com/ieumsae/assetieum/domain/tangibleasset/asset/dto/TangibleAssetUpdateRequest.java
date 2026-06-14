@@ -8,7 +8,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Getter
 @NoArgsConstructor
@@ -26,9 +25,5 @@ public class TangibleAssetUpdateRequest {
 
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime returnDueDate;
-
-    private UUID departmentId;
-
-    private UUID memberId;
 
 }

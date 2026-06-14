@@ -77,7 +77,7 @@ public class TangibleAssetAssignmentService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_NOT_FOUND));
 
         validateAssignmentRequest(request);
-        validateAssignableSeat(asset, companyId);
+        validateAssignableSeat(asset);
 
         // 2. 배정 이력 생성
         TangibleAssetAssignment assignment = TangibleAssetAssignment.builder()
@@ -105,7 +105,7 @@ public class TangibleAssetAssignmentService {
         return TangibleAssetAssignmentResponse.from(savedAssignment);
     }
 
-    private void validateAssignableSeat(TangibleAsset asset, UUID companyId) {
+    private void validateAssignableSeat(TangibleAsset asset) {
         if (asset.getTangibleAssetStatus() != TangibleAssetStatus.AVAILABLE) {
             throw new BusinessException(ErrorCode.TANGIBLE_ASSET_NOT_ASSIGNABLE);
         }

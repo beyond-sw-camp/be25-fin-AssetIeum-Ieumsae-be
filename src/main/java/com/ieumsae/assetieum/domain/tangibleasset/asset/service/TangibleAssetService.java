@@ -16,6 +16,9 @@ import com.ieumsae.assetieum.domain.tangibleasset.asset.entity.TangibleAsset;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.repository.TangibleAssetRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.type.TangibleAssetStatus;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.type.UsageType;
+import com.ieumsae.assetieum.domain.tangibleasset.assignment.entity.TangibleAssetAssignment;
+import com.ieumsae.assetieum.domain.tangibleasset.assignment.repository.TangibleAssetAssignmentRepository;
+import com.ieumsae.assetieum.domain.tangibleasset.assignment.type.AssignmentStatus;
 import com.ieumsae.assetieum.domain.tangibleasset.category.repository.TangibleAssetCategoryRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
 import com.ieumsae.assetieum.domain.tangibleasset.item.repository.TangibleAssetItemRepository;
@@ -46,6 +49,7 @@ public class TangibleAssetService {
     private final CodeGenerator codeGenerator;
     private final MemberRepository memberRepository;
     private final DepartmentRepository departmentRepository;
+    private final TangibleAssetAssignmentRepository tangibleAssetAssignmentRepository;
 
     /**
      * 유형자산 등록.
@@ -71,13 +75,16 @@ public class TangibleAssetService {
             throw new BusinessException(ErrorCode.TANGIBLE_ASSET_ITEM_DUPLICATED_SERIAL_NUMBER);
         }
 
-        TangibleAssetStatus status = resolveCreateStatus(request);
-        Department department = findDepartment(request.getDepartmentId(), companyId);
         Member member = findMember(request.getMemberId(), companyId);
+        Department department = resolveDepartment(request.getDepartmentId(), member, companyId);
+        LocalDateTime usedStartedAt = member != null && request.getUsedStartedAt() == null
+                ? LocalDateTime.now()
+                : request.getUsedStartedAt();
+        TangibleAssetStatus status = member != null ? TangibleAssetStatus.IN_USE : resolveCreateStatus(request);
 
         validateMemberDepartment(member, department);
-        validateRequiredUsageInfo(status, member, department, request.getUsedStartedAt());
-        validateReturnDueDate(request.getReturnDueDate(), request.getUsageType(), request.getUsedStartedAt());
+        validateRequiredUsageInfo(status, member, department, usedStartedAt);
+        validateReturnDueDate(request.getReturnDueDate(), request.getUsageType(), usedStartedAt);
 
         // 2. 유형자산 생성 및 저장
         TangibleAsset asset = TangibleAsset.builder()
@@ -91,7 +98,7 @@ public class TangibleAssetService {
                 .assetCode(codeGenerator.generate(TANGIBLE_ASSET_CODE_PREFIX, REDIS_KEY_PREFIX))
                 .serialNumber(request.getSerialNumber())
                 .location(request.getLocation())
-                .usedStartedAt(request.getUsedStartedAt())
+                .usedStartedAt(usedStartedAt)
                 .returnDueDate(request.getReturnDueDate())
                 .purchaseDate(request.getPurchaseDate())
                 .purchasePrice(request.getPurchasePrice())
@@ -100,6 +107,7 @@ public class TangibleAssetService {
                 .build();
 
         TangibleAsset savedAsset = tangibleAssetRepository.save(asset);
+        createAssignmentIfAssigned(company, savedAsset, member, department, usedStartedAt, request);
 
         return TangibleAssetResponse.from(savedAsset);
     }
@@ -171,29 +179,10 @@ public class TangibleAssetService {
         TangibleAsset asset = tangibleAssetRepository.findByIdAndCompany_Id(assetId, companyId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_NOT_FOUND));
 
-        Department requestedDepartment = findDepartment(request.getDepartmentId(), companyId);
-        Member requestedMember = findMember(request.getMemberId(), companyId);
-
-        Member finalMember = requestedMember != null ? requestedMember : asset.getMember();
-        Department finalDepartment = requestedDepartment != null ? requestedDepartment : asset.getDepartment();
-        LocalDateTime finalUsedStartedAt = request.getUsedStartedAt() != null
-                ? request.getUsedStartedAt()
-                : asset.getUsedStartedAt();
-        TangibleAssetStatus finalStatus = request.getTangibleAssetStatus() != null
-                ? request.getTangibleAssetStatus()
-                : asset.getTangibleAssetStatus();
-        UsageType finalUsageType = request.getUsageType() != null
-                ? request.getUsageType()
-                : asset.getUsageType();
-
-        validateMemberDepartment(finalMember, finalDepartment);
-        validateRequiredUsageInfo(finalStatus, finalMember, finalDepartment, finalUsedStartedAt);
-        if (request.getReturnDueDate() != null) {
-            validateReturnDueDate(request.getReturnDueDate(), finalUsageType, finalUsedStartedAt);
-        }
+        validateUpdateDoesNotChangeAssignment(request);
 
         // 2. 유형자산 수정
-        asset.update(request, requestedDepartment, requestedMember);
+        asset.update(request, null, null);
 
         return TangibleAssetResponse.from(asset);
     }
@@ -214,6 +203,52 @@ public class TangibleAssetService {
 
         return memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(memberId, companyId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+    }
+
+    private Department resolveDepartment(UUID departmentId, Member member, UUID companyId) {
+        if (departmentId != null) {
+            return findDepartment(departmentId, companyId);
+        }
+
+        return member == null ? null : member.getDepartment();
+    }
+
+    private void createAssignmentIfAssigned(
+            Company company,
+            TangibleAsset asset,
+            Member member,
+            Department department,
+            LocalDateTime usedStartedAt,
+            TangibleAssetCreateRequest request
+    ) {
+        if (member == null) {
+            return;
+        }
+
+        TangibleAssetAssignment assignment = TangibleAssetAssignment.builder()
+                .company(company)
+                .tangibleAsset(asset)
+                .member(member)
+                .department(department)
+                .assignmentType(request.getUsageType())
+                .assignedAt(usedStartedAt)
+                .endedAt(request.getReturnDueDate())
+                .assignmentStatus(AssignmentStatus.ACTIVE)
+                .build();
+
+        tangibleAssetAssignmentRepository.save(assignment);
+    }
+
+    private void validateUpdateDoesNotChangeAssignment(TangibleAssetUpdateRequest request) {
+        if (request.getTangibleAssetStatus() != null ||
+                request.getUsageType() != null ||
+                request.getUsedStartedAt() != null ||
+                request.getReturnDueDate() != null) {
+            throw new BusinessException(
+                    ErrorCode.TANGIBLE_ASSET_INVALID_REQUEST,
+                    "자산 수정에서는 사용자, 부서, 상태, 사용 유형, 사용 시작일, 반납 예정일을 변경할 수 없습니다."
+            );
+        }
     }
 
     private TangibleAssetStatus resolveCreateStatus(TangibleAssetCreateRequest request) {
