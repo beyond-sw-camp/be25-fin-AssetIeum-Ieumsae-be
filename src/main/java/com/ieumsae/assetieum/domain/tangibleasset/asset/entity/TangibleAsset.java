@@ -162,4 +162,9 @@ public class TangibleAsset extends BaseEntity {
         this.returnDueDate = null;
         this.tangibleAssetStatus = TangibleAssetStatus.RETURN_REQUESTED;
     }
+
+    public void reassign(Member newMember, LocalDateTime reassignedAt) {
+        this.member = newMember;
+        this.usedStartedAt = reassignedAt;
+    }
 }

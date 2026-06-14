@@ -2,6 +2,8 @@ package com.ieumsae.assetieum.domain.tangibleasset.assignment.controller;
 
 import com.ieumsae.assetieum.domain.tangibleasset.assignment.dto.TangibleAssetAssignmentRequest;
 import com.ieumsae.assetieum.domain.tangibleasset.assignment.dto.TangibleAssetAssignmentResponse;
+import com.ieumsae.assetieum.domain.tangibleasset.assignment.dto.TangibleAssetReassignBulkRequest;
+import com.ieumsae.assetieum.domain.tangibleasset.assignment.dto.TangibleAssetReassignmentRequest;
 import com.ieumsae.assetieum.domain.tangibleasset.assignment.service.TangibleAssetAssignmentService;
 import com.ieumsae.assetieum.domain.tangibleasset.assignment.type.AssignmentStatus;
 import com.ieumsae.assetieum.global.response.ApiResponse;
@@ -64,4 +66,30 @@ public class TangibleAssetAssignmentController {
 
         return ApiResponse.ok("유형자산이 해지되었습니다.", response);
     }
+
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
+    @PostMapping("/{assetId}/reassign")
+    public ApiResponse<TangibleAssetAssignmentResponse> reassignAsset(
+            @AuthenticationPrincipal AuthenticatedMember member,
+            @PathVariable UUID assetId,
+            @Valid @RequestBody TangibleAssetReassignmentRequest request
+    ) {
+        TangibleAssetAssignmentResponse response =
+                tangibleAssetAssignmentService.reassignAsset(assetId, request.getNewMemberId(), member.companyId());
+
+        return ApiResponse.ok("유형자산의 사용자가 변경되었습니다.", response);
+    }
+
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
+    @PostMapping("/reassign-bulk")
+    public ApiResponse<List<TangibleAssetAssignmentResponse>> reassignBulkAsset(
+            @AuthenticationPrincipal AuthenticatedMember member,
+            @Valid @RequestBody TangibleAssetReassignBulkRequest request
+    ) {
+        List<TangibleAssetAssignmentResponse> response =
+                tangibleAssetAssignmentService.reassignBulkAsset(request, member.companyId());
+
+        return ApiResponse.ok("유형자산의 사용자가 일괄 변경되었습니다.", response);
+    }
+
 }
