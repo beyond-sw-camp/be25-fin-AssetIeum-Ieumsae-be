@@ -154,4 +154,12 @@ public class TangibleAsset extends BaseEntity {
             this.returnDueDate = endedAt;
         }
     }
+
+    public void returnRequest() {
+        this.member = null;
+        this.department = null;
+        this.usedStartedAt = null;
+        this.returnDueDate = null;
+        this.tangibleAssetStatus = TangibleAssetStatus.RETURN_REQUESTED;
+    }
 }

@@ -143,6 +143,7 @@ public class IntangibleAssetAssignmentService {
                     .orElseThrow(() -> new BusinessException(ErrorCode.INTANGIBLE_ASSET_ASSIGNMENT_NOT_FOUND));
 
             assignment.end(endedAt);
+            asset.clearAssignee();
             return List.of(IntangibleAssetAssignmentResponse.from(assignment));
         }
 

@@ -21,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -117,5 +118,48 @@ public class TangibleAssetAssignmentService {
                     "임시 배정은 종료일이 필수입니다."
             );
         }
+    }
+
+    /**
+     * 유형자산 배정 해지
+     * 해당 자산을 RETURN_REQUESTED 상태로 변경한다.
+     */
+    @Transactional
+    public TangibleAssetAssignmentResponse cancelAsset(
+            UUID assetId,
+            UUID companyId
+    ) {
+        // 1. 입력값 검증
+        companyRepository.findById(companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
+
+        TangibleAsset asset = tangibleAssetRepository.findByIdAndCompany_Id(assetId, companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_NOT_FOUND));
+
+        validateCancelableStatus(asset);
+
+        // 2. 배정 이력 해지 처리
+        LocalDateTime endedAt = LocalDateTime.now();
+        TangibleAssetAssignment assignment = tangibleAssetAssignmentRepository.findByCompany_IdAndTangibleAsset_IdAndAssignmentStatus(
+                companyId,
+                assetId,
+                AssignmentStatus.ACTIVE)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_ASSIGNMENT_NOT_FOUND));
+
+        assignment.end(endedAt);
+
+        // 3. 해당 자산 RETURN_REQUESTED 처리
+        asset.returnRequest();
+
+        return TangibleAssetAssignmentResponse.from(assignment);
+
+    }
+
+    private void validateCancelableStatus(TangibleAsset asset) {
+        if (asset.getTangibleAssetStatus() == TangibleAssetStatus.IN_USE) {
+            return;
+        }
+
+        throw new BusinessException(ErrorCode.TANGIBLE_ASSET_INVALID_REQUEST);
     }
 }

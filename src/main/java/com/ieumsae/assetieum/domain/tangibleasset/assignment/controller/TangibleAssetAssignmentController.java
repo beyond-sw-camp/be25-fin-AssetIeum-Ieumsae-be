@@ -52,4 +52,16 @@ public class TangibleAssetAssignmentController {
 
         return ApiResponse.ok("유형자산이 배정되었습니다.", response);
     }
+
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
+    @PostMapping("/{assetId}/return")
+    public ApiResponse<TangibleAssetAssignmentResponse> cancelAsset(
+            @AuthenticationPrincipal AuthenticatedMember member,
+            @PathVariable UUID assetId
+    ) {
+        TangibleAssetAssignmentResponse response =
+                tangibleAssetAssignmentService.cancelAsset(assetId, member.companyId());
+
+        return ApiResponse.ok("유형자산이 해지되었습니다.", response);
+    }
 }
