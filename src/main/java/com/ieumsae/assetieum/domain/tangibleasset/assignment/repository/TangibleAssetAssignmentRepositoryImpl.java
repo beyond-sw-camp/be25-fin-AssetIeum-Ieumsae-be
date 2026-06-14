@@ -1,14 +1,15 @@
 package com.ieumsae.assetieum.domain.tangibleasset.assignment.repository;
 
-import com.ieumsae.assetieum.domain.tangibleasset.assignment.dto.TangibleAssetAssignmentSearchResponse;
+import com.ieumsae.assetieum.domain.tangibleasset.assignment.dto.TangibleAssetAssignmentResponse;
 import com.ieumsae.assetieum.domain.tangibleasset.assignment.type.AssignmentStatus;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.jpa.impl.JPAQueryFactory;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Repository;
+
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Repository;
 
 import static com.ieumsae.assetieum.domain.tangibleasset.assignment.entity.QTangibleAssetAssignment.tangibleAssetAssignment;
 
@@ -19,7 +20,7 @@ public class TangibleAssetAssignmentRepositoryImpl implements TangibleAssetAssig
     private final JPAQueryFactory queryFactory;
 
     @Override
-    public List<TangibleAssetAssignmentSearchResponse> search(
+    public List<TangibleAssetAssignmentResponse> search(
             UUID companyId,
             UUID assetId,
             AssignmentStatus assignmentStatus
@@ -43,7 +44,7 @@ public class TangibleAssetAssignmentRepositoryImpl implements TangibleAssetAssig
                 )
                 .fetch()
                 .stream()
-                .map(TangibleAssetAssignmentSearchResponse::from)
+                .map(TangibleAssetAssignmentResponse::from)
                 .collect(Collectors.toList());
     }
 }

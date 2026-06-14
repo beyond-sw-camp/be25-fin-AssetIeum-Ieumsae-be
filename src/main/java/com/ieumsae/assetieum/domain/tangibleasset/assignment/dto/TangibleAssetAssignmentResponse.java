@@ -2,13 +2,14 @@ package com.ieumsae.assetieum.domain.tangibleasset.assignment.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.type.UsageType;
 import com.ieumsae.assetieum.domain.tangibleasset.assignment.entity.TangibleAssetAssignment;
 import com.ieumsae.assetieum.domain.tangibleasset.assignment.type.AssignmentStatus;
-import com.ieumsae.assetieum.domain.tangibleasset.assignment.type.AssignmentType;
-import java.time.LocalDateTime;
-import java.util.UUID;
 import lombok.Builder;
 import lombok.Getter;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Getter
 @Builder
@@ -22,7 +23,7 @@ import lombok.Getter;
         "endedAt",
         "assignmentStatus"
 })
-public class TangibleAssetAssignmentSearchResponse {
+public class TangibleAssetAssignmentResponse {
 
     private UUID assignmentId;
 
@@ -32,7 +33,7 @@ public class TangibleAssetAssignmentSearchResponse {
 
     private String departmentName;
 
-    private AssignmentType assignmentType;
+    private UsageType assignmentType;
 
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime assignedAt;
@@ -42,8 +43,8 @@ public class TangibleAssetAssignmentSearchResponse {
 
     private AssignmentStatus assignmentStatus;
 
-    public static TangibleAssetAssignmentSearchResponse from(TangibleAssetAssignment assignment) {
-        return TangibleAssetAssignmentSearchResponse.builder()
+    public static TangibleAssetAssignmentResponse from(TangibleAssetAssignment assignment) {
+        return TangibleAssetAssignmentResponse.builder()
                 .assignmentId(assignment.getId())
                 .memberName(assignment.getMember().getName())
                 .memberNo(assignment.getMember().getMemberNo())

@@ -131,4 +131,27 @@ public class TangibleAsset extends BaseEntity {
             this.member = member;
         }
     }
+
+    public void markInUse(
+            Member member,
+            Department department,
+            UsageType usageType,
+            AssetUsageType assetUsageType,
+            LocalDateTime startedAt,
+            LocalDateTime endedAt
+    ) {
+        this.member = member;
+        this.department = department;
+        this.usageType = usageType;
+        this.assetUsageType = assetUsageType;
+        this.tangibleAssetStatus = TangibleAssetStatus.IN_USE;
+        if (this.usedStartedAt == null) {
+            this.usedStartedAt = startedAt;
+        }
+        if (usageType == UsageType.PERMANENT) {
+            this.returnDueDate = null;
+        } else if(endedAt != null) {
+            this.returnDueDate = endedAt;
+        }
+    }
 }
