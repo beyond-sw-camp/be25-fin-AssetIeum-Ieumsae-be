@@ -1,5 +1,6 @@
 package com.ieumsae.assetieum.domain.department.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.ieumsae.assetieum.domain.department.entity.Department;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -16,6 +17,7 @@ public class DepartmentTreeResponse {
 	private final UUID parentDepartmentId;
 	private final String name;
 	private final long memberCount;
+	@JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
 	private final LocalDateTime createdAt;
 
 	@Builder.Default

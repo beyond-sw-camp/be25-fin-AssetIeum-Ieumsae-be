@@ -1,5 +1,6 @@
 package com.ieumsae.assetieum.domain.member.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.ieumsae.assetieum.domain.department.entity.Department;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.type.MemberRole;
@@ -22,6 +23,7 @@ public class MemberListItemResponse {
 	private final String departmentNamePath;
 	private final MemberRole role;
 	private final MemberStatus status;
+	@JsonFormat(pattern = "yyyy-MM-dd")
 	private final LocalDate joinDate;
 
 	public static MemberListItemResponse from(Member member) {

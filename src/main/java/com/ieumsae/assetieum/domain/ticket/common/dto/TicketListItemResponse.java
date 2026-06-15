@@ -1,8 +1,9 @@
 package com.ieumsae.assetieum.domain.ticket.common.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.ieumsae.assetieum.domain.ticket.common.type.RequestMethod;
 import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
 import com.ieumsae.assetieum.domain.ticket.common.type.TicketType;
-import com.ieumsae.assetieum.domain.ticket.common.type.RequestMethod;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import lombok.Getter;
@@ -15,6 +16,7 @@ public class TicketListItemResponse {
 	private final TicketType ticketType;
 	private final RequestMethod requestMethod;
 	private final String requestedItemName;
+	@JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
 	private final LocalDateTime requestedAt;
 	private final TicketStatus ticketStatus;
 

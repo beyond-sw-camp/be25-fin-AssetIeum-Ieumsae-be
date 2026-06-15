@@ -1,5 +1,6 @@
 package com.ieumsae.assetieum.domain.department.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.ieumsae.assetieum.domain.department.entity.Department;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import java.time.LocalDateTime;
@@ -16,6 +17,7 @@ public class DepartmentCreateResponse {
 	private final UUID departmentManagerId;
 	private final String departmentManagerName;
 	private final String name;
+	@JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
 	private final LocalDateTime createdAt;
 
 	public static DepartmentCreateResponse from(Department department) {
