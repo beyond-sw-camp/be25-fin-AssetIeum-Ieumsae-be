@@ -31,7 +31,7 @@ public class DepartmentController {
 
 	private final DepartmentService departmentService;
 
-	@PreAuthorize("hasRole('ADMIN')")
+	@PreAuthorize("isAuthenticated()")
 	@GetMapping
 	public ApiResponse<DepartmentListResponse> getDepartments(
 		@AuthenticationPrincipal AuthenticatedMember authenticatedMember

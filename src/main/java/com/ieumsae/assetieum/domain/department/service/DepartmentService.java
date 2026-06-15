@@ -39,7 +39,7 @@ public class DepartmentService {
 	private final CompanyRepository companyRepository;
 
 	public DepartmentListResponse getDepartments(AuthenticatedMember authenticatedMember) {
-		validateAdmin(authenticatedMember);
+		validateActiveMember(authenticatedMember);
 		UUID companyId = authenticatedMember.companyId();
 		List<Department> departments =
 			departmentRepository.findAllByCompany_IdAndDeletedAtIsNullOrderByCreatedAtAsc(companyId);
@@ -162,6 +162,14 @@ public class DepartmentService {
 	}
 
 	private void validateAdmin(AuthenticatedMember authenticatedMember) {
+		Member member = validateActiveMember(authenticatedMember);
+
+		if (member.getRole() != MemberRole.ADMIN) {
+			throw new BusinessException(ErrorCode.ACCESS_DENIED);
+		}
+	}
+
+	private Member validateActiveMember(AuthenticatedMember authenticatedMember) {
 		Member member = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(
 				authenticatedMember.id(),
 				authenticatedMember.companyId()
@@ -172,9 +180,7 @@ public class DepartmentService {
 			throw new BusinessException(ErrorCode.INACTIVE_MEMBER);
 		}
 
-		if (member.getRole() != MemberRole.ADMIN) {
-			throw new BusinessException(ErrorCode.ACCESS_DENIED);
-		}
+		return member;
 	}
 
 	private Company findActiveCompany(UUID companyId) {
