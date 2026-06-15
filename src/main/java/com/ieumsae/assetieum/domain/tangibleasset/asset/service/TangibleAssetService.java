@@ -32,6 +32,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.EnumSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -41,6 +43,11 @@ public class TangibleAssetService {
 
     private static final String TANGIBLE_ASSET_CODE_PREFIX = "TA";
     private static final String REDIS_KEY_PREFIX = "tangible-asset:code:";
+    private static final Set<TangibleAssetStatus> TICKET_ONLY_UPDATE_STATUSES = EnumSet.of(
+            TangibleAssetStatus.IN_USE,
+            TangibleAssetStatus.RETURN_REQUESTED,
+            TangibleAssetStatus.REPAIR_REQUESTED
+    );
 
     private final TangibleAssetRepository tangibleAssetRepository;
     private final TangibleAssetItemRepository tangibleAssetItemRepository;
@@ -180,6 +187,7 @@ public class TangibleAssetService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_NOT_FOUND));
 
         validateUpdateDoesNotChangeAssignment(request);
+        validateDirectStatusUpdate(asset, request.getTangibleAssetStatus());
 
         // 2. 유형자산 수정
         asset.update(request, null, null);
@@ -240,13 +248,32 @@ public class TangibleAssetService {
     }
 
     private void validateUpdateDoesNotChangeAssignment(TangibleAssetUpdateRequest request) {
-        if (request.getTangibleAssetStatus() != null ||
-                request.getUsageType() != null ||
+        if (request.getUsageType() != null ||
                 request.getUsedStartedAt() != null ||
                 request.getReturnDueDate() != null) {
             throw new BusinessException(
                     ErrorCode.TANGIBLE_ASSET_INVALID_REQUEST,
                     "자산 수정에서는 사용자, 부서, 상태, 사용 유형, 사용 시작일, 반납 예정일을 변경할 수 없습니다."
+            );
+        }
+    }
+
+    private void validateDirectStatusUpdate(TangibleAsset asset, TangibleAssetStatus requestedStatus) {
+        if (requestedStatus == null || requestedStatus == asset.getTangibleAssetStatus()) {
+            return;
+        }
+
+        if (TICKET_ONLY_UPDATE_STATUSES.contains(requestedStatus)) {
+            throw new BusinessException(
+                    ErrorCode.TANGIBLE_ASSET_INVALID_REQUEST,
+                    "IN_USE, RETURN_REQUESTED, REPAIR_REQUESTED 상태는 배정, 반납, 수리 요청 흐름을 통해서만 변경할 수 있습니다."
+            );
+        }
+
+        if (asset.getMember() != null || asset.getDepartment() != null) {
+            throw new BusinessException(
+                    ErrorCode.TANGIBLE_ASSET_INVALID_REQUEST,
+                    "사용자 또는 부서에 배정된 자산은 수정 API에서 상태를 직접 변경할 수 없습니다."
             );
         }
     }
