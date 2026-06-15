@@ -1,8 +1,8 @@
-package com.ieumsae.assetieum.domain.budget.history.controller;
+package com.ieumsae.assetieum.domain.budget.budget.controller;
 
-import com.ieumsae.assetieum.domain.budget.history.dto.BudgetHistoryResponse;
-import com.ieumsae.assetieum.domain.budget.history.dto.BudgetHistorySearchRequest;
-import com.ieumsae.assetieum.domain.budget.history.service.BudgetHistoryService;
+import com.ieumsae.assetieum.domain.budget.budget.dto.BudgetResponse;
+import com.ieumsae.assetieum.domain.budget.budget.dto.BudgetSearchRequest;
+import com.ieumsae.assetieum.domain.budget.budget.service.BudgetService;
 import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.response.ApiResponse;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
@@ -17,21 +17,20 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/budget-histories")
-public class BudgetHistoryController {
+@RequestMapping("/api/v1/budgets")
+public class budgetController {
 
-    private final BudgetHistoryService budgetHistoryService;
+    private final BudgetService budgetService;
 
     @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
     @GetMapping
-    public ApiResponse<PaginationResponse<BudgetHistoryResponse>> getBudgetHistories(
+    public ApiResponse<PaginationResponse<BudgetResponse>> getBudgets(
             @AuthenticationPrincipal AuthenticatedMember member,
-            @Valid @ModelAttribute BudgetHistorySearchRequest request
+            @Valid @ModelAttribute BudgetSearchRequest request
     ) {
-        PaginationResponse<BudgetHistoryResponse> response =
-                budgetHistoryService.getBudgetHistories(request, member.companyId());
+        PaginationResponse<BudgetResponse> response =
+                budgetService.getBudgets(request, member.companyId());
 
-        return ApiResponse.ok("예산 이력 목록 조회에 성공했습니다.", response);
+        return ApiResponse.ok("예산 목록 조회에 성공했습니다.", response);
     }
-
 }
