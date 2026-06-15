@@ -1,6 +1,7 @@
 package com.ieumsae.assetieum.domain.notification.controller;
 
 import com.ieumsae.assetieum.domain.notification.dto.NotificationCreateRequest;
+import com.ieumsae.assetieum.domain.notification.dto.NotificationCreateResponse;
 import com.ieumsae.assetieum.domain.notification.dto.NotificationListItemResponse;
 import com.ieumsae.assetieum.domain.notification.dto.NotificationReadAllResponse;
 import com.ieumsae.assetieum.domain.notification.dto.NotificationReadResponse;
@@ -75,11 +76,11 @@ public class NotificationController {
 
 	@PreAuthorize("hasRole('ADMIN')")
 	@PostMapping
-	public ApiResponse<NotificationListItemResponse> createNotification(
+	public ApiResponse<NotificationCreateResponse> createNotification(
 		@AuthenticationPrincipal AuthenticatedMember authenticatedMember,
 		@Valid @RequestBody NotificationCreateRequest request
 	) {
-		NotificationListItemResponse response = notificationService.createNotification(
+		NotificationCreateResponse response = notificationService.createNotification(
 			authenticatedMember,
 			request
 		);

@@ -5,6 +5,7 @@ import com.ieumsae.assetieum.domain.notification.type.NotificationType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.util.List;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -15,8 +16,11 @@ import lombok.Setter;
 @NoArgsConstructor
 public class NotificationCreateRequest {
 
-	@NotNull(message = "수신자 ID는 필수입니다.")
 	private UUID receiverId;
+
+	private List<UUID> receiverIds;
+
+	private boolean sendToAll;
 
 	@NotNull(message = "알림 유형은 필수입니다.")
 	private NotificationType notificationType;
