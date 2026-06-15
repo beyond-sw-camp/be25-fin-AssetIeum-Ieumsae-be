@@ -38,7 +38,7 @@ public class MemberService {
 		AuthenticatedMember authenticatedMember,
 		MemberSearchRequest request
 	) {
-		validateAdmin(authenticatedMember);
+		validateActiveMember(authenticatedMember);
 		UUID companyId = authenticatedMember.companyId();
 		validateSearchDepartment(request.getDepartmentId(), companyId);
 
@@ -103,6 +103,14 @@ public class MemberService {
 	}
 
 	private void validateAdmin(AuthenticatedMember authenticatedMember) {
+		Member member = validateActiveMember(authenticatedMember);
+
+		if (member.getRole() != MemberRole.ADMIN) {
+			throw new BusinessException(ErrorCode.ACCESS_DENIED);
+		}
+	}
+
+	private Member validateActiveMember(AuthenticatedMember authenticatedMember) {
 		Member member = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(
 				authenticatedMember.id(),
 				authenticatedMember.companyId()
@@ -113,9 +121,7 @@ public class MemberService {
 			throw new BusinessException(ErrorCode.INACTIVE_MEMBER);
 		}
 
-		if (member.getRole() != MemberRole.ADMIN) {
-			throw new BusinessException(ErrorCode.ACCESS_DENIED);
-		}
+		return member;
 	}
 
 	private Department findActiveDepartment(UUID departmentId, UUID companyId) {

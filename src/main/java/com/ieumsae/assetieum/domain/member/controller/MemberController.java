@@ -31,7 +31,7 @@ public class MemberController {
 
 	private final MemberService memberService;
 
-	@PreAuthorize("hasRole('ADMIN')")
+	@PreAuthorize("isAuthenticated()")
 	@GetMapping
 	public ApiResponse<PaginationResponse<MemberListItemResponse>> getMembers(
 		@AuthenticationPrincipal AuthenticatedMember authenticatedMember,
