@@ -2,6 +2,9 @@ package com.ieumsae.assetieum.domain.notification.service;
 
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
+import com.ieumsae.assetieum.domain.member.type.MemberStatus;
+import com.ieumsae.assetieum.domain.notification.dto.NotificationCreateRequest;
+import com.ieumsae.assetieum.domain.notification.dto.NotificationCreateResponse;
 import com.ieumsae.assetieum.domain.notification.dto.NotificationListItemResponse;
 import com.ieumsae.assetieum.domain.notification.dto.NotificationReadAllResponse;
 import com.ieumsae.assetieum.domain.notification.dto.NotificationReadResponse;
@@ -15,6 +18,9 @@ import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -56,17 +62,31 @@ public class NotificationService {
 		return NotificationUnreadCountResponse.from(unreadCount);
 	}
 
+	public NotificationListItemResponse getNotification(
+		AuthenticatedMember authenticatedMember,
+		Long notificationId
+	) {
+		Member receiver = findActiveMember(authenticatedMember.id());
+		Notification notification = findNotification(
+			notificationId,
+			receiver.getId(),
+			receiver.getCompany().getId()
+		);
+
+		return NotificationListItemResponse.from(notification);
+	}
+
 	@Transactional
 	public NotificationReadResponse markAsRead(
 		AuthenticatedMember authenticatedMember,
 		Long notificationId
 	) {
 		Member receiver = findActiveMember(authenticatedMember.id());
-		Notification notification = notificationRepository.findByIdAndReceiver_IdAndCompany_Id(
+		Notification notification = findNotification(
 			notificationId,
 			receiver.getId(),
 			receiver.getCompany().getId()
-		).orElseThrow(() -> new BusinessException(ErrorCode.NOTIFICATION_NOT_FOUND));
+		);
 
 		notification.markAsRead();
 
@@ -93,7 +113,86 @@ public class NotificationService {
 		NotificationTargetType targetType,
 		UUID targetId
 	) {
-		Notification notification = notificationRepository.saveAndFlush(Notification.create(
+		Notification notification = saveNotification(
+			receiver,
+			notificationType,
+			title,
+			content,
+			targetType,
+			targetId
+		);
+		NotificationListItemResponse response = NotificationListItemResponse.from(notification);
+
+		sendAfterCommit(receiver.getId(), response);
+	}
+
+	@Transactional
+	public NotificationCreateResponse createNotification(
+		AuthenticatedMember authenticatedMember,
+		NotificationCreateRequest request
+	) {
+		Member creator = findActiveMember(authenticatedMember.id());
+		List<Member> receivers = findReceivers(request, creator.getCompany().getId());
+		if (receivers.isEmpty()) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "알림을 받을 활성 멤버가 없습니다.");
+		}
+		int createdCount = 0;
+
+		for (Member receiver : receivers) {
+			Notification notification = saveNotification(
+				receiver,
+				request.getNotificationType(),
+				request.getTitle().trim(),
+				request.getContent().trim(),
+				request.getTargetType(),
+				request.getTargetId()
+			);
+			NotificationListItemResponse response = NotificationListItemResponse.from(notification);
+			createdCount++;
+
+			sendAfterCommit(receiver.getId(), response);
+		}
+
+		return NotificationCreateResponse.from(createdCount);
+	}
+
+	private List<Member> findReceivers(NotificationCreateRequest request, UUID companyId) {
+		if (request.isSendToAll()) {
+			return memberRepository.findAllByCompany_IdAndStatusAndDeletedAtIsNull(
+				companyId,
+				MemberStatus.ACTIVE
+			);
+		}
+
+		LinkedHashSet<UUID> receiverIds = new LinkedHashSet<>();
+		if (request.getReceiverId() != null) {
+			receiverIds.add(request.getReceiverId());
+		}
+		if (request.getReceiverIds() != null) {
+			receiverIds.addAll(request.getReceiverIds());
+		}
+
+		if (receiverIds.isEmpty()) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "알림 수신자를 지정해야 합니다.");
+		}
+
+		List<Member> receivers = new ArrayList<>();
+		for (UUID receiverId : receiverIds) {
+			receivers.add(findActiveMember(receiverId, companyId));
+		}
+
+		return receivers;
+	}
+
+	private Notification saveNotification(
+		Member receiver,
+		NotificationType notificationType,
+		String title,
+		String content,
+		NotificationTargetType targetType,
+		UUID targetId
+	) {
+		return notificationRepository.saveAndFlush(Notification.create(
 			receiver.getCompany(),
 			receiver,
 			notificationType,
@@ -102,9 +201,6 @@ public class NotificationService {
 			targetType,
 			targetId
 		));
-		NotificationListItemResponse response = NotificationListItemResponse.from(notification);
-
-		sendAfterCommit(receiver.getId(), response);
 	}
 
 	private void sendAfterCommit(UUID receiverId, NotificationListItemResponse response) {
@@ -129,5 +225,24 @@ public class NotificationService {
 			throw new BusinessException(ErrorCode.INACTIVE_MEMBER);
 		}
 		return member;
+	}
+
+	private Member findActiveMember(UUID memberId, UUID companyId) {
+		Member member = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(memberId, companyId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+
+		if (!member.isActive()) {
+			throw new BusinessException(ErrorCode.INACTIVE_MEMBER);
+		}
+		return member;
+	}
+
+	private Notification findNotification(Long notificationId, UUID receiverId, UUID companyId) {
+		return notificationRepository.findByIdAndReceiver_IdAndCompany_Id(
+				notificationId,
+				receiverId,
+				companyId
+			)
+			.orElseThrow(() -> new BusinessException(ErrorCode.NOTIFICATION_NOT_FOUND));
 	}
 }
