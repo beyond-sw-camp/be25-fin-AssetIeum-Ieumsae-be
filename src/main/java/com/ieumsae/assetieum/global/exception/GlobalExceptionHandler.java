@@ -5,6 +5,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -66,5 +68,31 @@ public class GlobalExceptionHandler {
 						ErrorCode.INVALID_INPUT_VALUE.getCode(),
 						ErrorCode.INVALID_INPUT_VALUE.getMessage()
 				));
+	}
+
+	@ExceptionHandler(HttpMessageNotReadableException.class)
+	public ResponseEntity<ApiResponse<Void>> handleHttpMessageNotReadable(
+		HttpMessageNotReadableException exception
+	) {
+		return ResponseEntity
+			.badRequest()
+			.body(ApiResponse.error(
+				HttpStatus.BAD_REQUEST,
+				ErrorCode.INVALID_INPUT_VALUE.getCode(),
+				ErrorCode.INVALID_INPUT_VALUE.getMessage()
+			));
+	}
+
+	@ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+	public ResponseEntity<ApiResponse<Void>> handleMethodNotSupported(
+		HttpRequestMethodNotSupportedException exception
+	) {
+		return ResponseEntity
+			.status(HttpStatus.METHOD_NOT_ALLOWED)
+			.body(ApiResponse.error(
+				HttpStatus.METHOD_NOT_ALLOWED,
+				ErrorCode.METHOD_NOT_ALLOWED.getCode(),
+				ErrorCode.METHOD_NOT_ALLOWED.getMessage()
+			));
 	}
 }

@@ -1,5 +1,6 @@
 package com.ieumsae.assetieum.domain.notification.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.ieumsae.assetieum.domain.notification.entity.Notification;
 import com.ieumsae.assetieum.domain.notification.type.NotificationTargetType;
 import com.ieumsae.assetieum.domain.notification.type.NotificationType;
@@ -18,7 +19,8 @@ public class NotificationListItemResponse {
 	private final String content;
 	private final NotificationTargetType targetType;
 	private final UUID targetId;
-	private final boolean read;
+	@JsonProperty("isRead")
+	private final boolean isRead;
 	private final LocalDateTime createdAt;
 
 	public static NotificationListItemResponse from(Notification notification) {
@@ -29,7 +31,7 @@ public class NotificationListItemResponse {
 			.content(notification.getContent())
 			.targetType(notification.getTargetType())
 			.targetId(notification.getTargetId())
-			.read(notification.isRead())
+			.isRead(notification.isRead())
 			.createdAt(notification.getCreatedAt())
 			.build();
 	}

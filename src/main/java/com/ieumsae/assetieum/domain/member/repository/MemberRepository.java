@@ -3,6 +3,7 @@ package com.ieumsae.assetieum.domain.member.repository;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.type.MemberRole;
 import com.ieumsae.assetieum.domain.member.type.MemberStatus;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -28,6 +29,8 @@ public interface MemberRepository extends JpaRepository<Member, UUID> {
 	boolean existsByCompany_IdAndRoleAndDeletedAtIsNull(UUID companyId, MemberRole role);
 
 	Optional<Member> findByIdAndCompany_IdAndDeletedAtIsNull(UUID memberId, UUID companyId);
+
+	List<Member> findAllByCompany_IdAndStatusAndDeletedAtIsNull(UUID companyId, MemberStatus status);
 
 	@Query("""
 		SELECT m
