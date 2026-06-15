@@ -188,6 +188,11 @@ public class TangibleAssetService {
 
         validateUpdateDoesNotChangeAssignment(request);
         validateDirectStatusUpdate(asset, request.getTangibleAssetStatus());
+        validateStartDateUpdate(asset.getUsedStartedAt(), request.getUsedStartedAt());
+
+        if (request.getUsedStartedAt() != null) {
+            validateReturnDueDate(asset.getReturnDueDate(), asset.getUsageType(), request.getUsedStartedAt());
+        }
 
         // 2. 유형자산 수정
         asset.update(request, null, null);
@@ -249,7 +254,6 @@ public class TangibleAssetService {
 
     private void validateUpdateDoesNotChangeAssignment(TangibleAssetUpdateRequest request) {
         if (request.getUsageType() != null ||
-                request.getUsedStartedAt() != null ||
                 request.getReturnDueDate() != null) {
             throw new BusinessException(
                     ErrorCode.TANGIBLE_ASSET_INVALID_REQUEST,
@@ -270,10 +274,39 @@ public class TangibleAssetService {
             );
         }
 
+        if (asset.getTangibleAssetStatus() == TangibleAssetStatus.IN_USE
+                && requestedStatus == TangibleAssetStatus.DISPOSED) {
+            throw new BusinessException(
+                    ErrorCode.TANGIBLE_ASSET_INVALID_REQUEST,
+                    "사용 중인 자산은 폐기 상태로 변경할 수 없습니다."
+            );
+        }
+
         if (asset.getMember() != null || asset.getDepartment() != null) {
             throw new BusinessException(
                     ErrorCode.TANGIBLE_ASSET_INVALID_REQUEST,
                     "사용자 또는 부서에 배정된 자산은 수정 API에서 상태를 직접 변경할 수 없습니다."
+            );
+        }
+    }
+
+    private void validateStartDateUpdate(LocalDateTime currentStartedAt, LocalDateTime requestedStartedAt) {
+        if (requestedStartedAt == null) {
+            return;
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        if (currentStartedAt != null && !currentStartedAt.isAfter(now)) {
+            throw new BusinessException(
+                    ErrorCode.TANGIBLE_ASSET_INVALID_REQUEST,
+                    "이미 시작된 자산의 사용 시작일은 수정할 수 없습니다."
+            );
+        }
+
+        if (!requestedStartedAt.isAfter(now)) {
+            throw new BusinessException(
+                    ErrorCode.TANGIBLE_ASSET_INVALID_REQUEST,
+                    "수정할 사용 시작일은 현재 시점보다 이후여야 합니다."
             );
         }
     }

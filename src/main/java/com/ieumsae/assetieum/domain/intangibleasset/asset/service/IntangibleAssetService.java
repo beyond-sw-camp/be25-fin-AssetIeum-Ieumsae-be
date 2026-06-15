@@ -176,6 +176,27 @@ public class IntangibleAssetService {
         }
     }
 
+    private void validateStartDateUpdate(LocalDateTime currentStartedAt, LocalDateTime requestedStartedAt) {
+        if (requestedStartedAt == null) {
+            return;
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        if (currentStartedAt != null && !currentStartedAt.isAfter(now)) {
+            throw new BusinessException(
+                    ErrorCode.INTANGIBLE_ASSET_INVALID_REQUEST,
+                    "이미 시작된 자산의 시작일은 수정할 수 없습니다."
+            );
+        }
+
+        if (!requestedStartedAt.isAfter(now)) {
+            throw new BusinessException(
+                    ErrorCode.INTANGIBLE_ASSET_INVALID_REQUEST,
+                    "수정할 시작일은 현재 시점보다 이후여야 합니다."
+            );
+        }
+    }
+
     private IntangibleAssetStatus resolveCreateStatus(IntangibleAssetCreateRequest request) {
         if (request.getIntangibleAssetStatus() == null) {
             return IntangibleAssetStatus.AVAILABLE;
@@ -324,6 +345,7 @@ public class IntangibleAssetService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.INTANGIBLE_ASSET_NOT_FOUND));
 
         validateUpdateDoesNotChangeAssignment(request);
+        validateStartDateUpdate(asset.getStartedAt(), request.getStartedAt());
 
         LocalDateTime finalStartedAt = request.getStartedAt() != null
                 ? request.getStartedAt()
@@ -331,6 +353,8 @@ public class IntangibleAssetService {
 
         if (request.getExpiredAt() != null) {
             validateExpiredAt(request.getExpiredAt(), asset.getBillingCycle(), finalStartedAt);
+        } else if (request.getStartedAt() != null && asset.getExpiredAt() != null) {
+            validateExpiredAt(asset.getExpiredAt(), asset.getBillingCycle(), finalStartedAt);
         }
 
         // 2. 무형자산 수정

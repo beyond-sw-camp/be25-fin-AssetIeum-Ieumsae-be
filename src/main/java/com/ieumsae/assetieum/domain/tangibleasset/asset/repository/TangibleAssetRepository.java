@@ -1,8 +1,10 @@
 package com.ieumsae.assetieum.domain.tangibleasset.asset.repository;
 
 import com.ieumsae.assetieum.domain.tangibleasset.asset.entity.TangibleAsset;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.type.TangibleAssetStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -14,4 +16,18 @@ public interface TangibleAssetRepository extends JpaRepository<TangibleAsset, UU
     boolean existsByAssetCode(String assetCode);
 
     Optional<TangibleAsset> findByIdAndCompany_Id(UUID assetId, UUID companyId);
+
+    List<TangibleAsset> findAllByCompany_IdAndTangibleAssetStatus(UUID companyId, TangibleAssetStatus status);
+
+    List<TangibleAsset> findAllByCompany_IdAndDepartment_IdAndTangibleAssetStatus(
+            UUID companyId,
+            UUID departmentId,
+            TangibleAssetStatus status
+    );
+
+    List<TangibleAsset> findAllByCompany_IdAndTangibleAssetItem_TangibleAssetCategory_IdInAndTangibleAssetStatus(
+            UUID companyId,
+            List<UUID> categoryIds,
+            TangibleAssetStatus status
+    );
 }
