@@ -5,7 +5,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface TicketRepository extends JpaRepository<Ticket, UUID> {
+public interface TicketRepository extends JpaRepository<Ticket, UUID>, TicketRepositoryCustom {
 
 	Optional<Ticket> findByIdAndCompany_IdAndDeletedAtIsNull(UUID ticketId, UUID companyId);
 }
