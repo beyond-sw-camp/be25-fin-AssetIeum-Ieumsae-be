@@ -14,6 +14,9 @@ import com.ieumsae.assetieum.domain.intangibleasset.asset.entity.IntangibleAsset
 import com.ieumsae.assetieum.domain.intangibleasset.asset.repository.IntangibleAssetRepository;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.type.BillingCycle;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.type.IntangibleAssetStatus;
+import com.ieumsae.assetieum.domain.intangibleasset.assignment.entity.IntangibleAssetAssignment;
+import com.ieumsae.assetieum.domain.intangibleasset.assignment.repository.IntangibleAssetAssignmentRepository;
+import com.ieumsae.assetieum.domain.intangibleasset.assignment.type.AssignmentStatus;
 import com.ieumsae.assetieum.domain.intangibleasset.category.repository.IntangibleAssetCategoryRepository;
 import com.ieumsae.assetieum.domain.intangibleasset.item.entity.IntangibleAssetItem;
 import com.ieumsae.assetieum.domain.intangibleasset.item.repository.IntangibleAssetItemRepository;
@@ -45,6 +48,7 @@ public class IntangibleAssetService {
     private final IntangibleAssetCategoryRepository intangibleAssetCategoryRepository;
     private final DepartmentRepository departmentRepository;
     private final MemberRepository memberRepository;
+    private final IntangibleAssetAssignmentRepository intangibleAssetAssignmentRepository;
 
     private final CodeGenerator codeGenerator;
 
@@ -76,13 +80,16 @@ public class IntangibleAssetService {
             }
         }
 
-        IntangibleAssetStatus status = resolveCreateStatus(request);
-        Department department = findDepartment(request.getDepartmentId(), companyId);
         Member member = findMember(request.getMemberId(), companyId);
+        Department department = resolveDepartment(request.getDepartmentId(), member, companyId);
+        LocalDateTime startedAt = member != null && request.getStartedAt() == null
+                ? LocalDateTime.now()
+                : request.getStartedAt();
+        IntangibleAssetStatus status = member != null ? IntangibleAssetStatus.IN_USE : resolveCreateStatus(request);
 
         validateMemberDepartment(member, department);
-        validateRequiredUsageInfo(status, member, department, request.getStartedAt());
-        validateExpiredAt(request.getExpiredAt(), request.getBillingCycle(), request.getStartedAt());
+        validateRequiredUsageInfo(status, member, department, startedAt);
+        validateExpiredAt(request.getExpiredAt(), request.getBillingCycle(), startedAt);
 
 
         // 2. 무형자산 생성 및 저장
@@ -95,7 +102,7 @@ public class IntangibleAssetService {
                 .member(member)
                 .department(department)
                 .assetCode(codeGenerator.generate(INTANGIBLE_ASSET_CODE_PREFIX, REDIS_KEY_PREFIX))
-                .startedAt(request.getStartedAt())
+                .startedAt(startedAt)
                 .expiredAt(request.getExpiredAt())
                 .isAutoRenewal(request.getIsAutoRenewal())
                 .billingCycle(request.getBillingCycle())
@@ -105,6 +112,7 @@ public class IntangibleAssetService {
                 .build();
 
         IntangibleAsset savedAsset = intangibleAssetRepository.save(asset);
+        createAssignmentIfAssigned(company, savedAsset, member, department, startedAt, request);
 
         return IntangibleAssetResponse.from(savedAsset);
     }
@@ -124,6 +132,48 @@ public class IntangibleAssetService {
 
         return memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(memberId, companyId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+    }
+
+    private Department resolveDepartment(UUID departmentId, Member member, UUID companyId) {
+        if (departmentId != null) {
+            return findDepartment(departmentId, companyId);
+        }
+
+        return member == null ? null : member.getDepartment();
+    }
+
+    private void createAssignmentIfAssigned(
+            Company company,
+            IntangibleAsset asset,
+            Member member,
+            Department department,
+            LocalDateTime startedAt,
+            IntangibleAssetCreateRequest request
+    ) {
+        if (member == null) {
+            return;
+        }
+
+        IntangibleAssetAssignment assignment = IntangibleAssetAssignment.builder()
+                .company(company)
+                .intangibleAsset(asset)
+                .member(member)
+                .department(department)
+                .assignedAt(startedAt)
+                .endedAt(request.getExpiredAt())
+                .assignmentStatus(AssignmentStatus.ACTIVE)
+                .build();
+
+        intangibleAssetAssignmentRepository.save(assignment);
+    }
+
+    private void validateUpdateDoesNotChangeAssignment(IntangibleAssetUpdateRequest request) {
+        if (request.getIntangibleAssetStatus() != null) {
+            throw new BusinessException(
+                    ErrorCode.INTANGIBLE_ASSET_INVALID_REQUEST,
+                    "자산 수정에서는 사용자, 부서, 상태를 변경할 수 없습니다."
+            );
+        }
     }
 
     private IntangibleAssetStatus resolveCreateStatus(IntangibleAssetCreateRequest request) {
@@ -273,26 +323,18 @@ public class IntangibleAssetService {
         IntangibleAsset asset = intangibleAssetRepository.findByIdAndCompany_Id(assetId, companyId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.INTANGIBLE_ASSET_NOT_FOUND));
 
-        Department requestedDepartment = findDepartment(request.getDepartmentId(), companyId);
-        Member requestedMember = findMember(request.getMemberId(), companyId);
+        validateUpdateDoesNotChangeAssignment(request);
 
-        Member finalMember = requestedMember != null ? requestedMember : asset.getMember();
-        Department finalDepartment = requestedDepartment != null ? requestedDepartment : asset.getDepartment();
         LocalDateTime finalStartedAt = request.getStartedAt() != null
                 ? request.getStartedAt()
                 : asset.getStartedAt();
-        IntangibleAssetStatus finalStatus = request.getIntangibleAssetStatus() != null
-                ? request.getIntangibleAssetStatus()
-                : asset.getIntangibleAssetStatus();
 
-        validateMemberDepartment(finalMember, finalDepartment);
-        validateRequiredUsageInfo(finalStatus, finalMember, finalDepartment, finalStartedAt);
         if (request.getExpiredAt() != null) {
             validateExpiredAt(request.getExpiredAt(), asset.getBillingCycle(), finalStartedAt);
         }
 
         // 2. 무형자산 수정
-        asset.update(request, requestedDepartment, requestedMember);
+        asset.update(request, null, null);
 
         return IntangibleAssetResponse.from(asset);
     }

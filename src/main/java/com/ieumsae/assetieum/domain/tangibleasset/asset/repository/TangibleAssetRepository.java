@@ -14,5 +14,4 @@ public interface TangibleAssetRepository extends JpaRepository<TangibleAsset, UU
     boolean existsByAssetCode(String assetCode);
 
     Optional<TangibleAsset> findByIdAndCompany_Id(UUID assetId, UUID companyId);
-
 }
