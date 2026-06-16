@@ -111,6 +111,7 @@ public class PurchaseRequestTicketService {
 				companyId
 			);
 		} else {
+			validateIntangiblePurchaseRequest(licenseType);
 			intangibleAssetCategory = findIntangibleAssetCategory(
 				categoryId,
 				companyId
@@ -184,6 +185,12 @@ public class PurchaseRequestTicketService {
 	private void validateTangiblePurchaseRequest(LicenseType licenseType) {
 		if (licenseType != null) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "유형 자산 요청에는 라이선스 유형을 입력할 수 없습니다.");
+		}
+	}
+
+	private void validateIntangiblePurchaseRequest(LicenseType licenseType) {
+		if (licenseType == null) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "무형자산 요청에는 라이선스 유형이 필수입니다.");
 		}
 	}
 
