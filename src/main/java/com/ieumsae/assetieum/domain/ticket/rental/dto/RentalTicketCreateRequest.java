@@ -2,6 +2,7 @@ package com.ieumsae.assetieum.domain.ticket.rental.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.ieumsae.assetieum.domain.ticket.common.type.RequestedUsageType;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
@@ -29,6 +30,7 @@ public class RentalTicketCreateRequest {
 	@JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
 	private LocalDateTime requestedDueDate;
 
+	@NotBlank(message = "대여 목적 사유는 필수입니다.")
 	@Size(max = 255, message = "대여 목적 사유는 255자 이하여야 합니다.")
 	private String requestReason;
 }

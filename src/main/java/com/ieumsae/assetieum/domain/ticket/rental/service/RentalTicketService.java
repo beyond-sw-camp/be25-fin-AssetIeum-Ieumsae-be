@@ -3,6 +3,7 @@ package com.ieumsae.assetieum.domain.ticket.rental.service;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.entity.TangibleAsset;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.repository.TangibleAssetRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.type.AssetUsageType;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.type.TangibleAssetStatus;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.type.UsageType;
@@ -10,14 +11,15 @@ import com.ieumsae.assetieum.domain.tangibleasset.assignment.entity.TangibleAsse
 import com.ieumsae.assetieum.domain.tangibleasset.assignment.repository.TangibleAssetAssignmentRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.assignment.type.AssignmentStatus;
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
+import com.ieumsae.assetieum.domain.tangibleasset.item.dto.AvailableRentalItemResponse;
 import com.ieumsae.assetieum.domain.tangibleasset.item.repository.TangibleAssetItemRepository;
+import com.ieumsae.assetieum.domain.ticket.rental.dto.AvailableRentalItemSearchRequest;
 import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
 import com.ieumsae.assetieum.domain.ticket.common.repository.TicketRepository;
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketApprovalResolver;
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketNoGenerator;
+import com.ieumsae.assetieum.domain.ticket.common.service.TangibleAssetTicketConflictValidator;
 import com.ieumsae.assetieum.domain.ticket.common.type.RequestedUsageType;
-import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
-import com.ieumsae.assetieum.domain.ticket.common.type.TicketType;
 import com.ieumsae.assetieum.domain.ticket.rental.dto.ActiveRentalAssetResponse;
 import com.ieumsae.assetieum.domain.ticket.rental.dto.RentalExtensionTicketCreateRequest;
 import com.ieumsae.assetieum.domain.ticket.rental.dto.RentalExtensionTicketCreateResponse;
@@ -27,7 +29,9 @@ import com.ieumsae.assetieum.domain.ticket.rental.entity.RentalTicket;
 import com.ieumsae.assetieum.domain.ticket.rental.repository.RentalTicketRepository;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
+import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
+import org.springframework.data.domain.Page;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -45,9 +49,29 @@ public class RentalTicketService {
 	private final RentalTicketRepository rentalTicketRepository;
 	private final MemberRepository memberRepository;
 	private final TangibleAssetItemRepository tangibleAssetItemRepository;
+	private final TangibleAssetRepository tangibleAssetRepository;
 	private final TangibleAssetAssignmentRepository tangibleAssetAssignmentRepository;
 	private final TicketNoGenerator ticketNoGenerator;
 	private final TicketApprovalResolver ticketApprovalResolver;
+	private final TangibleAssetTicketConflictValidator tangibleAssetTicketConflictValidator;
+
+	public PaginationResponse<AvailableRentalItemResponse> getAvailableRentalItems(
+		AuthenticatedMember authenticatedMember,
+		AvailableRentalItemSearchRequest request
+	) {
+		UUID companyId = authenticatedMember.companyId();
+		findActiveRequester(authenticatedMember.id(), companyId);
+
+		Page<AvailableRentalItemResponse> responsePage = tangibleAssetItemRepository.searchAvailableRentalItems(
+			companyId,
+			request.getCategoryId(),
+			request.getKeyword(),
+			request.getIsStandard(),
+			request.toPageable()
+		);
+
+		return PaginationResponse.from(responsePage);
+	}
 
 	public List<ActiveRentalAssetResponse> getActiveRentalAssets(
 		AuthenticatedMember authenticatedMember
@@ -77,6 +101,7 @@ public class RentalTicketService {
 		Member requester = findActiveRequester(authenticatedMember.id(), companyId);
 		Member approver = ticketApprovalResolver.resolveDepartmentApprover(requester);
 		TangibleAssetItem item = findTangibleAssetItem(request.getTangibleAssetItemId(), companyId);
+		validateAvailableRentalItem(companyId, item.getId());
 
 		Ticket ticket = ticketRepository.save(Ticket.createRental(
 			requester.getCompany(),
@@ -113,7 +138,10 @@ public class RentalTicketService {
 		);
 		validateRentalExtensionTarget(assignment, requester);
 		validateRentalExtensionPeriod(assignment.getTangibleAsset(), request.getRequestedDueDate());
-		validateNoOngoingRentalExtension(companyId, assignment.getTangibleAsset().getId());
+		tangibleAssetTicketConflictValidator.validateNoOngoingTangibleAssetTicket(
+			companyId,
+			assignment.getTangibleAsset().getId()
+		);
 
 		Member approver = ticketApprovalResolver.resolveDepartmentApprover(requester);
 		TangibleAsset asset = assignment.getTangibleAsset();
@@ -199,20 +227,6 @@ public class RentalTicketService {
 		}
 	}
 
-	private void validateNoOngoingRentalExtension(UUID companyId, UUID assetId) {
-		boolean exists = rentalTicketRepository
-			.existsByCompany_IdAndTangibleAsset_IdAndTicket_TicketTypeAndTicket_TicketStatusInAndDeletedAtIsNull(
-				companyId,
-				assetId,
-				TicketType.RENTAL_EXTENSION,
-				List.of(TicketStatus.REQUESTED, TicketStatus.DEPARTMENT_APPROVED, TicketStatus.IN_PROGRESS)
-			);
-
-		if (exists) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "이미 진행 중인 대여 연장 요청이 있습니다.");
-		}
-	}
-
 	private RequestedUsageType resolveRequestedUsageType(TangibleAsset asset) {
 		if (asset.getAssetUsageType() == AssetUsageType.DEPARTMENT) {
 			return RequestedUsageType.DEPARTMENT;
@@ -237,6 +251,18 @@ public class RentalTicketService {
 			throw new BusinessException(ErrorCode.TANGIBLE_ASSET_ITEM_NOT_FOUND);
 		}
 		return item;
+	}
+
+	private void validateAvailableRentalItem(UUID companyId, UUID itemId) {
+		boolean exists = tangibleAssetRepository.existsByCompany_IdAndTangibleAssetItem_IdAndTangibleAssetStatus(
+			companyId,
+			itemId,
+			TangibleAssetStatus.AVAILABLE
+		);
+
+		if (!exists) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "대여 가능한 자산이 없는 품목입니다.");
+		}
 	}
 
 	private String normalize(String value) {
