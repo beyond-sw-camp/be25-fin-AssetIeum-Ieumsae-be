@@ -52,8 +52,17 @@ public class TicketRepositoryImpl implements TicketRepositoryCustom {
 			condition.and(ticket.ticketType.eq(request.getTicketType()));
 		}
 
-		if (request.getDepartmentId() != null) {
+		if (request.getDepartmentIds() != null && !request.getDepartmentIds().isEmpty()) {
+			BooleanBuilder scopeCondition = new BooleanBuilder();
+			scopeCondition.or(ticket.department.id.in(request.getDepartmentIds()));
+			if (request.getApproverId() != null) {
+				scopeCondition.or(ticket.approver.id.eq(request.getApproverId()));
+			}
+			condition.and(scopeCondition);
+		} else if (request.getDepartmentId() != null) {
 			condition.and(ticket.department.id.eq(request.getDepartmentId()));
+		} else if (request.getApproverId() != null) {
+			condition.and(ticket.approver.id.eq(request.getApproverId()));
 		}
 
 		if (request.getRequesterId() != null) {
@@ -138,13 +147,25 @@ public class TicketRepositoryImpl implements TicketRepositoryCustom {
 	}
 
 	@Override
-	public TicketStatisticsResponse getTicketStatistics(UUID companyId, UUID departmentId, UUID requesterId) {
+	public TicketStatisticsResponse getTicketStatistics(
+		UUID companyId,
+		List<UUID> departmentIds,
+		UUID requesterId,
+		UUID approverId
+	) {
 		BooleanBuilder condition = new BooleanBuilder();
 		condition.and(ticket.company.id.eq(companyId));
 		condition.and(ticket.deletedAt.isNull());
 
-		if (departmentId != null) {
-			condition.and(ticket.department.id.eq(departmentId));
+		if (departmentIds != null && !departmentIds.isEmpty()) {
+			BooleanBuilder scopeCondition = new BooleanBuilder();
+			scopeCondition.or(ticket.department.id.in(departmentIds));
+			if (approverId != null) {
+				scopeCondition.or(ticket.approver.id.eq(approverId));
+			}
+			condition.and(scopeCondition);
+		} else if (approverId != null) {
+			condition.and(ticket.approver.id.eq(approverId));
 		}
 
 		if (requesterId != null) {
