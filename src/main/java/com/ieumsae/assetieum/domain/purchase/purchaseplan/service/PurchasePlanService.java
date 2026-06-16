@@ -10,6 +10,7 @@ import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanCreateRequest;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanResponse;
+import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanSearchRequest;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.PurchasePlan;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.PurchasePlanItem;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.repository.PurchasePlanRepository;
@@ -21,6 +22,7 @@ import com.ieumsae.assetieum.domain.tangibleasset.item.repository.TangibleAssetI
 import com.ieumsae.assetieum.domain.ticket.common.type.AssetType;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.entity.PurchaseRequestTicket;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.repository.PurchaseRequestTicketRepository;
+import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.common.util.CodeGenerator;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
@@ -30,7 +32,10 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -186,5 +191,31 @@ public class PurchasePlanService {
 
         return PurchasePlanResponse.from(purchasePlan, 0);
 
+    }
+
+    public PaginationResponse<PurchasePlanResponse> getPurchasePlans(
+            PurchasePlanSearchRequest request,
+            UUID companyId
+    ) {
+        // 1. 입력값 검증
+        companyRepository.findByIdAndDeletedAtIsNull(companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
+
+        Member requester = null;
+        if(request.getRequesterId() != null){
+            requester = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(request.getRequesterId(), companyId)
+                    .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+        }
+
+        // 2. 페이징 처리 및 필터링 후 구매 계획 목록 반환
+        Page<PurchasePlanResponse> purchasePlanPage = purchasePlanRepository.search(
+                companyId,
+                request.getStatus(),
+                request.getRequesterId(),
+                request.getKeyword(),
+                request.toPageable()
+        );
+
+        return PaginationResponse.from(purchasePlanPage);
     }
 }

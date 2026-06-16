@@ -1,0 +1,137 @@
+package com.ieumsae.assetieum.domain.purchase.purchaseplan.repository;
+
+import static com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.QPurchasePlan.purchasePlan;
+import static com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.QPurchasePlanItem.purchasePlanItem;
+
+import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanResponse;
+import com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.PurchasePlan;
+import com.ieumsae.assetieum.domain.purchase.purchaseplan.type.PurchaseRequestStatus;
+import com.querydsl.core.BooleanBuilder;
+import com.querydsl.core.Tuple;
+import com.querydsl.jpa.impl.JPAQueryFactory;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Repository;
+
+@Repository
+@RequiredArgsConstructor
+public class PurchasePlanRepositoryImpl implements PurchasePlanRepositoryCustom {
+
+    private final JPAQueryFactory queryFactory;
+
+    @Override
+    public Page<PurchasePlanResponse> search(
+            UUID companyId,
+            PurchaseRequestStatus status,
+            UUID requesterId,
+            String keyword,
+            Pageable pageable
+    ) {
+        BooleanBuilder condition = buildCondition(companyId, status, requesterId, keyword);
+
+        List<UUID> planIds = queryFactory
+                .select(purchasePlan.id)
+                .from(purchasePlan)
+                .leftJoin(purchasePlanItem).on(purchasePlanItem.purchasePlan.eq(purchasePlan))
+                .where(condition)
+                .groupBy(purchasePlan.id)
+                .orderBy(purchasePlan.createdAt.desc())
+                .offset(pageable.getOffset())
+                .limit(pageable.getPageSize())
+                .fetch();
+
+        if (planIds.isEmpty()) {
+            return new PageImpl<>(List.of(), pageable, 0);
+        }
+
+        Map<UUID, PurchasePlan> purchasePlanById = queryFactory
+                .selectFrom(purchasePlan)
+                .where(purchasePlan.id.in(planIds))
+                .orderBy(purchasePlan.createdAt.desc())
+                .fetch()
+                .stream()
+                .collect(Collectors.toMap(
+                        PurchasePlan::getId,
+                        plan -> plan,
+                        (left, right) -> left,
+                        LinkedHashMap::new
+                ));
+
+        Map<UUID, Long> itemCountByPlanId = findItemCountByPlanId(planIds);
+
+        List<PurchasePlanResponse> content = planIds.stream()
+                .map(purchasePlanById::get)
+                .map(plan -> PurchasePlanResponse.from(
+                        plan,
+                        itemCountByPlanId.getOrDefault(plan.getId(), 0L).intValue()
+                ))
+                .toList();
+
+        Long total = queryFactory
+                .select(purchasePlan.id.countDistinct())
+                .from(purchasePlan)
+                .leftJoin(purchasePlanItem).on(purchasePlanItem.purchasePlan.eq(purchasePlan))
+                .where(condition)
+                .fetchOne();
+
+        return new PageImpl<>(content, pageable, total == null ? 0 : total);
+    }
+
+    private BooleanBuilder buildCondition(
+            UUID companyId,
+            PurchaseRequestStatus status,
+            UUID requesterId,
+            String keyword
+    ) {
+        BooleanBuilder condition = new BooleanBuilder();
+        condition.and(purchasePlan.company.id.eq(companyId));
+        condition.and(purchasePlan.deletedAt.isNull());
+
+        if (status != null) {
+            condition.and(purchasePlan.purchaseRequestStatus.eq(status));
+        }
+
+        if (requesterId != null) {
+            condition.and(purchasePlan.requester.id.eq(requesterId));
+        }
+
+        if (keyword != null && !keyword.isBlank()) {
+            String trimmedKeyword = keyword.trim();
+            condition.and(
+                    purchasePlan.planNo.containsIgnoreCase(trimmedKeyword)
+                            .or(purchasePlanItem.itemName.equalsIgnoreCase(trimmedKeyword))
+                            .or(purchasePlanItem.itemName.containsIgnoreCase(trimmedKeyword))
+            );
+        }
+
+        return condition;
+    }
+
+    private Map<UUID, Long> findItemCountByPlanId(List<UUID> planIds) {
+        List<Tuple> itemCounts = queryFactory
+                .select(
+                        purchasePlanItem.purchasePlan.id,
+                        purchasePlanItem.count()
+                )
+                .from(purchasePlanItem)
+                .where(purchasePlanItem.purchasePlan.id.in(planIds))
+                .groupBy(purchasePlanItem.purchasePlan.id)
+                .fetch();
+
+        return itemCounts.stream()
+                .collect(Collectors.toMap(
+                        tuple -> tuple.get(purchasePlanItem.purchasePlan.id),
+                        tuple -> {
+                            Long count = tuple.get(purchasePlanItem.count());
+                            return count == null ? 0L : count;
+                        }
+                ));
+    }
+}
