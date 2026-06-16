@@ -58,7 +58,7 @@ public class AssetRequestTicketService {
 
 		Ticket ticket = ticketRepository.save(Ticket.createAssetRequest(
 			requester.getCompany(),
-			ticketNoGenerator.generate(),
+			ticketNoGenerator.generate(companyId),
 			requester,
 			requester.getDepartment(),
 			approver,

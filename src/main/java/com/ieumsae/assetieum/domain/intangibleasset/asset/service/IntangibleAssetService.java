@@ -101,7 +101,7 @@ public class IntangibleAssetService {
                 .seatCount(request.getSeatCount())
                 .member(member)
                 .department(department)
-                .assetCode(codeGenerator.generate(INTANGIBLE_ASSET_CODE_PREFIX, REDIS_KEY_PREFIX))
+                .assetCode(codeGenerator.generate(INTANGIBLE_ASSET_CODE_PREFIX, REDIS_KEY_PREFIX, companyId))
                 .startedAt(startedAt)
                 .expiredAt(request.getExpiredAt())
                 .isAutoRenewal(request.getIsAutoRenewal())

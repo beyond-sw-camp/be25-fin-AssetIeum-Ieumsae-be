@@ -46,7 +46,7 @@ public class RentalTicketService {
 
 		Ticket ticket = ticketRepository.save(Ticket.createRental(
 			requester.getCompany(),
-			ticketNoGenerator.generate(),
+			ticketNoGenerator.generate(companyId),
 			requester,
 			requester.getDepartment(),
 			approver,

@@ -1,6 +1,5 @@
 package com.ieumsae.assetieum.domain.purchase.purchaseplan.dto;
 
-import com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.PurchasePlan;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.type.PurchaseRequestStatus;
 import com.ieumsae.assetieum.global.common.page.PaginationRequest;
 import lombok.Getter;

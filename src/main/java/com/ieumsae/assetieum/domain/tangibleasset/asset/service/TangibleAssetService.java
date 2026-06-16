@@ -102,7 +102,7 @@ public class TangibleAssetService {
                 .tangibleAssetStatus(status)
                 .member(member)
                 .department(department)
-                .assetCode(codeGenerator.generate(TANGIBLE_ASSET_CODE_PREFIX, REDIS_KEY_PREFIX))
+                .assetCode(codeGenerator.generate(TANGIBLE_ASSET_CODE_PREFIX, REDIS_KEY_PREFIX, companyId))
                 .serialNumber(request.getSerialNumber())
                 .location(request.getLocation())
                 .usedStartedAt(usedStartedAt)
