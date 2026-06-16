@@ -12,6 +12,7 @@ import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanCreate
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanDetailResponse;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanResponse;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanSearchRequest;
+import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanUpdateStatusRequest;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.PurchasePlan;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.PurchasePlanItem;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.repository.PurchasePlanRepository;
@@ -34,7 +35,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -75,7 +75,7 @@ public class PurchasePlanService {
                 .planNo(codeGenerator.generate(PURCHASE_PLAN_NO_PREFIX, REDIS_KEY_PREFIX, member.companyId()))
                 .purchaseRequestStatus(PurchaseRequestStatus.REQUESTED)
                 .estimatedAmount(estimatedAmount)
-                .orderedAt(LocalDateTime.now())
+                .itemCount(request.getItems().size())
                 .build());
 
         List<PurchasePlanItem> purchasePlanItems = createPurchasePlanItems(
@@ -86,7 +86,7 @@ public class PurchasePlanService {
         );
         purchasePlanItemRepository.saveAll(purchasePlanItems);
 
-        return PurchasePlanResponse.from(purchasePlan, purchasePlanItems.size());
+        return PurchasePlanResponse.from(purchasePlan);
     }
 
     private BigDecimal calculateEstimatedAmount(List<PurchasePlanItemCreateRequest> items) {
@@ -189,7 +189,7 @@ public class PurchasePlanService {
         // 2. 구매 계획 삭제 (soft delete)
         purchasePlan.delete();
 
-        return PurchasePlanResponse.from(purchasePlan, 0);
+        return PurchasePlanResponse.from(purchasePlan);
 
     }
 
@@ -233,5 +233,49 @@ public class PurchasePlanService {
                 purchasePlanItemRepository.findAllByPurchasePlan_IdAndCompany_Id(planId, companyId);
 
         return PurchasePlanDetailResponse.from(purchasePlan, purchasePlanItems);
+    }
+
+    @Transactional
+    public PurchasePlanResponse updatePurchasePlanStatus(
+            UUID planId,
+            PurchasePlanUpdateStatusRequest request,
+            UUID companyId
+    ) {
+        // 1. 입력값 검증
+        companyRepository.findByIdAndDeletedAtIsNull(companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
+
+        PurchasePlan purchasePlan = purchasePlanRepository.findByIdAndDeletedAtIsNullAndCompany_Id(planId, companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PURCHASE_PLAN_NOT_FOUND));
+
+
+        // 2. 상태 변경
+        validateStatusTransition(purchasePlan.getPurchaseRequestStatus(), request.getStatus());
+        purchasePlan.updateStatus(request.getStatus());
+
+        return PurchasePlanResponse.from(purchasePlan);
+
+    }
+
+    private void validateStatusTransition(
+            PurchaseRequestStatus currentStatus,
+            PurchaseRequestStatus nextStatus
+    ) {
+        if (currentStatus == nextStatus) {
+            return;
+        }
+
+        boolean isValid = switch (currentStatus) {
+            case REQUESTED -> nextStatus == PurchaseRequestStatus.APPROVED
+                    || nextStatus == PurchaseRequestStatus.REJECTED;
+            case APPROVED -> nextStatus == PurchaseRequestStatus.ORDERED;
+            case ORDERED -> nextStatus == PurchaseRequestStatus.DELIVERED;
+            case DELIVERED -> nextStatus == PurchaseRequestStatus.COMPLETED;
+            case REJECTED, COMPLETED, CANCELLED -> false;
+        };
+
+        if (!isValid) {
+            throw new BusinessException(ErrorCode.PURCHASE_PLAN_INVALID_STATUS_TRANSITION);
+        }
     }
 }

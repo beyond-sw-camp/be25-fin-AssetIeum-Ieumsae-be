@@ -1,24 +1,24 @@
 package com.ieumsae.assetieum.domain.purchase.purchaseplan.repository;
 
-import static com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.QPurchasePlan.purchasePlan;
-import static com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.QPurchasePlanItem.purchasePlanItem;
-
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanResponse;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.PurchasePlan;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.type.PurchaseRequestStatus;
 import com.querydsl.core.BooleanBuilder;
-import com.querydsl.core.Tuple;
 import com.querydsl.jpa.impl.JPAQueryFactory;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
+
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import static com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.QPurchasePlan.purchasePlan;
+import static com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.QPurchasePlanItem.purchasePlanItem;
 
 @Repository
 @RequiredArgsConstructor
@@ -64,14 +64,9 @@ public class PurchasePlanRepositoryImpl implements PurchasePlanRepositoryCustom 
                         LinkedHashMap::new
                 ));
 
-        Map<UUID, Long> itemCountByPlanId = findItemCountByPlanId(planIds);
-
         List<PurchasePlanResponse> content = planIds.stream()
                 .map(purchasePlanById::get)
-                .map(plan -> PurchasePlanResponse.from(
-                        plan,
-                        itemCountByPlanId.getOrDefault(plan.getId(), 0L).intValue()
-                ))
+                .map(PurchasePlanResponse::from)
                 .toList();
 
         Long total = queryFactory
@@ -114,24 +109,4 @@ public class PurchasePlanRepositoryImpl implements PurchasePlanRepositoryCustom 
         return condition;
     }
 
-    private Map<UUID, Long> findItemCountByPlanId(List<UUID> planIds) {
-        List<Tuple> itemCounts = queryFactory
-                .select(
-                        purchasePlanItem.purchasePlan.id,
-                        purchasePlanItem.count()
-                )
-                .from(purchasePlanItem)
-                .where(purchasePlanItem.purchasePlan.id.in(planIds))
-                .groupBy(purchasePlanItem.purchasePlan.id)
-                .fetch();
-
-        return itemCounts.stream()
-                .collect(Collectors.toMap(
-                        tuple -> tuple.get(purchasePlanItem.purchasePlan.id),
-                        tuple -> {
-                            Long count = tuple.get(purchasePlanItem.count());
-                            return count == null ? 0L : count;
-                        }
-                ));
-    }
 }

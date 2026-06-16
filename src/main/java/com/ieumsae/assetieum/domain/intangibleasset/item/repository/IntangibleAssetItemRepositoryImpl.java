@@ -3,6 +3,8 @@ package com.ieumsae.assetieum.domain.intangibleasset.item.repository;
 import com.ieumsae.assetieum.domain.intangibleasset.category.repository.IntangibleAssetCategoryRepository;
 import com.ieumsae.assetieum.domain.intangibleasset.item.dto.IntangibleAssetItemResponse;
 import com.ieumsae.assetieum.domain.intangibleasset.item.entity.IntangibleAssetItem;
+import com.ieumsae.assetieum.domain.intangibleasset.asset.type.IntangibleAssetStatus;
+import com.ieumsae.assetieum.domain.intangibleasset.assignment.type.AssignmentStatus;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
 import com.querydsl.jpa.impl.JPAQueryFactory;
@@ -21,6 +23,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static com.ieumsae.assetieum.domain.intangibleasset.asset.entity.QIntangibleAsset.intangibleAsset;
+import static com.ieumsae.assetieum.domain.intangibleasset.assignment.entity.QIntangibleAssetAssignment.intangibleAssetAssignment;
 import static com.ieumsae.assetieum.domain.intangibleasset.category.entity.QIntangibleAssetCategory.intangibleAssetCategory;
 import static com.ieumsae.assetieum.domain.intangibleasset.item.entity.QIntangibleAssetItem.intangibleAssetItem;
 
@@ -76,11 +79,13 @@ public class IntangibleAssetItemRepositoryImpl implements IntangibleAssetItemRep
                 .fetch();
 
         Map<UUID, BigDecimal> prePurchasePriceByItemId = findPrePurchasePriceByItemId(companyId, items);
+        Map<UUID, Integer> availableSeatCountByItemId = findAvailableSeatCountByItemId(companyId, items);
 
         List<IntangibleAssetItemResponse> content = items.stream()
                 .map(item -> IntangibleAssetItemResponse.from(
                         item,
-                        prePurchasePriceByItemId.get(item.getId())
+                        prePurchasePriceByItemId.get(item.getId()),
+                        availableSeatCountByItemId.getOrDefault(item.getId(), 0)
                 ))
                 .collect(Collectors.toList());
 
@@ -92,6 +97,87 @@ public class IntangibleAssetItemRepositoryImpl implements IntangibleAssetItemRep
                 .fetchOne();
 
         return new PageImpl<>(content, pageable, total == null ? 0 : total);
+    }
+
+    private Map<UUID, Integer> findAvailableSeatCountByItemId(
+            UUID companyId,
+            List<IntangibleAssetItem> items
+    ) {
+        if (items.isEmpty()) {
+            return Map.of();
+        }
+
+        List<UUID> itemIds = items.stream()
+                .map(IntangibleAssetItem::getId)
+                .collect(Collectors.toList());
+
+        List<Tuple> assets = queryFactory
+                .select(
+                        intangibleAsset.intangibleAssetItem.id,
+                        intangibleAsset.id,
+                        intangibleAsset.seatCount
+                )
+                .from(intangibleAsset)
+                .where(
+                        intangibleAsset.company.id.eq(companyId),
+                        intangibleAsset.intangibleAssetItem.id.in(itemIds),
+                        intangibleAsset.intangibleAssetStatus.in(
+                                IntangibleAssetStatus.AVAILABLE,
+                                IntangibleAssetStatus.IN_USE
+                        )
+                )
+                .fetch();
+
+        Map<UUID, Long> activeAssignmentCountByAssetId = findActiveAssignmentCountByAssetId(
+                companyId,
+                assets.stream()
+                        .map(asset -> asset.get(intangibleAsset.id))
+                        .collect(Collectors.toList())
+        );
+
+        Map<UUID, Integer> availableSeatCountByItemId = new HashMap<>();
+        for (Tuple asset : assets) {
+            UUID itemId = asset.get(intangibleAsset.intangibleAssetItem.id);
+            UUID assetId = asset.get(intangibleAsset.id);
+            Integer seatCount = asset.get(intangibleAsset.seatCount);
+            long activeAssignmentCount = activeAssignmentCountByAssetId.getOrDefault(assetId, 0L);
+            int availableSeatCount = Math.max((seatCount == null ? 0 : seatCount) - Math.toIntExact(activeAssignmentCount), 0);
+            availableSeatCountByItemId.merge(itemId, availableSeatCount, Integer::sum);
+        }
+
+        return availableSeatCountByItemId;
+    }
+
+    private Map<UUID, Long> findActiveAssignmentCountByAssetId(
+            UUID companyId,
+            List<UUID> assetIds
+    ) {
+        if (assetIds.isEmpty()) {
+            return Map.of();
+        }
+
+        List<Tuple> assignmentCounts = queryFactory
+                .select(
+                        intangibleAssetAssignment.intangibleAsset.id,
+                        intangibleAssetAssignment.count()
+                )
+                .from(intangibleAssetAssignment)
+                .where(
+                        intangibleAssetAssignment.company.id.eq(companyId),
+                        intangibleAssetAssignment.intangibleAsset.id.in(assetIds),
+                        intangibleAssetAssignment.assignmentStatus.eq(AssignmentStatus.ACTIVE)
+                )
+                .groupBy(intangibleAssetAssignment.intangibleAsset.id)
+                .fetch();
+
+        Map<UUID, Long> activeAssignmentCountByAssetId = new HashMap<>();
+        for (Tuple assignmentCount : assignmentCounts) {
+            UUID assetId = assignmentCount.get(intangibleAssetAssignment.intangibleAsset.id);
+            Long count = assignmentCount.get(intangibleAssetAssignment.count());
+            activeAssignmentCountByAssetId.put(assetId, count == null ? 0 : count);
+        }
+
+        return activeAssignmentCountByAssetId;
     }
 
     private Map<UUID, BigDecimal> findPrePurchasePriceByItemId(

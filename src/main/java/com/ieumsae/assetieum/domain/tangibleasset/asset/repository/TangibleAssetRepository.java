@@ -2,16 +2,22 @@ package com.ieumsae.assetieum.domain.tangibleasset.asset.repository;
 
 import com.ieumsae.assetieum.domain.tangibleasset.asset.entity.TangibleAsset;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.type.TangibleAssetStatus;
-import org.springframework.data.jpa.repository.JpaRepository;
-
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface TangibleAssetRepository extends JpaRepository<TangibleAsset, UUID>, TangibleAssetRepositoryCustom {
+
     boolean existsByCompany_IdAndTangibleAssetItem_Id(UUID id, UUID id1);
 
     boolean existsByCompany_IdAndTangibleAssetItem_IdAndTangibleAssetStatus(
+            UUID companyId,
+            UUID tangibleAssetItemId,
+            TangibleAssetStatus status
+    );
+
+    long countByCompany_IdAndTangibleAssetItem_IdAndTangibleAssetStatus(
             UUID companyId,
             UUID tangibleAssetItemId,
             TangibleAssetStatus status

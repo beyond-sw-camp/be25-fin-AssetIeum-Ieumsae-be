@@ -3,6 +3,7 @@ package com.ieumsae.assetieum.domain.tangibleasset.item.service;
 import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.company.repository.CompanyRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.repository.TangibleAssetRepository;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.type.TangibleAssetStatus;
 import com.ieumsae.assetieum.domain.tangibleasset.category.entity.TangibleAssetCategory;
 import com.ieumsae.assetieum.domain.tangibleasset.category.repository.TangibleAssetCategoryRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.item.dto.TangibleAssetItemCreateRequest;
@@ -77,7 +78,8 @@ public class TangibleAssetItemService {
         TangibleAssetItem savedItem = tangibleAssetItemRepository.save(item);
 
         return TangibleAssetItemResponse.from(
-                savedItem
+                savedItem,
+                0
         );
     }
 
@@ -146,7 +148,13 @@ public class TangibleAssetItemService {
         // 2. 품목 수정
         item.update(request, category);
 
-        return TangibleAssetItemResponse.from(item);
+        int availableAssetCount = Math.toIntExact(tangibleAssetRepository.countByCompany_IdAndTangibleAssetItem_IdAndTangibleAssetStatus(
+                companyId,
+                item.getId(),
+                TangibleAssetStatus.AVAILABLE
+        ));
+
+        return TangibleAssetItemResponse.from(item, availableAssetCount);
     }
 
     /**
