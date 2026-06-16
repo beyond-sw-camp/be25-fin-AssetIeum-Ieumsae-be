@@ -1,5 +1,6 @@
 package com.ieumsae.assetieum.domain.ticket.rental.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
 import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
 import com.ieumsae.assetieum.domain.ticket.common.type.RequestedUsageType;
@@ -26,8 +27,11 @@ public class RentalTicketCreateResponse {
 	private final UUID categoryId;
 	private final String categoryName;
 	private final String productName;
+	@JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
 	private final LocalDateTime rentalStartDate;
+	@JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
 	private final LocalDateTime requestedDueDate;
+	@JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
 	private final LocalDateTime rentalDueDate;
 
 	public static RentalTicketCreateResponse from(Ticket ticket, RentalTicket rentalTicket) {
