@@ -74,6 +74,30 @@ public class Ticket extends BaseEntity {
 	@Column(name = "request_reason", length = 255)
 	private String requestReason;
 
+	@Column(name = "department_approved_at")
+	private LocalDateTime departmentApprovedAt;
+
+	@Column(name = "department_rejected_at")
+	private LocalDateTime departmentRejectedAt;
+
+	@Column(name = "department_rejection_reason", length = 255)
+	private String departmentRejectionReason;
+
+	@Column(name = "purchase_approved_at")
+	private LocalDateTime purchaseApprovedAt;
+
+	@Column(name = "purchase_rejected_at")
+	private LocalDateTime purchaseRejectedAt;
+
+	@Column(name = "purchase_rejection_reason", length = 255)
+	private String purchaseRejectionReason;
+
+	@Column(name = "completed_at")
+	private LocalDateTime completedAt;
+
+	@Column(name = "cancelled_at")
+	private LocalDateTime cancelledAt;
+
 	@Column(name = "deleted_at")
 	private LocalDateTime deletedAt;
 
@@ -135,5 +159,42 @@ public class Ticket extends BaseEntity {
 			.approver(approver)
 			.requestReason(requestReason)
 			.build();
+	}
+
+	public void approveDepartment(LocalDateTime approvedAt) {
+		this.ticketStatus = TicketStatus.DEPARTMENT_APPROVED;
+		this.departmentApprovedAt = approvedAt;
+		this.departmentRejectedAt = null;
+		this.departmentRejectionReason = null;
+	}
+
+	public void rejectDepartment(String rejectionReason, LocalDateTime rejectedAt) {
+		this.ticketStatus = TicketStatus.DEPARTMENT_REJECTED;
+		this.departmentRejectedAt = rejectedAt;
+		this.departmentRejectionReason = rejectionReason;
+	}
+
+	public void assign(Member assignee) {
+		this.assignee = assignee;
+	}
+
+	public void approveAsset(Member assignee, LocalDateTime approvedAt) {
+		this.ticketStatus = TicketStatus.IN_PROGRESS;
+		this.assignee = assignee;
+		this.purchaseApprovedAt = approvedAt;
+		this.purchaseRejectedAt = null;
+		this.purchaseRejectionReason = null;
+	}
+
+	public void rejectAsset(Member assignee, String rejectionReason, LocalDateTime rejectedAt) {
+		this.ticketStatus = TicketStatus.ASSET_REJECTED;
+		this.assignee = assignee;
+		this.purchaseRejectedAt = rejectedAt;
+		this.purchaseRejectionReason = rejectionReason;
+	}
+
+	public void cancel(LocalDateTime cancelledAt) {
+		this.ticketStatus = TicketStatus.CANCELLED;
+		this.cancelledAt = cancelledAt;
 	}
 }
