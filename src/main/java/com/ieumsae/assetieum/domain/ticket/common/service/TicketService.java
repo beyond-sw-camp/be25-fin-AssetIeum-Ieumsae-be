@@ -49,7 +49,7 @@ public class TicketService {
 		Member assignee = findActiveMember(authenticatedMember.id(), companyId);
 		Ticket ticket = findActiveTicket(ticketId, companyId);
 		validateAssetAssignable(ticket, assignee);
-		validateTicketStatus(ticket, TicketStatus.DEPARTMENT_APPROVED, "부서장 승인된 티켓만 담당자 지정할 수 있습니다.");
+		validateAssignableStatus(ticket);
 		validateUnassigned(ticket);
 
 		ticket.assign(assignee);
@@ -236,6 +236,15 @@ public class TicketService {
 		if (!ticket.getAssignee().getId().equals(member.getId())) {
 			throw new BusinessException(ErrorCode.ACCESS_DENIED);
 		}
+	}
+
+	private void validateAssignableStatus(Ticket ticket) {
+		if (ticket.getTicketStatus() == TicketStatus.REQUESTED
+			|| ticket.getTicketStatus() == TicketStatus.DEPARTMENT_APPROVED) {
+			return;
+		}
+
+		throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "요청 또는 부서장 승인 상태의 티켓만 담당자 지정할 수 있습니다.");
 	}
 
 	private void validateTicketStatus(Ticket ticket, TicketStatus expectedStatus, String message) {
