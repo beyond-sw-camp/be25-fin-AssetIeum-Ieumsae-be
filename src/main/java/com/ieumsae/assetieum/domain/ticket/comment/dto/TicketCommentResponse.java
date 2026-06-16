@@ -1,5 +1,6 @@
 package com.ieumsae.assetieum.domain.ticket.comment.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.ieumsae.assetieum.domain.member.type.MemberRole;
 import com.ieumsae.assetieum.domain.ticket.comment.entity.TicketComment;
 import java.time.LocalDateTime;
@@ -17,7 +18,9 @@ public class TicketCommentResponse {
 	private final String writerName;
 	private final MemberRole writerRole;
 	private final String content;
+	@JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
 	private final LocalDateTime createdAt;
+	@JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
 	private final LocalDateTime updatedAt;
 
 	public static TicketCommentResponse from(TicketComment comment) {
