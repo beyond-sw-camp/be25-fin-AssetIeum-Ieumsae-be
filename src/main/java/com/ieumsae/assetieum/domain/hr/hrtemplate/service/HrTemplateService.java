@@ -159,4 +159,28 @@ public class HrTemplateService {
 
         return HrTemplateResponse.from(hrTemplate, hrTemplateItems);
     }
+
+    @Transactional
+    public HrTemplateResponse deleteHrTemplate(
+            AuthenticatedMember member
+    ) {
+        // 1. 입력값 검증
+        companyRepository.findById(member.companyId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
+
+        Member requester = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(member.id(), member.companyId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+
+        Department department = departmentRepository.findByIdAndCompany_IdAndDeletedAtIsNull(requester.getDepartment().getId(), member.companyId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.DEPARTMENT_NOT_FOUND));
+
+        HrTemplate hrTemplate = hrTemplateRepository
+                .findByCompany_IdAndDepartment_IdAndDeletedAtIsNull(member.companyId(), department.getId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.HR_TEMPLATE_NOT_FOUND));
+
+        // 2. HR 템플릿 삭제 (soft delete)
+        hrTemplate.delete();
+
+        return null;
+    }
 }
