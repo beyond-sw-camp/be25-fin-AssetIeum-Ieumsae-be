@@ -77,6 +77,10 @@ public enum ErrorCode {
 	TICKET_NOT_FOUND(HttpStatus.NOT_FOUND, "ticket-002", "티켓을 찾을 수 없습니다."),
 	TICKET_COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "ticket-003", "티켓 댓글을 찾을 수 없습니다."),
 
+	// 구매 계획
+	PURCHASE_PLAN_NOT_FOUND(HttpStatus.NOT_FOUND, "purchase-plan-001", "구매 계획을 찾을 수 없습니다."),
+	PURCHASE_PLAN_DELETE_ONLY_REQUESTED(HttpStatus.CONFLICT, "purchase-plan-002", "구매 계획은 REQUESTED 상태일 때만 삭제할 수 있습니다."),
+
 	// 알림
 	NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "notification-001", "알림을 찾을 수 없습니다."),
 

@@ -163,4 +163,28 @@ public class PurchasePlanService {
         return intangibleAssetItemRepository.findByIdAndCompany_IdAndDeletedAtIsNull(itemId, companyId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.INTANGIBLE_ASSET_ITEM_NOT_FOUND));
     }
+
+    @Transactional
+    public PurchasePlanResponse deletePurchasePlan(
+            UUID planId,
+            UUID companyId
+    ) {
+
+        // 1. 입력값 검증
+        Company company = companyRepository.findByIdAndDeletedAtIsNull(companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
+
+        PurchasePlan purchasePlan = purchasePlanRepository.findByIdAndDeletedAtIsNullAndCompany_Id(planId, companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PURCHASE_PLAN_NOT_FOUND));
+
+        if(purchasePlan.getPurchaseRequestStatus() != PurchaseRequestStatus.REQUESTED){
+            throw new BusinessException(ErrorCode.PURCHASE_PLAN_DELETE_ONLY_REQUESTED);
+        }
+
+        // 2. 구매 계획 삭제 (soft delete)
+        purchasePlan.delete();
+
+        return PurchasePlanResponse.from(purchasePlan, 0);
+
+    }
 }

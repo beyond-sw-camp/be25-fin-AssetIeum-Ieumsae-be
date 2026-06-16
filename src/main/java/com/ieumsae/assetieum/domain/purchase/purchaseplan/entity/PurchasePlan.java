@@ -68,4 +68,14 @@ public class PurchasePlan extends BaseEntity {
 
     @Column(name = "approved_at")
     private LocalDateTime approvedAt;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
+    public LocalDateTime delete() {
+        this.purchaseRequestStatus = PurchaseRequestStatus.CANCELLED;
+
+        this.deletedAt = LocalDateTime.now();
+        return this.deletedAt;
+    }
 }

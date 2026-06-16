@@ -21,7 +21,8 @@ import lombok.NoArgsConstructor;
     "estimatedAmount",
     "itemCount",
     "createdAt",
-    "updatedAt"
+    "updatedAt",
+    "deletedAt"
 })
 public class PurchasePlanResponse {
 
@@ -39,6 +40,9 @@ public class PurchasePlanResponse {
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime updatedAt;
 
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    private LocalDateTime deletedAt;
+
     public static PurchasePlanResponse from(PurchasePlan purchasePlan, int itemCount) {
         return PurchasePlanResponse.builder()
                 .planId(purchasePlan.getId())
@@ -47,6 +51,7 @@ public class PurchasePlanResponse {
                 .itemCount(itemCount)
                 .createdAt(purchasePlan.getCreatedAt())
                 .updatedAt(purchasePlan.getUpdatedAt())
+                .deletedAt(purchasePlan.getDeletedAt())
                 .build();
     }
 }
