@@ -13,6 +13,18 @@ public interface IntangibleAssetRepository extends JpaRepository<IntangibleAsset
 
     boolean existsByCompany_IdAndIntangibleAssetItem_Id(UUID id, UUID id1);
 
+    long countByCompany_IdAndIntangibleAssetItem_IdAndIntangibleAssetStatus(
+            UUID companyId,
+            UUID intangibleAssetItemId,
+            IntangibleAssetStatus status
+    );
+
+    List<IntangibleAsset> findAllByCompany_IdAndIntangibleAssetItem_IdAndIntangibleAssetStatusIn(
+            UUID companyId,
+            UUID intangibleAssetItemId,
+            List<IntangibleAssetStatus> statuses
+    );
+
     boolean existsByCompany_IdAndLicenseCodeAndIntangibleAssetItem_Id(UUID companyId, String licenseCode, @NotNull UUID intangibleItemId);
 
     Optional<IntangibleAsset> findByIdAndCompany_Id(UUID assetId, UUID companyId);

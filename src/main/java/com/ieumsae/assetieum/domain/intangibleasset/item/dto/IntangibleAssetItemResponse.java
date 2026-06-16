@@ -19,6 +19,7 @@ import lombok.Getter;
         "licenseType",
         "isStandard",
         "prePurchasePrice",
+        "availableSeatCount",
         "createdAt",
         "updatedAt",
         "deletedAt"
@@ -39,6 +40,8 @@ public class IntangibleAssetItemResponse {
 
     private BigDecimal prePurchasePrice;
 
+    private Integer availableSeatCount;
+
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime createdAt;
 
@@ -47,6 +50,13 @@ public class IntangibleAssetItemResponse {
 
     public static IntangibleAssetItemResponse from(
             IntangibleAssetItem item
+    ) {
+        return from(item, 0);
+    }
+
+    public static IntangibleAssetItemResponse from(
+            IntangibleAssetItem item,
+            int availableSeatCount
     ) {
         return IntangibleAssetItemResponse.builder()
                 .itemId(item.getId())
@@ -59,6 +69,7 @@ public class IntangibleAssetItemResponse {
                         item.getLicenseType().name()
                 )
                 .isStandard(item.getIsStandard())
+                .availableSeatCount(availableSeatCount)
                 .createdAt(item.getCreatedAt())
                 .updatedAt(item.getUpdatedAt())
                 .build();
@@ -67,6 +78,14 @@ public class IntangibleAssetItemResponse {
     public static IntangibleAssetItemResponse from(
             IntangibleAssetItem item,
             BigDecimal prePurchasePrice
+    ) {
+        return from(item, prePurchasePrice, 0);
+    }
+
+    public static IntangibleAssetItemResponse from(
+            IntangibleAssetItem item,
+            BigDecimal prePurchasePrice,
+            int availableSeatCount
     ) {
         return IntangibleAssetItemResponse.builder()
                 .itemId(item.getId())
@@ -80,6 +99,7 @@ public class IntangibleAssetItemResponse {
                 )
                 .isStandard(item.getIsStandard())
                 .prePurchasePrice(prePurchasePrice)
+                .availableSeatCount(availableSeatCount)
                 .createdAt(item.getCreatedAt())
                 .updatedAt(item.getUpdatedAt())
                 .build();
