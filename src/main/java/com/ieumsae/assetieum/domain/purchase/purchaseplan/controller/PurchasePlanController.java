@@ -1,6 +1,7 @@
 package com.ieumsae.assetieum.domain.purchase.purchaseplan.controller;
 
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanCreateRequest;
+import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanDetailResponse;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanResponse;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanSearchRequest;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.service.PurchasePlanService;
@@ -63,6 +64,18 @@ public class PurchasePlanController {
                 purchasePlanService.getPurchasePlans(request, member.companyId());
 
         return ApiResponse.ok("구매 계획 목록 조회에 성공했습니다.", response);
+    }
+
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
+    @GetMapping("/{planId}")
+    public ApiResponse<PurchasePlanDetailResponse> getPurchasePlanDetail(
+            @AuthenticationPrincipal AuthenticatedMember member,
+            @PathVariable UUID planId
+    ) {
+        PurchasePlanDetailResponse response =
+                purchasePlanService.getPurchasePlanDetail(planId, member.companyId());
+
+        return ApiResponse.ok("구매 계획 상세 조회에 성공했습니다.", response);
     }
 
 }

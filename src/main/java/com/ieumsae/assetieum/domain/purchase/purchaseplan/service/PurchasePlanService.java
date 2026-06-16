@@ -9,6 +9,7 @@ import com.ieumsae.assetieum.domain.intangibleasset.item.repository.IntangibleAs
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanCreateRequest;
+import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanDetailResponse;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanResponse;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanSearchRequest;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.PurchasePlan;
@@ -72,7 +73,7 @@ public class PurchasePlanService {
         PurchasePlan purchasePlan = purchasePlanRepository.save(PurchasePlan.builder()
                 .company(company)
                 .requester(requester)
-                .planNo(codeGenerator.generate(PURCHASE_PLAN_NO_PREFIX, REDIS_KEY_PREFIX))
+                .planNo(codeGenerator.generate(PURCHASE_PLAN_NO_PREFIX, REDIS_KEY_PREFIX, member.companyId()))
                 .purchaseRequestStatus(PurchaseRequestStatus.REQUESTED)
                 .estimatedAmount(estimatedAmount)
                 .orderedAt(LocalDateTime.now())
@@ -217,5 +218,21 @@ public class PurchasePlanService {
         );
 
         return PaginationResponse.from(purchasePlanPage);
+    }
+
+    public PurchasePlanDetailResponse getPurchasePlanDetail(
+            UUID planId,
+            UUID companyId
+    ) {
+        companyRepository.findByIdAndDeletedAtIsNull(companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
+
+        PurchasePlan purchasePlan = purchasePlanRepository.findByIdAndDeletedAtIsNullAndCompany_Id(planId, companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PURCHASE_PLAN_NOT_FOUND));
+
+        List<PurchasePlanItem> purchasePlanItems =
+                purchasePlanItemRepository.findAllByPurchasePlan_IdAndCompany_Id(planId, companyId);
+
+        return PurchasePlanDetailResponse.from(purchasePlan, purchasePlanItems);
     }
 }
