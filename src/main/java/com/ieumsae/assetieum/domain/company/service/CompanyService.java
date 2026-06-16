@@ -8,6 +8,8 @@ import com.ieumsae.assetieum.domain.company.repository.CompanyRepository;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
 import com.ieumsae.assetieum.domain.member.type.MemberRole;
+import com.ieumsae.assetieum.domain.purchase.purchasepolicy.entity.PurchasePolicy;
+import com.ieumsae.assetieum.domain.purchase.purchasepolicy.repository.PurchasePolicyRepository;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
@@ -24,6 +26,7 @@ public class CompanyService {
 
 	private final CompanyRepository companyRepository;
 	private final MemberRepository memberRepository;
+	private final PurchasePolicyRepository purchasePolicyRepository;
 
 	@Transactional
 	public CompanyCreateResponse createCompany(
@@ -38,6 +41,10 @@ public class CompanyService {
 
 		Company company = companyRepository.save(Company.builder()
 			.companyCode(request.getCompanyCode())
+			.build());
+
+		purchasePolicyRepository.save(PurchasePolicy.builder()
+			.company(company)
 			.build());
 
 		return CompanyCreateResponse.from(company);
