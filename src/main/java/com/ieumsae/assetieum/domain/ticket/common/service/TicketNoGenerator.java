@@ -1,6 +1,7 @@
 package com.ieumsae.assetieum.domain.ticket.common.service;
 
 import com.ieumsae.assetieum.global.common.util.CodeGenerator;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -13,7 +14,7 @@ public class TicketNoGenerator {
 
 	private final CodeGenerator codeGenerator;
 
-	public String generate() {
-		return codeGenerator.generate(TICKET_NO_PREFIX, REDIS_KEY_PREFIX);
+	public String generate(UUID companyId) {
+		return codeGenerator.generate(TICKET_NO_PREFIX, REDIS_KEY_PREFIX, companyId);
 	}
 }
