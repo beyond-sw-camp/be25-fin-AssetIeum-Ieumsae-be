@@ -5,11 +5,11 @@ import com.ieumsae.assetieum.domain.intangibleasset.category.repository.Intangib
 import com.ieumsae.assetieum.domain.intangibleasset.item.type.LicenseType;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
-import com.ieumsae.assetieum.domain.member.type.MemberRole;
 import com.ieumsae.assetieum.domain.tangibleasset.category.entity.TangibleAssetCategory;
 import com.ieumsae.assetieum.domain.tangibleasset.category.repository.TangibleAssetCategoryRepository;
 import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
 import com.ieumsae.assetieum.domain.ticket.common.repository.TicketRepository;
+import com.ieumsae.assetieum.domain.ticket.common.service.TicketApprovalResolver;
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketNoGenerator;
 import com.ieumsae.assetieum.domain.ticket.common.type.AssetType;
 import com.ieumsae.assetieum.domain.ticket.common.type.RequestMethod;
@@ -40,6 +40,7 @@ public class PurchaseRequestTicketService {
 	private final TangibleAssetCategoryRepository tangibleAssetCategoryRepository;
 	private final IntangibleAssetCategoryRepository intangibleAssetCategoryRepository;
 	private final TicketNoGenerator ticketNoGenerator;
+	private final TicketApprovalResolver ticketApprovalResolver;
 
 	@Transactional
 	public PurchaseRequestTicketCreateResponse createTeamPurchaseRequestTicket(
@@ -99,7 +100,7 @@ public class PurchaseRequestTicketService {
 	) {
 		UUID companyId = authenticatedMember.companyId();
 		Member requester = findActiveRequester(authenticatedMember.id(), companyId);
-		Member approver = findDepartmentManager(requester);
+		Member approver = ticketApprovalResolver.resolveDepartmentApprover(requester);
 		TangibleAssetCategory tangibleAssetCategory = null;
 		IntangibleAssetCategory intangibleAssetCategory = null;
 
@@ -158,16 +159,6 @@ public class PurchaseRequestTicketService {
 			throw new BusinessException(ErrorCode.INACTIVE_MEMBER);
 		}
 		return member;
-	}
-
-	private Member findDepartmentManager(Member requester) {
-		Member departmentManager = requester.getDepartment().getDepartmentManager();
-		if (departmentManager == null
-			|| !departmentManager.isActive()
-			|| departmentManager.getRole() != MemberRole.DEPARTMENT_MANAGER) {
-			throw new BusinessException(ErrorCode.INVALID_DEPARTMENT_MANAGER, "부서장이 지정되지 않았거나 활성 상태가 아닙니다.");
-		}
-		return departmentManager;
 	}
 
 	private TangibleAssetCategory findTangibleAssetCategory(UUID categoryId, UUID companyId) {

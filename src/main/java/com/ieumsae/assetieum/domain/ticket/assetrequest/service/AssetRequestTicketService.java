@@ -4,7 +4,6 @@ import com.ieumsae.assetieum.domain.intangibleasset.item.entity.IntangibleAssetI
 import com.ieumsae.assetieum.domain.intangibleasset.item.repository.IntangibleAssetItemRepository;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
-import com.ieumsae.assetieum.domain.member.type.MemberRole;
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
 import com.ieumsae.assetieum.domain.tangibleasset.item.repository.TangibleAssetItemRepository;
 import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.StandardAssetRequestCreateRequest;
@@ -13,6 +12,7 @@ import com.ieumsae.assetieum.domain.ticket.assetrequest.entity.AssetRequestTicke
 import com.ieumsae.assetieum.domain.ticket.assetrequest.repository.AssetRequestTicketRepository;
 import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
 import com.ieumsae.assetieum.domain.ticket.common.repository.TicketRepository;
+import com.ieumsae.assetieum.domain.ticket.common.service.TicketApprovalResolver;
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketNoGenerator;
 import com.ieumsae.assetieum.domain.ticket.common.type.AssetType;
 import com.ieumsae.assetieum.global.exception.BusinessException;
@@ -35,6 +35,7 @@ public class AssetRequestTicketService {
 	private final TangibleAssetItemRepository tangibleAssetItemRepository;
 	private final IntangibleAssetItemRepository intangibleAssetItemRepository;
 	private final TicketNoGenerator ticketNoGenerator;
+	private final TicketApprovalResolver ticketApprovalResolver;
 
 	@Transactional
 	public StandardAssetRequestCreateResponse createStandardAssetRequest(
@@ -43,7 +44,7 @@ public class AssetRequestTicketService {
 	) {
 		UUID companyId = authenticatedMember.companyId();
 		Member requester = findActiveRequester(authenticatedMember.id(), companyId);
-		Member approver = findDepartmentManager(requester);
+		Member approver = ticketApprovalResolver.resolveDepartmentApprover(requester);
 		TangibleAssetItem tangibleAssetItem = null;
 		IntangibleAssetItem intangibleAssetItem = null;
 
@@ -92,16 +93,6 @@ public class AssetRequestTicketService {
 			throw new BusinessException(ErrorCode.INACTIVE_MEMBER);
 		}
 		return member;
-	}
-
-	private Member findDepartmentManager(Member requester) {
-		Member departmentManager = requester.getDepartment().getDepartmentManager();
-		if (departmentManager == null
-			|| !departmentManager.isActive()
-			|| departmentManager.getRole() != MemberRole.DEPARTMENT_MANAGER) {
-			throw new BusinessException(ErrorCode.INVALID_DEPARTMENT_MANAGER, "부서장이 지정되지 않았거나 활성 상태가 아닙니다.");
-		}
-		return departmentManager;
 	}
 
 	private TangibleAssetItem findStandardTangibleAssetItem(UUID itemId, UUID companyId) {

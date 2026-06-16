@@ -28,6 +28,8 @@ public interface MemberRepository extends JpaRepository<Member, UUID> {
 
 	boolean existsByCompany_IdAndRoleAndDeletedAtIsNull(UUID companyId, MemberRole role);
 
+	Optional<Member> findFirstByCompany_IdAndRoleAndDeletedAtIsNull(UUID companyId, MemberRole role);
+
 	Optional<Member> findByIdAndCompany_IdAndDeletedAtIsNull(UUID memberId, UUID companyId);
 
 	List<Member> findAllByCompany_IdAndStatusAndDeletedAtIsNull(UUID companyId, MemberStatus status);
