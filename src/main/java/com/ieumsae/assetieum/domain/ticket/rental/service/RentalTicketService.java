@@ -2,12 +2,25 @@ package com.ieumsae.assetieum.domain.ticket.rental.service;
 
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.entity.TangibleAsset;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.type.AssetUsageType;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.type.TangibleAssetStatus;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.type.UsageType;
+import com.ieumsae.assetieum.domain.tangibleasset.assignment.entity.TangibleAssetAssignment;
+import com.ieumsae.assetieum.domain.tangibleasset.assignment.repository.TangibleAssetAssignmentRepository;
+import com.ieumsae.assetieum.domain.tangibleasset.assignment.type.AssignmentStatus;
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
 import com.ieumsae.assetieum.domain.tangibleasset.item.repository.TangibleAssetItemRepository;
 import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
 import com.ieumsae.assetieum.domain.ticket.common.repository.TicketRepository;
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketApprovalResolver;
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketNoGenerator;
+import com.ieumsae.assetieum.domain.ticket.common.type.RequestedUsageType;
+import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
+import com.ieumsae.assetieum.domain.ticket.common.type.TicketType;
+import com.ieumsae.assetieum.domain.ticket.rental.dto.ActiveRentalAssetResponse;
+import com.ieumsae.assetieum.domain.ticket.rental.dto.RentalExtensionTicketCreateRequest;
+import com.ieumsae.assetieum.domain.ticket.rental.dto.RentalExtensionTicketCreateResponse;
 import com.ieumsae.assetieum.domain.ticket.rental.dto.RentalTicketCreateRequest;
 import com.ieumsae.assetieum.domain.ticket.rental.dto.RentalTicketCreateResponse;
 import com.ieumsae.assetieum.domain.ticket.rental.entity.RentalTicket;
@@ -15,6 +28,8 @@ import com.ieumsae.assetieum.domain.ticket.rental.repository.RentalTicketReposit
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -30,8 +45,26 @@ public class RentalTicketService {
 	private final RentalTicketRepository rentalTicketRepository;
 	private final MemberRepository memberRepository;
 	private final TangibleAssetItemRepository tangibleAssetItemRepository;
+	private final TangibleAssetAssignmentRepository tangibleAssetAssignmentRepository;
 	private final TicketNoGenerator ticketNoGenerator;
 	private final TicketApprovalResolver ticketApprovalResolver;
+
+	public List<ActiveRentalAssetResponse> getActiveRentalAssets(
+		AuthenticatedMember authenticatedMember
+	) {
+		UUID companyId = authenticatedMember.companyId();
+		Member requester = findActiveRequester(authenticatedMember.id(), companyId);
+
+		return tangibleAssetAssignmentRepository.findAllByCompany_IdAndMember_IdAndAssignmentStatus(
+				companyId,
+				requester.getId(),
+				AssignmentStatus.ACTIVE
+			)
+			.stream()
+			.filter(this::isActiveRentalAsset)
+			.map(ActiveRentalAssetResponse::from)
+			.toList();
+	}
 
 	@Transactional
 	public RentalTicketCreateResponse createRentalTicket(
@@ -66,6 +99,48 @@ public class RentalTicketService {
 		return RentalTicketCreateResponse.from(ticket, rentalTicket);
 	}
 
+	@Transactional
+	public RentalExtensionTicketCreateResponse createRentalExtensionTicket(
+		AuthenticatedMember authenticatedMember,
+		RentalExtensionTicketCreateRequest request
+	) {
+		UUID companyId = authenticatedMember.companyId();
+		Member requester = findActiveRequester(authenticatedMember.id(), companyId);
+		TangibleAssetAssignment assignment = findActiveAssignment(
+			request.getAssignmentId(),
+			companyId,
+			requester.getId()
+		);
+		validateRentalExtensionTarget(assignment, requester);
+		validateRentalExtensionPeriod(assignment.getTangibleAsset(), request.getRequestedDueDate());
+		validateNoOngoingRentalExtension(companyId, assignment.getTangibleAsset().getId());
+
+		Member approver = ticketApprovalResolver.resolveDepartmentApprover(requester);
+		TangibleAsset asset = assignment.getTangibleAsset();
+
+		Ticket ticket = ticketRepository.save(Ticket.createRentalExtension(
+			requester.getCompany(),
+			ticketNoGenerator.generate(companyId),
+			requester,
+			requester.getDepartment(),
+			approver,
+			normalize(request.getRequestReason())
+		));
+
+		RentalTicket rentalTicket = rentalTicketRepository.save(RentalTicket.createExtensionRequest(
+			ticket,
+			requester.getCompany(),
+			resolveRequestedUsageType(asset),
+			asset,
+			asset.getTangibleAssetItem(),
+			resolveRentalStartDate(asset, assignment),
+			asset.getReturnDueDate(),
+			request.getRequestedDueDate()
+		));
+
+		return RentalExtensionTicketCreateResponse.from(ticket, rentalTicket, assignment);
+	}
+
 	private void validateRentalPeriod(RentalTicketCreateRequest request) {
 		if (!request.getRentalStartDate().isBefore(request.getRequestedDueDate())) {
 			throw new BusinessException(
@@ -83,6 +158,75 @@ public class RentalTicketService {
 			throw new BusinessException(ErrorCode.INACTIVE_MEMBER);
 		}
 		return member;
+	}
+
+	private TangibleAssetAssignment findActiveAssignment(UUID assignmentId, UUID companyId, UUID memberId) {
+		return tangibleAssetAssignmentRepository.findByIdAndCompany_IdAndMember_IdAndAssignmentStatus(
+				assignmentId,
+				companyId,
+				memberId,
+				AssignmentStatus.ACTIVE
+			)
+			.orElseThrow(() -> new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "대여중인 자산 배정을 찾을 수 없습니다."));
+	}
+
+	private boolean isActiveRentalAsset(TangibleAssetAssignment assignment) {
+		TangibleAsset asset = assignment.getTangibleAsset();
+
+		return asset.getTangibleAssetStatus() == TangibleAssetStatus.IN_USE
+			&& asset.getUsageType() == UsageType.TEMPORARY
+			&& asset.getReturnDueDate() != null
+			&& asset.getMember() != null
+			&& asset.getMember().getId().equals(assignment.getMember().getId())
+			&& asset.getCompany().getId().equals(assignment.getCompany().getId());
+	}
+
+	private void validateRentalExtensionTarget(TangibleAssetAssignment assignment, Member requester) {
+		TangibleAsset asset = assignment.getTangibleAsset();
+
+		if (!isActiveRentalAsset(assignment)) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "연장 요청 가능한 대여중 자산이 아닙니다.");
+		}
+
+		if (asset.getMember() == null || !asset.getMember().getId().equals(requester.getId())) {
+			throw new BusinessException(ErrorCode.ACCESS_DENIED);
+		}
+	}
+
+	private void validateRentalExtensionPeriod(TangibleAsset asset, LocalDateTime requestedDueDate) {
+		if (!requestedDueDate.isAfter(asset.getReturnDueDate())) {
+			throw new BusinessException(ErrorCode.INVALID_RENTAL_PERIOD, "연장 요청 반납 예정 일시는 현재 반납 예정 일시보다 이후여야 합니다.");
+		}
+	}
+
+	private void validateNoOngoingRentalExtension(UUID companyId, UUID assetId) {
+		boolean exists = rentalTicketRepository
+			.existsByCompany_IdAndTangibleAsset_IdAndTicket_TicketTypeAndTicket_TicketStatusInAndDeletedAtIsNull(
+				companyId,
+				assetId,
+				TicketType.RENTAL_EXTENSION,
+				List.of(TicketStatus.REQUESTED, TicketStatus.DEPARTMENT_APPROVED, TicketStatus.IN_PROGRESS)
+			);
+
+		if (exists) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "이미 진행 중인 대여 연장 요청이 있습니다.");
+		}
+	}
+
+	private RequestedUsageType resolveRequestedUsageType(TangibleAsset asset) {
+		if (asset.getAssetUsageType() == AssetUsageType.DEPARTMENT) {
+			return RequestedUsageType.DEPARTMENT;
+		}
+
+		return RequestedUsageType.PERSONAL;
+	}
+
+	private LocalDateTime resolveRentalStartDate(TangibleAsset asset, TangibleAssetAssignment assignment) {
+		if (asset.getUsedStartedAt() != null) {
+			return asset.getUsedStartedAt();
+		}
+
+		return assignment.getAssignedAt();
 	}
 
 	private TangibleAssetItem findTangibleAssetItem(UUID itemId, UUID companyId) {
