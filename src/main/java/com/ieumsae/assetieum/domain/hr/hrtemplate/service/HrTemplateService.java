@@ -134,4 +134,29 @@ public class HrTemplateService {
         return intangibleAssetItemRepository.findByIdAndCompany_IdAndDeletedAtIsNull(itemId, companyId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.INTANGIBLE_ASSET_ITEM_NOT_FOUND));
     }
+
+    public HrTemplateResponse getHrTemplate(AuthenticatedMember member) {
+        // 1. 입력값 검증
+        companyRepository.findById(member.companyId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
+
+        Member requester = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(member.id(), member.companyId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+
+        Department department = departmentRepository.findByIdAndCompany_IdAndDeletedAtIsNull(requester.getDepartment().getId(), member.companyId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.DEPARTMENT_NOT_FOUND));
+
+        // 2. HR 템플릿 반환
+        Optional<HrTemplate> existingTemplate = hrTemplateRepository
+                .findByCompany_IdAndDepartment_IdAndDeletedAtIsNull(member.companyId(), department.getId());
+
+        if (existingTemplate.isEmpty()) {
+            return null;
+        }
+
+        HrTemplate hrTemplate = existingTemplate.get();
+        List<HrTemplateItem> hrTemplateItems = hrTemplateItemRepository.findByHrTemplate(hrTemplate);
+
+        return HrTemplateResponse.from(hrTemplate, hrTemplateItems);
+    }
 }

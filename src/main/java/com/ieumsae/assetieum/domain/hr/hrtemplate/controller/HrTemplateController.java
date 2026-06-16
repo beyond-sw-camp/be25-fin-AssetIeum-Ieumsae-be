@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -31,5 +32,16 @@ public class HrTemplateController {
                 hrTemplateService.createHrTemplate(request, member);
 
         return ApiResponse.ok("HR 템플릿이 등록되었습니다.", response);
+    }
+
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'DEPARTMENT_MANAGER')")
+    @GetMapping
+    public ApiResponse<HrTemplateResponse> getHrTemplate(
+            @AuthenticationPrincipal AuthenticatedMember member
+    ) {
+        HrTemplateResponse response =
+                hrTemplateService.getHrTemplate(member);
+
+        return ApiResponse.ok("HR 템플릿이 조회되었습니다.", response);
     }
 }
