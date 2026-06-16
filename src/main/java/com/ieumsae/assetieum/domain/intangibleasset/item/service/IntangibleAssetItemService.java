@@ -2,7 +2,11 @@ package com.ieumsae.assetieum.domain.intangibleasset.item.service;
 
 import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.company.repository.CompanyRepository;
+import com.ieumsae.assetieum.domain.intangibleasset.asset.entity.IntangibleAsset;
+import com.ieumsae.assetieum.domain.intangibleasset.asset.type.IntangibleAssetStatus;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.repository.IntangibleAssetRepository;
+import com.ieumsae.assetieum.domain.intangibleasset.assignment.repository.IntangibleAssetAssignmentRepository;
+import com.ieumsae.assetieum.domain.intangibleasset.assignment.type.AssignmentStatus;
 import com.ieumsae.assetieum.domain.intangibleasset.category.entity.IntangibleAssetCategory;
 import com.ieumsae.assetieum.domain.intangibleasset.category.repository.IntangibleAssetCategoryRepository;
 import com.ieumsae.assetieum.domain.intangibleasset.item.dto.IntangibleAssetItemCreateRequest;
@@ -20,6 +24,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -29,6 +34,7 @@ public class IntangibleAssetItemService {
 
     private final IntangibleAssetItemRepository intangibleAssetItemRepository;
     private final IntangibleAssetRepository intangibleAssetRepository;
+    private final IntangibleAssetAssignmentRepository intangibleAssetAssignmentRepository;
     private final IntangibleAssetCategoryRepository intangibleAssetCategoryRepository;
     private final CompanyRepository companyRepository;
 
@@ -93,7 +99,12 @@ public class IntangibleAssetItemService {
         // 2. 품목 수정
         item.update(request, category);
 
-        return IntangibleAssetItemResponse.from(item);
+        int availableSeatCount = calculateAvailableSeatCount(
+                companyId,
+                item.getId()
+        );
+
+        return IntangibleAssetItemResponse.from(item, availableSeatCount);
     }
 
     /**
@@ -134,7 +145,7 @@ public class IntangibleAssetItemService {
 
         IntangibleAssetItem savedItem = intangibleAssetItemRepository.save(item);
 
-        return IntangibleAssetItemResponse.from(savedItem);
+        return IntangibleAssetItemResponse.from(savedItem, 0);
     }
 
     /**
@@ -161,5 +172,27 @@ public class IntangibleAssetItemService {
                 );
 
         return PaginationResponse.from(responsePage);
+    }
+
+    private int calculateAvailableSeatCount(UUID companyId, UUID itemId) {
+        List<IntangibleAsset> assets = intangibleAssetRepository
+                .findAllByCompany_IdAndIntangibleAssetItem_IdAndIntangibleAssetStatusIn(
+                        companyId,
+                        itemId,
+                        List.of(IntangibleAssetStatus.AVAILABLE, IntangibleAssetStatus.IN_USE)
+                );
+
+        int availableSeatCount = 0;
+        for (IntangibleAsset asset : assets) {
+            long activeAssignmentCount = intangibleAssetAssignmentRepository
+                    .countByCompany_IdAndIntangibleAsset_IdAndAssignmentStatus(
+                            companyId,
+                            asset.getId(),
+                            AssignmentStatus.ACTIVE
+                    );
+            availableSeatCount += Math.max(asset.getSeatCount() - Math.toIntExact(activeAssignmentCount), 0);
+        }
+
+        return availableSeatCount;
     }
 }

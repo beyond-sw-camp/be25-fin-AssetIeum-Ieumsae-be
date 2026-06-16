@@ -18,9 +18,7 @@ public class IntangibleAssetSearchResponse {
 
     private String assetCode;
 
-    private String currentUserName;
-
-    private String currentUserMemberNo;
+    private String currentUserInfo;
 
     private IntangibleAssetStatus intangibleAssetStatus;
 

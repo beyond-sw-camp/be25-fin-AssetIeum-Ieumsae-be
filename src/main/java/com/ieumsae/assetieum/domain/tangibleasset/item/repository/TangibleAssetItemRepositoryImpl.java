@@ -3,6 +3,7 @@ package com.ieumsae.assetieum.domain.tangibleasset.item.repository;
 import com.ieumsae.assetieum.domain.tangibleasset.category.repository.TangibleAssetCategoryRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.item.dto.TangibleAssetItemResponse;
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.type.TangibleAssetStatus;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
 import com.querydsl.jpa.impl.JPAQueryFactory;
@@ -80,11 +81,13 @@ public class TangibleAssetItemRepositoryImpl implements TangibleAssetItemReposit
                 .fetch();
 
         Map<UUID, BigDecimal> prePurchasePriceByItemId = findPrePurchasePriceByItemId(companyId, items);
+        Map<UUID, Integer> availableAssetCountByItemId = findAvailableAssetCountByItemId(companyId, items);
 
         List<TangibleAssetItemResponse> content = items.stream()
                 .map(item -> TangibleAssetItemResponse.from(
                         item,
-                        prePurchasePriceByItemId.get(item.getId())
+                        prePurchasePriceByItemId.get(item.getId()),
+                        availableAssetCountByItemId.getOrDefault(item.getId(), 0)
                 ))
                 .collect(Collectors.toList());
 
@@ -96,6 +99,42 @@ public class TangibleAssetItemRepositoryImpl implements TangibleAssetItemReposit
                 .fetchOne();
 
         return new PageImpl<>(content, pageable, total == null ? 0 : total);
+    }
+
+    private Map<UUID, Integer> findAvailableAssetCountByItemId(
+            UUID companyId,
+            List<TangibleAssetItem> items
+    ) {
+        if (items.isEmpty()) {
+            return Map.of();
+        }
+
+        List<UUID> itemIds = items.stream()
+                .map(TangibleAssetItem::getId)
+                .collect(Collectors.toList());
+
+        List<Tuple> availableAssetCounts = queryFactory
+                .select(
+                        tangibleAsset.tangibleAssetItem.id,
+                        tangibleAsset.count()
+                )
+                .from(tangibleAsset)
+                .where(
+                        tangibleAsset.company.id.eq(companyId),
+                        tangibleAsset.tangibleAssetItem.id.in(itemIds),
+                        tangibleAsset.tangibleAssetStatus.eq(TangibleAssetStatus.AVAILABLE)
+                )
+                .groupBy(tangibleAsset.tangibleAssetItem.id)
+                .fetch();
+
+        Map<UUID, Integer> availableAssetCountByItemId = new HashMap<>();
+        for (Tuple availableAssetCount : availableAssetCounts) {
+            UUID itemId = availableAssetCount.get(tangibleAsset.tangibleAssetItem.id);
+            Long count = availableAssetCount.get(tangibleAsset.count());
+            availableAssetCountByItemId.put(itemId, count == null ? 0 : Math.toIntExact(count));
+        }
+
+        return availableAssetCountByItemId;
     }
 
     private Map<UUID, BigDecimal> findPrePurchasePriceByItemId(
