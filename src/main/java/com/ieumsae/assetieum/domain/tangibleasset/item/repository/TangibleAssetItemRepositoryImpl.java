@@ -1,6 +1,8 @@
 package com.ieumsae.assetieum.domain.tangibleasset.item.repository;
 
+import com.ieumsae.assetieum.domain.tangibleasset.asset.type.TangibleAssetStatus;
 import com.ieumsae.assetieum.domain.tangibleasset.category.repository.TangibleAssetCategoryRepository;
+import com.ieumsae.assetieum.domain.tangibleasset.item.dto.AvailableRentalItemResponse;
 import com.ieumsae.assetieum.domain.tangibleasset.item.dto.TangibleAssetItemResponse;
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
 import com.querydsl.core.BooleanBuilder;
@@ -92,6 +94,69 @@ public class TangibleAssetItemRepositoryImpl implements TangibleAssetItemReposit
                 .select(tangibleAssetItem.count())
                 .from(tangibleAssetItem)
                 .join(tangibleAssetItem.tangibleAssetCategory, tangibleAssetCategory)
+                .where(condition)
+                .fetchOne();
+
+        return new PageImpl<>(content, pageable, total == null ? 0 : total);
+    }
+
+    @Override
+    public Page<AvailableRentalItemResponse> searchAvailableRentalItems(
+            UUID companyId,
+            UUID categoryId,
+            String keyword,
+            Boolean isStandard,
+            Pageable pageable
+    ) {
+        BooleanBuilder condition = new BooleanBuilder();
+        condition.and(tangibleAssetItem.company.id.eq(companyId));
+        condition.and(tangibleAssetItem.deletedAt.isNull());
+        condition.and(tangibleAsset.company.id.eq(companyId));
+        condition.and(tangibleAsset.tangibleAssetStatus.eq(TangibleAssetStatus.AVAILABLE));
+
+        List<UUID> categoryIds = getCategoryIds(categoryId, companyId);
+        if (categoryIds != null && !categoryIds.isEmpty()) {
+            condition.and(tangibleAssetCategory.id.in(categoryIds));
+        }
+
+        if (keyword != null && !keyword.isBlank()) {
+            String trimmedKeyword = keyword.trim();
+            condition.and(
+                    tangibleAssetItem.productName.containsIgnoreCase(trimmedKeyword)
+                            .or(tangibleAssetItem.manufacturer.containsIgnoreCase(trimmedKeyword))
+                            .or(tangibleAssetItem.modelName.containsIgnoreCase(trimmedKeyword))
+                            .or(tangibleAssetCategory.name.containsIgnoreCase(trimmedKeyword))
+            );
+        }
+
+        if (isStandard != null) {
+            condition.and(tangibleAssetItem.isStandard.eq(isStandard));
+        }
+
+        List<Tuple> tuples = queryFactory
+                .select(tangibleAssetItem, tangibleAsset.id.count())
+                .from(tangibleAssetItem)
+                .join(tangibleAssetItem.tangibleAssetCategory, tangibleAssetCategory)
+                .join(tangibleAsset).on(tangibleAsset.tangibleAssetItem.eq(tangibleAssetItem))
+                .where(condition)
+                .groupBy(tangibleAssetItem.id)
+                .orderBy(tangibleAssetItem.createdAt.desc())
+                .offset(pageable.getOffset())
+                .limit(pageable.getPageSize())
+                .fetch();
+
+        List<AvailableRentalItemResponse> content = tuples.stream()
+                .map(tuple -> AvailableRentalItemResponse.from(
+                        tuple.get(tangibleAssetItem),
+                        tuple.get(tangibleAsset.id.count()) == null ? 0 : tuple.get(tangibleAsset.id.count())
+                ))
+                .collect(Collectors.toList());
+
+        Long total = queryFactory
+                .select(tangibleAssetItem.id.countDistinct())
+                .from(tangibleAssetItem)
+                .join(tangibleAssetItem.tangibleAssetCategory, tangibleAssetCategory)
+                .join(tangibleAsset).on(tangibleAsset.tangibleAssetItem.eq(tangibleAssetItem))
                 .where(condition)
                 .fetchOne();
 

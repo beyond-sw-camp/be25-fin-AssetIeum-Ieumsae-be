@@ -1,5 +1,6 @@
 package com.ieumsae.assetieum.domain.tangibleasset.item.repository;
 
+import com.ieumsae.assetieum.domain.tangibleasset.item.dto.AvailableRentalItemResponse;
 import com.ieumsae.assetieum.domain.tangibleasset.item.dto.TangibleAssetItemResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,6 +19,14 @@ import java.util.UUID;
  */
 public interface TangibleAssetItemRepositoryCustom {
     Page<TangibleAssetItemResponse> search(
+            UUID companyId,
+            UUID categoryId,
+            String keyword,
+            Boolean isStandard,
+            Pageable pageable
+    );
+
+    Page<AvailableRentalItemResponse> searchAvailableRentalItems(
             UUID companyId,
             UUID categoryId,
             String keyword,
