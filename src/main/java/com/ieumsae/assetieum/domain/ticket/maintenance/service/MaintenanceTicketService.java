@@ -11,7 +11,7 @@ import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
 import com.ieumsae.assetieum.domain.ticket.common.repository.TicketRepository;
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketApprovalResolver;
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketNoGenerator;
-import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
+import com.ieumsae.assetieum.domain.ticket.common.service.TangibleAssetTicketConflictValidator;
 import com.ieumsae.assetieum.domain.ticket.maintenance.dto.MaintenanceAvailableAssetResponse;
 import com.ieumsae.assetieum.domain.ticket.maintenance.dto.MaintenanceTicketCreateRequest;
 import com.ieumsae.assetieum.domain.ticket.maintenance.dto.MaintenanceTicketCreateResponse;
@@ -37,6 +37,7 @@ public class MaintenanceTicketService {
 	private final TangibleAssetAssignmentRepository tangibleAssetAssignmentRepository;
 	private final TicketNoGenerator ticketNoGenerator;
 	private final TicketApprovalResolver ticketApprovalResolver;
+	private final TangibleAssetTicketConflictValidator tangibleAssetTicketConflictValidator;
 
 	public List<MaintenanceAvailableAssetResponse> getAvailableAssets(
 		AuthenticatedMember authenticatedMember
@@ -68,7 +69,10 @@ public class MaintenanceTicketService {
 			requester.getId()
 		);
 		validateMaintenanceTarget(assignment, requester);
-		validateNoOngoingMaintenance(companyId, assignment.getTangibleAsset().getId());
+		tangibleAssetTicketConflictValidator.validateNoOngoingTangibleAssetTicket(
+			companyId,
+			assignment.getTangibleAsset().getId()
+		);
 
 		TangibleAsset asset = assignment.getTangibleAsset();
 		Member approver = ticketApprovalResolver.resolveDepartmentApprover(requester);
@@ -133,16 +137,4 @@ public class MaintenanceTicketService {
 		}
 	}
 
-	private void validateNoOngoingMaintenance(UUID companyId, UUID assetId) {
-		boolean exists = maintenanceTicketRepository
-			.existsByCompany_IdAndTangibleAsset_IdAndTicket_TicketStatusInAndDeletedAtIsNull(
-				companyId,
-				assetId,
-				List.of(TicketStatus.REQUESTED, TicketStatus.DEPARTMENT_APPROVED, TicketStatus.IN_PROGRESS)
-			);
-
-		if (exists) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "이미 진행 중인 유지보수 요청이 있습니다.");
-		}
-	}
 }
