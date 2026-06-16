@@ -119,7 +119,7 @@ public class PurchaseRequestTicketService {
 
 		Ticket ticket = ticketRepository.save(Ticket.createPurchaseRequest(
 			requester.getCompany(),
-			ticketNoGenerator.generate(),
+			ticketNoGenerator.generate(companyId),
 			requester,
 			requester.getDepartment(),
 			approver,

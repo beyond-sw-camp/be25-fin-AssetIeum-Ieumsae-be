@@ -3,6 +3,7 @@ package com.ieumsae.assetieum.global.common.util;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
@@ -16,16 +17,19 @@ public class CodeGenerator {
 
     private final StringRedisTemplate redisTemplate;
 
-    public String generate(String prefix, String redisKeyPrefix) {
+    public String generate(String prefix, String redisKeyPrefix, UUID companyId) {
         if (prefix == null || prefix.isBlank()) {
             throw new IllegalArgumentException("prefix must not be blank");
         }
         if (redisKeyPrefix == null || redisKeyPrefix.isBlank()) {
             throw new IllegalArgumentException("redisKeyPrefix must not be blank");
         }
+        if (companyId == null) {
+            throw new IllegalArgumentException("companyId must not be null");
+        }
 
         String date = LocalDate.now().format(DATE_FORMATTER);
-        String redisKey = redisKeyPrefix + date;
+        String redisKey = redisKeyPrefix + companyId + ":" + date;
         Long sequence = redisTemplate.opsForValue().increment(redisKey);
 
         if (sequence == null) {
