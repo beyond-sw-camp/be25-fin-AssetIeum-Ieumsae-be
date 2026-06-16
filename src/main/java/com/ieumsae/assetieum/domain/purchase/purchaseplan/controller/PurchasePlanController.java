@@ -4,6 +4,7 @@ import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanCreate
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanDetailResponse;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanResponse;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanSearchRequest;
+import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanUpdateStatusRequest;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.service.PurchasePlanService;
 import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.response.ApiResponse;
@@ -15,6 +16,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -76,6 +78,19 @@ public class PurchasePlanController {
                 purchasePlanService.getPurchasePlanDetail(planId, member.companyId());
 
         return ApiResponse.ok("구매 계획 상세 조회에 성공했습니다.", response);
+    }
+
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
+    @PatchMapping("/{planId}/status")
+    public ApiResponse<PurchasePlanResponse> updatePurchasePlanStatus(
+            @AuthenticationPrincipal AuthenticatedMember member,
+            @PathVariable UUID planId,
+            @Valid @RequestBody PurchasePlanUpdateStatusRequest request
+    ) {
+        PurchasePlanResponse response =
+                purchasePlanService.updatePurchasePlanStatus(planId, request, member.companyId());
+
+        return ApiResponse.ok("구매 계획의 상태가 변겯되었습니다.", response);
     }
 
 }
