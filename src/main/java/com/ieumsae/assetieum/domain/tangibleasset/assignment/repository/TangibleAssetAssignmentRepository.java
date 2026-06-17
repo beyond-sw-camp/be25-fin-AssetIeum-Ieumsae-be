@@ -20,4 +20,11 @@ public interface TangibleAssetAssignmentRepository extends JpaRepository<Tangibl
             UUID memberId,
             AssignmentStatus assignmentStatus
     );
+
+    Optional<TangibleAssetAssignment> findByIdAndCompany_IdAndMember_IdAndAssignmentStatus(
+            UUID assignmentId,
+            UUID companyId,
+            UUID memberId,
+            AssignmentStatus assignmentStatus
+    );
 }

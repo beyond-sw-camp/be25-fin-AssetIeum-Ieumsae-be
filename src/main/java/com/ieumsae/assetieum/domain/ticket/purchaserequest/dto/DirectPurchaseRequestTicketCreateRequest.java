@@ -32,17 +32,21 @@ public class DirectPurchaseRequestTicketCreateRequest {
 	@Size(max = 500, message = "요청 품목 상세는 500자 이하여야 합니다.")
 	private String requestedItemDetail;
 
+	@NotBlank(message = "제조사는 필수입니다.")
 	@Size(max = 100, message = "제조사는 100자 이하여야 합니다.")
 	private String manufacturer;
 
 	private LicenseType licenseType;
 
+	@NotNull(message = "수량은 필수입니다.")
 	@Min(value = 1, message = "수량은 1 이상이어야 합니다.")
-	private int quantity = 1;
+	private Integer quantity;
 
+	@NotNull(message = "예상 금액은 필수입니다.")
 	@DecimalMin(value = "0.00", message = "예상 금액은 0 이상이어야 합니다.")
 	private BigDecimal expectedPrice;
 
+	@NotBlank(message = "신청 사유는 필수입니다.")
 	@Size(max = 255, message = "신청 사유는 255자 이하여야 합니다.")
 	private String requestReason;
 }

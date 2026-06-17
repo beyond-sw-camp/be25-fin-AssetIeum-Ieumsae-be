@@ -95,4 +95,27 @@ public class RentalTicket {
 			.requestedDueDate(requestedDueDate)
 			.build();
 	}
+
+	public static RentalTicket createExtensionRequest(
+		Ticket ticket,
+		Company company,
+		RequestedUsageType requestedUsageType,
+		TangibleAsset tangibleAsset,
+		TangibleAssetItem tangibleAssetItem,
+		LocalDateTime rentalStartDate,
+		LocalDateTime currentDueDate,
+		LocalDateTime requestedDueDate
+	) {
+		return RentalTicket.builder()
+			.ticket(ticket)
+			.company(company)
+			.status(RentalTicketStatus.EXTENSION_REQUESTED)
+			.requestedUsageType(requestedUsageType)
+			.tangibleAsset(tangibleAsset)
+			.tangibleAssetItem(tangibleAssetItem)
+			.rentalStartDate(rentalStartDate)
+			.rentalDueDate(currentDueDate)
+			.requestedDueDate(requestedDueDate)
+			.build();
+	}
 }
