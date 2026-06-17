@@ -25,6 +25,8 @@ public interface TangibleAssetRepository extends JpaRepository<TangibleAsset, UU
 
     boolean existsByCompany_IdAndSerialNumberAndTangibleAssetItem_Id(UUID company_id, String serialNumber, UUID tangibleAssetItem_id);
 
+    boolean existsByCompany_IdAndSerialNumber(UUID companyId, String serialNumber);
+
     boolean existsByAssetCode(String assetCode);
 
     Optional<TangibleAsset> findByIdAndCompany_Id(UUID assetId, UUID companyId);

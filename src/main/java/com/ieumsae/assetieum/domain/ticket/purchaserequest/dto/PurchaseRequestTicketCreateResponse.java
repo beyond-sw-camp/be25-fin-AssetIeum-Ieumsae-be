@@ -26,6 +26,8 @@ public class PurchaseRequestTicketCreateResponse {
 	private final RequestedUsageType requestedUsageType;
 	private final RequestMethod requestMethod;
 	private final AssetType assetType;
+	private final Boolean isStandard;
+	private final UUID assetItemId;
 	private final UUID categoryId;
 	private final String requestedItemDetail;
 	private final String manufacturer;
@@ -49,7 +51,9 @@ public class PurchaseRequestTicketCreateResponse {
 			.requestedUsageType(purchaseRequestTicket.getRequestedUsageType())
 			.requestMethod(purchaseRequestTicket.getRequestMethod())
 			.assetType(assetType)
-			.categoryId(categoryId)
+			.isStandard(purchaseRequestTicket.getIsStandard())
+			.assetItemId(resolveAssetItemId(purchaseRequestTicket))
+			.categoryId(resolveCategoryId(purchaseRequestTicket, categoryId))
 			.requestedItemDetail(purchaseRequestTicket.getRequestedItemDetail())
 			.manufacturer(purchaseRequestTicket.getManufacturer())
 			.licenseType(purchaseRequestTicket.getLicenseType())
@@ -57,5 +61,25 @@ public class PurchaseRequestTicketCreateResponse {
 			.quantity(purchaseRequestTicket.getQuantity())
 			.expectedPrice(purchaseRequestTicket.getExpectedPrice())
 			.build();
+	}
+
+	private static UUID resolveAssetItemId(PurchaseRequestTicket ticket) {
+		if (ticket.getTangibleAssetItem() != null) {
+			return ticket.getTangibleAssetItem().getId();
+		}
+		if (ticket.getIntangibleAssetItem() != null) {
+			return ticket.getIntangibleAssetItem().getId();
+		}
+		return null;
+	}
+
+	private static UUID resolveCategoryId(PurchaseRequestTicket ticket, UUID fallbackCategoryId) {
+		if (ticket.getTangibleAssetCategory() != null) {
+			return ticket.getTangibleAssetCategory().getId();
+		}
+		if (ticket.getIntangibleAssetCategory() != null) {
+			return ticket.getIntangibleAssetCategory().getId();
+		}
+		return fallbackCategoryId;
 	}
 }

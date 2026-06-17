@@ -2,8 +2,10 @@ package com.ieumsae.assetieum.domain.ticket.purchaserequest.entity;
 
 import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.intangibleasset.category.entity.IntangibleAssetCategory;
+import com.ieumsae.assetieum.domain.intangibleasset.item.entity.IntangibleAssetItem;
 import com.ieumsae.assetieum.domain.intangibleasset.item.type.LicenseType;
 import com.ieumsae.assetieum.domain.tangibleasset.category.entity.TangibleAssetCategory;
+import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
 import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
 import com.ieumsae.assetieum.domain.ticket.common.type.RequestMethod;
 import com.ieumsae.assetieum.domain.ticket.common.type.RequestedUsageType;
@@ -64,6 +66,17 @@ public class PurchaseRequestTicket {
 	@Column(name = "requested_usage_type", nullable = false, length = 30)
 	private RequestedUsageType requestedUsageType;
 
+	@Column(name = "is_standard", nullable = false)
+	private Boolean isStandard;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "tangible_asset_item_id")
+	private TangibleAssetItem tangibleAssetItem;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "intangible_asset_item_id")
+	private IntangibleAssetItem intangibleAssetItem;
+
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "tangible_asset_category_id")
 	private TangibleAssetCategory tangibleAssetCategory;
@@ -99,6 +112,9 @@ public class PurchaseRequestTicket {
 		Company company,
 		RequestMethod requestMethod,
 		RequestedUsageType requestedUsageType,
+		Boolean isStandard,
+		TangibleAssetItem tangibleAssetItem,
+		IntangibleAssetItem intangibleAssetItem,
 		TangibleAssetCategory tangibleAssetCategory,
 		IntangibleAssetCategory intangibleAssetCategory,
 		String requestedItemDetail,
@@ -114,6 +130,9 @@ public class PurchaseRequestTicket {
 			.status(PurchaseRequestTicketStatus.REQUESTED)
 			.requestMethod(requestMethod)
 			.requestedUsageType(requestedUsageType)
+			.isStandard(isStandard)
+			.tangibleAssetItem(tangibleAssetItem)
+			.intangibleAssetItem(intangibleAssetItem)
 			.tangibleAssetCategory(tangibleAssetCategory)
 			.intangibleAssetCategory(intangibleAssetCategory)
 			.requestedItemDetail(requestedItemDetail)
