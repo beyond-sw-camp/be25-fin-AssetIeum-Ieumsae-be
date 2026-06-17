@@ -15,6 +15,7 @@ import java.util.UUID;
 @Builder
 @JsonPropertyOrder({
         "hrEventId",
+        "hrEventNo",
         "departmentId",
         "departmentName",
         "memberId",
@@ -31,6 +32,8 @@ import java.util.UUID;
 public class HrEventResponse {
 
     private UUID hrEventId;
+
+    private String hrEventNo;
 
     private UUID departmentId;
 
@@ -65,6 +68,7 @@ public class HrEventResponse {
     public static HrEventResponse from(HrEvent hrEvent) {
         return HrEventResponse.builder()
                 .hrEventId(hrEvent.getId())
+                .hrEventNo(hrEvent.getHrEventNo())
                 .departmentId(hrEvent.getDepartment().getId())
                 .departmentName(hrEvent.getDepartment().getName())
                 .memberId(hrEvent.getMember().getId())

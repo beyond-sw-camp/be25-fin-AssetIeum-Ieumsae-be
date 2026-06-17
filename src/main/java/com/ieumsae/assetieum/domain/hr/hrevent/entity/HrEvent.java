@@ -53,6 +53,9 @@ public class HrEvent extends BaseEntity {
     @JoinColumn(name = "member_id", nullable = false)
     private Member member;
 
+    @JoinColumn(name = "hr_event_no", nullable = false)
+    private String hrEventNo;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "event_type", nullable = false, length = 100)
     private HrEventType eventType;

@@ -8,8 +8,10 @@ import com.ieumsae.assetieum.domain.hr.hrevent.dto.HrEventCreateRequest;
 import com.ieumsae.assetieum.domain.hr.hrevent.dto.HrEventResponse;
 import com.ieumsae.assetieum.domain.hr.hrevent.entity.HrEvent;
 import com.ieumsae.assetieum.domain.hr.hrevent.repository.HrEventRepository;
+import com.ieumsae.assetieum.domain.hr.hrtemplate.dto.HrTemplateResponse;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
+import com.ieumsae.assetieum.global.common.util.CodeGenerator;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
@@ -22,10 +24,15 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class HrEventService {
 
+    private static final String HR_EVENT_NO_PREFIX = "EVT";
+    private static final String REDIS_KEY_PREFIX = "hr-event:no:";
+
     private final CompanyRepository companyRepository;
     private final MemberRepository memberRepository;
     private final DepartmentRepository departmentRepository;
     private final HrEventRepository hrEventRepository;
+
+    private final CodeGenerator codeGenerator;
 
     public HrEventResponse createHrEvent(
             HrEventCreateRequest request,
@@ -46,6 +53,7 @@ public class HrEventService {
                 .company(company)
                 .department(department)
                 .member(targetMember)
+                .hrEventNo(codeGenerator.generate(HR_EVENT_NO_PREFIX, REDIS_KEY_PREFIX, member.companyId()))
                 .eventType(request.getEventType())
                 .eventDate(request.getEventDate())
                 .build();
@@ -53,5 +61,9 @@ public class HrEventService {
         HrEvent savedHrEvent = hrEventRepository.save(hrEvent);
 
         return HrEventResponse.from(savedHrEvent);
+    }
+
+    public HrTemplateResponse deleteHrEvent(AuthenticatedMember member) {
+        return null;
     }
 }
