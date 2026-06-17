@@ -1,0 +1,2 @@
+ALTER TABLE `hr_events`
+    MODIFY COLUMN `event_date` DATETIME NOT NULL COMMENT '예정일';
