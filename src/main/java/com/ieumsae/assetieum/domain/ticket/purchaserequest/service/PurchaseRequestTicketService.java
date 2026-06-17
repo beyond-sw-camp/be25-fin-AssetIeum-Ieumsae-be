@@ -122,7 +122,7 @@ public class PurchaseRequestTicketService {
 		AssetType assetType = resolveAssetType(purchaseRequestTicket);
 
 		validateDirectPurchaseResultTarget(purchaseRequestTicket, ticket, submitter);
-		validateDirectPurchaseResultRequest(companyId, assetType, request);
+		validateDirectPurchaseResultRequest(companyId, assetType, request, null);
 
 		DirectPurchaseResult result = directPurchaseResultRepository.save(DirectPurchaseResult.create(
 			purchaseRequestTicket,
@@ -159,7 +159,7 @@ public class PurchaseRequestTicketService {
 		AssetType assetType = resolveAssetType(purchaseRequestTicket);
 
 		validateDirectPurchaseResultUpdatable(purchaseRequestTicket, ticket, submitter);
-		validateDirectPurchaseResultRequest(companyId, assetType, request);
+		validateDirectPurchaseResultRequest(companyId, assetType, request, result);
 
 		result.update(
 			request.getActualPrice(),
@@ -427,11 +427,6 @@ public class PurchaseRequestTicketService {
 		if (request.getAssetItemId() == null) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "Asset item ID is required for standard direct purchase requests.");
 		}
-		if (request.getCategoryId() != null
-			|| StringUtils.hasText(request.getRequestedItemDetail())
-			|| StringUtils.hasText(request.getManufacturer())) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "Category, item detail, and manufacturer are derived from the standard asset item.");
-		}
 	}
 
 	private void validateNonStandardDirectPurchaseRequest(DirectPurchaseRequestTicketCreateRequest request) {
@@ -502,16 +497,21 @@ public class PurchaseRequestTicketService {
 	private void validateDirectPurchaseResultRequest(
 		UUID companyId,
 		AssetType assetType,
-		DirectPurchaseResultCreateRequest request
+		DirectPurchaseResultCreateRequest request,
+		DirectPurchaseResult existingResult
 	) {
 		if (assetType == AssetType.TANGIBLE) {
-			validateTangibleDirectPurchaseResult(companyId, request);
+			validateTangibleDirectPurchaseResult(companyId, request, existingResult);
 			return;
 		}
-		validateIntangibleDirectPurchaseResult(companyId, request);
+		validateIntangibleDirectPurchaseResult(companyId, request, existingResult);
 	}
 
-	private void validateTangibleDirectPurchaseResult(UUID companyId, DirectPurchaseResultCreateRequest request) {
+	private void validateTangibleDirectPurchaseResult(
+		UUID companyId,
+		DirectPurchaseResultCreateRequest request,
+		DirectPurchaseResult existingResult
+	) {
 		String serialNumber = normalize(request.getSerialNumber());
 		String location = normalize(request.getLocation());
 		if (!StringUtils.hasText(serialNumber)) {
@@ -523,7 +523,8 @@ public class PurchaseRequestTicketService {
 		if (request.getWarrantyExpiredAt() == null) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "유형자산은 보증 만료일시가 필수입니다.");
 		}
-		if (tangibleAssetRepository.existsByCompany_IdAndSerialNumber(companyId, serialNumber)) {
+		boolean isNewSerialNumber = (existingResult == null) || !serialNumber.equals(existingResult.getSerialNumber());
+		if (isNewSerialNumber && tangibleAssetRepository.existsByCompany_IdAndSerialNumber(companyId, serialNumber)) {
 			throw new BusinessException(ErrorCode.TANGIBLE_ASSET_ITEM_DUPLICATED_SERIAL_NUMBER);
 		}
 		if (hasIntangibleOnlyFields(request)) {
@@ -531,7 +532,11 @@ public class PurchaseRequestTicketService {
 		}
 	}
 
-	private void validateIntangibleDirectPurchaseResult(UUID companyId, DirectPurchaseResultCreateRequest request) {
+	private void validateIntangibleDirectPurchaseResult(
+		UUID companyId,
+		DirectPurchaseResultCreateRequest request,
+		DirectPurchaseResult existingResult
+	) {
 		String licenseCode = normalize(request.getLicenseCode());
 		if (!StringUtils.hasText(licenseCode)) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "무형자산은 라이선스코드가 필수입니다.");
@@ -554,7 +559,8 @@ public class PurchaseRequestTicketService {
 		if (request.getBillingCycle() == null) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "무형자산은 결제주기가 필수입니다.");
 		}
-		if (intangibleAssetRepository.existsByCompany_IdAndLicenseCode(companyId, licenseCode)) {
+		boolean isNewLicenseCode = (existingResult == null) || !licenseCode.equals(existingResult.getLicenseCode());
+		if (isNewLicenseCode && intangibleAssetRepository.existsByCompany_IdAndLicenseCode(companyId, licenseCode)) {
 			throw new BusinessException(ErrorCode.INTANGIBLE_ASSET_ITEM_DUPLICATED_LICENSE_CODE);
 		}
 		if (hasTangibleOnlyFields(request)) {
