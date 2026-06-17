@@ -81,4 +81,9 @@ public class HrEvent extends BaseEntity {
         this.hrEventStatus = HrEventStatus.CANCELLED;
         this.cancelledAt = LocalDateTime.now();
     }
+
+    public void complete() {
+        this.hrEventStatus = HrEventStatus.COMPLETED;
+        this.completedAt = LocalDateTime.now();
+    }
 }

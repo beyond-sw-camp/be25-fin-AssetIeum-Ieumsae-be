@@ -114,4 +114,26 @@ public class HrEventService {
 
         return PaginationResponse.from(eventPage);
     }
+
+    @Transactional
+    public HrEventResponse completeHrEvent(
+            UUID eventId,
+            AuthenticatedMember member
+    ) {
+        // 1. 입력값 검증
+        Company company = companyRepository.findById(member.companyId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
+
+        HrEvent hrEvent = hrEventRepository.findByIdAndCompany_IdAndCancelledAtIsNull(eventId, member.companyId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.HR_EVENT_NOT_FOUND));
+
+        if(hrEvent.getHrEventStatus() != HrEventStatus.IN_PROGRESS) {
+            throw new BusinessException(ErrorCode.HR_EVENT_NOT_IN_PROGRESS);
+        }
+
+        // 2. 상태 처리
+        hrEvent.complete();
+
+        return HrEventResponse.from(hrEvent);
+    }
 }

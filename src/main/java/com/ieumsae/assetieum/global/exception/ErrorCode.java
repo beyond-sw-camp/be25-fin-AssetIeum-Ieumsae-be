@@ -93,6 +93,7 @@ public enum ErrorCode {
 	// HR 이벤트
 	HR_EVENT_NOT_FOUND(HttpStatus.NOT_FOUND, "hr-event-001", "HR 이벤트를 찾을 수 없습니다."),
 	HR_EVENT_ALREADY_IN_PROGRESS(HttpStatus.CONFLICT, "hr-event-002", "HR 이벤트가 진행중인 경우 삭제할 수 없습니다."),
+	HR_EVENT_NOT_IN_PROGRESS(HttpStatus.CONFLICT, "hr-event-003", "HR 이벤트가 진행중인 경우에만 완료 처리할 수 있습니다."),
 
 	// 알림
 	NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "notification-001", "알림을 찾을 수 없습니다."),
