@@ -3,7 +3,6 @@ package com.ieumsae.assetieum.domain.ticket.assetrequest.service;
 import com.ieumsae.assetieum.domain.intangibleasset.item.entity.IntangibleAssetItem;
 import com.ieumsae.assetieum.domain.intangibleasset.item.repository.IntangibleAssetItemRepository;
 import com.ieumsae.assetieum.domain.member.entity.Member;
-import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
 import com.ieumsae.assetieum.domain.tangibleasset.item.repository.TangibleAssetItemRepository;
 import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.StandardAssetRequestCreateRequest;
@@ -14,6 +13,7 @@ import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
 import com.ieumsae.assetieum.domain.ticket.common.repository.TicketRepository;
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketApprovalResolver;
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketNoGenerator;
+import com.ieumsae.assetieum.domain.ticket.common.service.TicketRequesterResolver;
 import com.ieumsae.assetieum.domain.ticket.common.type.AssetType;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
@@ -31,11 +31,11 @@ public class AssetRequestTicketService {
 
 	private final TicketRepository ticketRepository;
 	private final AssetRequestTicketRepository assetRequestTicketRepository;
-	private final MemberRepository memberRepository;
 	private final TangibleAssetItemRepository tangibleAssetItemRepository;
 	private final IntangibleAssetItemRepository intangibleAssetItemRepository;
 	private final TicketNoGenerator ticketNoGenerator;
 	private final TicketApprovalResolver ticketApprovalResolver;
+	private final TicketRequesterResolver ticketRequesterResolver;
 
 	@Transactional
 	public StandardAssetRequestCreateResponse createStandardAssetRequest(
@@ -43,7 +43,7 @@ public class AssetRequestTicketService {
 		StandardAssetRequestCreateRequest request
 	) {
 		UUID companyId = authenticatedMember.companyId();
-		Member requester = findActiveRequester(authenticatedMember.id(), companyId);
+		Member requester = ticketRequesterResolver.resolveActiveRequester(authenticatedMember.id(), companyId);
 		Member approver = ticketApprovalResolver.resolveDepartmentApprover(requester);
 		TangibleAssetItem tangibleAssetItem = null;
 		IntangibleAssetItem intangibleAssetItem = null;
@@ -83,16 +83,6 @@ public class AssetRequestTicketService {
 			request.getAssetType(),
 			request.getAssetItemId()
 		);
-	}
-
-	private Member findActiveRequester(UUID memberId, UUID companyId) {
-		Member member = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(memberId, companyId)
-			.orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
-
-		if (!member.isActive()) {
-			throw new BusinessException(ErrorCode.INACTIVE_MEMBER);
-		}
-		return member;
 	}
 
 	private TangibleAssetItem findStandardTangibleAssetItem(UUID itemId, UUID companyId) {

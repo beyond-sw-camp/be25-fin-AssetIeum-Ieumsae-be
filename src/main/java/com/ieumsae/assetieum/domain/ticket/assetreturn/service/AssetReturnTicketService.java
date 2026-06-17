@@ -1,13 +1,8 @@
 package com.ieumsae.assetieum.domain.ticket.assetreturn.service;
 
-import com.ieumsae.assetieum.domain.intangibleasset.asset.entity.IntangibleAsset;
-import com.ieumsae.assetieum.domain.intangibleasset.asset.type.IntangibleAssetStatus;
 import com.ieumsae.assetieum.domain.intangibleasset.assignment.entity.IntangibleAssetAssignment;
 import com.ieumsae.assetieum.domain.intangibleasset.assignment.repository.IntangibleAssetAssignmentRepository;
 import com.ieumsae.assetieum.domain.member.entity.Member;
-import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
-import com.ieumsae.assetieum.domain.tangibleasset.asset.entity.TangibleAsset;
-import com.ieumsae.assetieum.domain.tangibleasset.asset.type.TangibleAssetStatus;
 import com.ieumsae.assetieum.domain.tangibleasset.assignment.entity.TangibleAssetAssignment;
 import com.ieumsae.assetieum.domain.tangibleasset.assignment.repository.TangibleAssetAssignmentRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.assignment.type.AssignmentStatus;
@@ -20,11 +15,12 @@ import com.ieumsae.assetieum.domain.ticket.assetreturn.repository.AssetReturnTic
 import com.ieumsae.assetieum.domain.ticket.assetreturn.type.AssetReturnTargetType;
 import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
 import com.ieumsae.assetieum.domain.ticket.common.repository.TicketRepository;
+import com.ieumsae.assetieum.domain.ticket.common.service.AssignedAssetValidator;
+import com.ieumsae.assetieum.domain.ticket.common.service.IntangibleAssetTicketConflictValidator;
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketApprovalResolver;
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketNoGenerator;
+import com.ieumsae.assetieum.domain.ticket.common.service.TicketRequesterResolver;
 import com.ieumsae.assetieum.domain.ticket.common.service.TangibleAssetTicketConflictValidator;
-import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
-import com.ieumsae.assetieum.domain.ticket.purchasereturn.repository.PurchaseReturnTicketRepository;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
@@ -39,28 +35,23 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class AssetReturnTicketService {
 
-	private static final List<TicketStatus> ONGOING_TICKET_STATUSES = List.of(
-		TicketStatus.REQUESTED,
-		TicketStatus.DEPARTMENT_APPROVED,
-		TicketStatus.IN_PROGRESS
-	);
-
 	private final TicketRepository ticketRepository;
 	private final AssetReturnTicketRepository assetReturnTicketRepository;
-	private final PurchaseReturnTicketRepository purchaseReturnTicketRepository;
-	private final MemberRepository memberRepository;
 	private final TangibleAssetAssignmentRepository tangibleAssetAssignmentRepository;
 	private final IntangibleAssetAssignmentRepository intangibleAssetAssignmentRepository;
 	private final TicketNoGenerator ticketNoGenerator;
 	private final TicketApprovalResolver ticketApprovalResolver;
+	private final TicketRequesterResolver ticketRequesterResolver;
+	private final AssignedAssetValidator assignedAssetValidator;
 	private final TangibleAssetTicketConflictValidator tangibleAssetTicketConflictValidator;
+	private final IntangibleAssetTicketConflictValidator intangibleAssetTicketConflictValidator;
 
 	public List<AssetReturnAvailableAssetResponse> getAvailableAssets(
 		AuthenticatedMember authenticatedMember,
 		AssetReturnAvailableAssetSearchRequest request
 	) {
 		UUID companyId = authenticatedMember.companyId();
-		Member requester = findActiveRequester(authenticatedMember.id(), companyId);
+		Member requester = ticketRequesterResolver.resolveActiveRequester(authenticatedMember.id(), companyId);
 
 		if (request.getAssetType() == AssetReturnTargetType.TANGIBLE) {
 			return tangibleAssetAssignmentRepository.findAllByCompany_IdAndMember_IdAndAssignmentStatus(
@@ -69,7 +60,7 @@ public class AssetReturnTicketService {
 					AssignmentStatus.ACTIVE
 				)
 				.stream()
-				.filter(this::isReturnAvailableTangibleAsset)
+				.filter(assignedAssetValidator::isTangibleInUseByAssignee)
 				.map(AssetReturnAvailableAssetResponse::from)
 				.toList();
 		}
@@ -80,7 +71,7 @@ public class AssetReturnTicketService {
 				com.ieumsae.assetieum.domain.intangibleasset.assignment.type.AssignmentStatus.ACTIVE
 			)
 			.stream()
-			.filter(this::isReturnAvailableIntangibleAsset)
+			.filter(assignedAssetValidator::isIntangibleInUseByAssignee)
 			.map(AssetReturnAvailableAssetResponse::from)
 			.toList();
 	}
@@ -91,7 +82,7 @@ public class AssetReturnTicketService {
 		AssetReturnTicketCreateRequest request
 	) {
 		UUID companyId = authenticatedMember.companyId();
-		Member requester = findActiveRequester(authenticatedMember.id(), companyId);
+		Member requester = ticketRequesterResolver.resolveActiveRequester(authenticatedMember.id(), companyId);
 
 		if (request.getAssetType() == AssetReturnTargetType.TANGIBLE) {
 			return createTangibleReturnTicket(companyId, requester, request);
@@ -143,7 +134,10 @@ public class AssetReturnTicketService {
 			.orElseThrow(() -> new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "사용 중인 무형자산 배정을 찾을 수 없습니다."));
 
 		validateIntangibleReturnTarget(assignment, requester);
-		validateNoOngoingIntangibleReturn(companyId, assignment.getIntangibleAsset().getId());
+		intangibleAssetTicketConflictValidator.validateNoOngoingIntangibleAssetReturnTicket(
+			companyId,
+			assignment.getIntangibleAsset().getId()
+		);
 
 		Ticket ticket = createCommonTicket(companyId, requester, request.getRequestReason());
 		AssetReturnTicket assetReturnTicket = assetReturnTicketRepository.save(
@@ -166,71 +160,19 @@ public class AssetReturnTicketService {
 		));
 	}
 
-	private Member findActiveRequester(UUID memberId, UUID companyId) {
-		Member member = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(memberId, companyId)
-			.orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
-
-		if (!member.isActive()) {
-			throw new BusinessException(ErrorCode.INACTIVE_MEMBER);
-		}
-
-		return member;
-	}
-
-	private boolean isReturnAvailableTangibleAsset(TangibleAssetAssignment assignment) {
-		TangibleAsset asset = assignment.getTangibleAsset();
-
-		return asset.getTangibleAssetStatus() == TangibleAssetStatus.IN_USE
-			&& asset.getMember() != null
-			&& asset.getMember().getId().equals(assignment.getMember().getId())
-			&& asset.getCompany().getId().equals(assignment.getCompany().getId());
-	}
-
-	private boolean isReturnAvailableIntangibleAsset(IntangibleAssetAssignment assignment) {
-		IntangibleAsset asset = assignment.getIntangibleAsset();
-
-		return asset.getIntangibleAssetStatus() == IntangibleAssetStatus.IN_USE
-			&& asset.getMember() != null
-			&& asset.getMember().getId().equals(assignment.getMember().getId())
-			&& asset.getCompany().getId().equals(assignment.getCompany().getId());
-	}
-
 	private void validateTangibleReturnTarget(TangibleAssetAssignment assignment, Member requester) {
-		if (!isReturnAvailableTangibleAsset(assignment)) {
+		if (!assignedAssetValidator.isTangibleInUseByAssignee(assignment)) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "반납/해지 요청 가능한 유형자산이 아닙니다.");
 		}
 
-		if (!assignment.getMember().getId().equals(requester.getId())) {
-			throw new BusinessException(ErrorCode.ACCESS_DENIED);
-		}
+		assignedAssetValidator.validateTangibleRequester(assignment, requester);
 	}
 
 	private void validateIntangibleReturnTarget(IntangibleAssetAssignment assignment, Member requester) {
-		if (!isReturnAvailableIntangibleAsset(assignment)) {
+		if (!assignedAssetValidator.isIntangibleInUseByAssignee(assignment)) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "반납/해지 요청 가능한 무형자산이 아닙니다.");
 		}
 
-		if (!assignment.getMember().getId().equals(requester.getId())) {
-			throw new BusinessException(ErrorCode.ACCESS_DENIED);
-		}
-	}
-
-	private void validateNoOngoingIntangibleReturn(UUID companyId, UUID assetId) {
-		boolean existsAssetReturn = assetReturnTicketRepository
-			.existsByCompany_IdAndIntangibleAsset_IdAndTicket_TicketStatusInAndDeletedAtIsNull(
-				companyId,
-				assetId,
-				ONGOING_TICKET_STATUSES
-			);
-		boolean existsPurchaseReturn = purchaseReturnTicketRepository
-			.existsByCompany_IdAndIntangibleAsset_IdAndTicket_TicketStatusInAndDeletedAtIsNull(
-				companyId,
-				assetId,
-				ONGOING_TICKET_STATUSES
-			);
-
-		if (existsAssetReturn || existsPurchaseReturn) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "이미 진행 중인 무형자산 반납/반품 요청이 있습니다.");
-		}
+		assignedAssetValidator.validateIntangibleRequester(assignment, requester);
 	}
 }

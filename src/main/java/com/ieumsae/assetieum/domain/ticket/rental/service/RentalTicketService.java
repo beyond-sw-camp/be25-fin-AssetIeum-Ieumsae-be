@@ -1,7 +1,6 @@
 package com.ieumsae.assetieum.domain.ticket.rental.service;
 
 import com.ieumsae.assetieum.domain.member.entity.Member;
-import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.entity.TangibleAsset;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.repository.TangibleAssetRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.type.AssetUsageType;
@@ -16,8 +15,10 @@ import com.ieumsae.assetieum.domain.tangibleasset.item.repository.TangibleAssetI
 import com.ieumsae.assetieum.domain.ticket.rental.dto.AvailableRentalItemSearchRequest;
 import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
 import com.ieumsae.assetieum.domain.ticket.common.repository.TicketRepository;
+import com.ieumsae.assetieum.domain.ticket.common.service.AssignedAssetValidator;
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketApprovalResolver;
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketNoGenerator;
+import com.ieumsae.assetieum.domain.ticket.common.service.TicketRequesterResolver;
 import com.ieumsae.assetieum.domain.ticket.common.service.TangibleAssetTicketConflictValidator;
 import com.ieumsae.assetieum.domain.ticket.common.type.RequestedUsageType;
 import com.ieumsae.assetieum.domain.ticket.rental.dto.ActiveRentalAssetResponse;
@@ -47,12 +48,13 @@ public class RentalTicketService {
 
 	private final TicketRepository ticketRepository;
 	private final RentalTicketRepository rentalTicketRepository;
-	private final MemberRepository memberRepository;
 	private final TangibleAssetItemRepository tangibleAssetItemRepository;
 	private final TangibleAssetRepository tangibleAssetRepository;
 	private final TangibleAssetAssignmentRepository tangibleAssetAssignmentRepository;
 	private final TicketNoGenerator ticketNoGenerator;
 	private final TicketApprovalResolver ticketApprovalResolver;
+	private final TicketRequesterResolver ticketRequesterResolver;
+	private final AssignedAssetValidator assignedAssetValidator;
 	private final TangibleAssetTicketConflictValidator tangibleAssetTicketConflictValidator;
 
 	public PaginationResponse<AvailableRentalItemResponse> getAvailableRentalItems(
@@ -60,7 +62,7 @@ public class RentalTicketService {
 		AvailableRentalItemSearchRequest request
 	) {
 		UUID companyId = authenticatedMember.companyId();
-		findActiveRequester(authenticatedMember.id(), companyId);
+		ticketRequesterResolver.resolveActiveRequester(authenticatedMember.id(), companyId);
 
 		Page<AvailableRentalItemResponse> responsePage = tangibleAssetItemRepository.searchAvailableRentalItems(
 			companyId,
@@ -77,7 +79,7 @@ public class RentalTicketService {
 		AuthenticatedMember authenticatedMember
 	) {
 		UUID companyId = authenticatedMember.companyId();
-		Member requester = findActiveRequester(authenticatedMember.id(), companyId);
+		Member requester = ticketRequesterResolver.resolveActiveRequester(authenticatedMember.id(), companyId);
 
 		return tangibleAssetAssignmentRepository.findAllByCompany_IdAndMember_IdAndAssignmentStatus(
 				companyId,
@@ -98,7 +100,7 @@ public class RentalTicketService {
 		validateRentalPeriod(request);
 
 		UUID companyId = authenticatedMember.companyId();
-		Member requester = findActiveRequester(authenticatedMember.id(), companyId);
+		Member requester = ticketRequesterResolver.resolveActiveRequester(authenticatedMember.id(), companyId);
 		Member approver = ticketApprovalResolver.resolveDepartmentApprover(requester);
 		TangibleAssetItem item = findTangibleAssetItem(request.getTangibleAssetItemId(), companyId);
 		validateAvailableRentalItem(companyId, item.getId());
@@ -130,7 +132,7 @@ public class RentalTicketService {
 		RentalExtensionTicketCreateRequest request
 	) {
 		UUID companyId = authenticatedMember.companyId();
-		Member requester = findActiveRequester(authenticatedMember.id(), companyId);
+		Member requester = ticketRequesterResolver.resolveActiveRequester(authenticatedMember.id(), companyId);
 		TangibleAssetAssignment assignment = findActiveAssignment(
 			request.getAssignmentId(),
 			companyId,
@@ -178,16 +180,6 @@ public class RentalTicketService {
 		}
 	}
 
-	private Member findActiveRequester(UUID memberId, UUID companyId) {
-		Member member = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(memberId, companyId)
-			.orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
-
-		if (!member.isActive()) {
-			throw new BusinessException(ErrorCode.INACTIVE_MEMBER);
-		}
-		return member;
-	}
-
 	private TangibleAssetAssignment findActiveAssignment(UUID assignmentId, UUID companyId, UUID memberId) {
 		return tangibleAssetAssignmentRepository.findByIdAndCompany_IdAndMember_IdAndAssignmentStatus(
 				assignmentId,
@@ -201,12 +193,9 @@ public class RentalTicketService {
 	private boolean isActiveRentalAsset(TangibleAssetAssignment assignment) {
 		TangibleAsset asset = assignment.getTangibleAsset();
 
-		return asset.getTangibleAssetStatus() == TangibleAssetStatus.IN_USE
+		return assignedAssetValidator.isTangibleInUseByAssignee(assignment)
 			&& asset.getUsageType() == UsageType.TEMPORARY
-			&& asset.getReturnDueDate() != null
-			&& asset.getMember() != null
-			&& asset.getMember().getId().equals(assignment.getMember().getId())
-			&& asset.getCompany().getId().equals(assignment.getCompany().getId());
+			&& asset.getReturnDueDate() != null;
 	}
 
 	private void validateRentalExtensionTarget(TangibleAssetAssignment assignment, Member requester) {
@@ -216,9 +205,7 @@ public class RentalTicketService {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "연장 요청 가능한 대여중 자산이 아닙니다.");
 		}
 
-		if (asset.getMember() == null || !asset.getMember().getId().equals(requester.getId())) {
-			throw new BusinessException(ErrorCode.ACCESS_DENIED);
-		}
+		assignedAssetValidator.validateTangibleRequester(assignment, requester);
 	}
 
 	private void validateRentalExtensionPeriod(TangibleAsset asset, LocalDateTime requestedDueDate) {

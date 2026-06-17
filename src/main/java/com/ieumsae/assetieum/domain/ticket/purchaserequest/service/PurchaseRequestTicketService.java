@@ -4,13 +4,13 @@ import com.ieumsae.assetieum.domain.intangibleasset.category.entity.IntangibleAs
 import com.ieumsae.assetieum.domain.intangibleasset.category.repository.IntangibleAssetCategoryRepository;
 import com.ieumsae.assetieum.domain.intangibleasset.item.type.LicenseType;
 import com.ieumsae.assetieum.domain.member.entity.Member;
-import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.category.entity.TangibleAssetCategory;
 import com.ieumsae.assetieum.domain.tangibleasset.category.repository.TangibleAssetCategoryRepository;
 import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
 import com.ieumsae.assetieum.domain.ticket.common.repository.TicketRepository;
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketApprovalResolver;
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketNoGenerator;
+import com.ieumsae.assetieum.domain.ticket.common.service.TicketRequesterResolver;
 import com.ieumsae.assetieum.domain.ticket.common.type.AssetType;
 import com.ieumsae.assetieum.domain.ticket.common.type.RequestMethod;
 import com.ieumsae.assetieum.domain.ticket.common.type.RequestedUsageType;
@@ -36,11 +36,11 @@ public class PurchaseRequestTicketService {
 
 	private final TicketRepository ticketRepository;
 	private final PurchaseRequestTicketRepository purchaseRequestTicketRepository;
-	private final MemberRepository memberRepository;
 	private final TangibleAssetCategoryRepository tangibleAssetCategoryRepository;
 	private final IntangibleAssetCategoryRepository intangibleAssetCategoryRepository;
 	private final TicketNoGenerator ticketNoGenerator;
 	private final TicketApprovalResolver ticketApprovalResolver;
+	private final TicketRequesterResolver ticketRequesterResolver;
 
 	@Transactional
 	public PurchaseRequestTicketCreateResponse createTeamPurchaseRequestTicket(
@@ -99,7 +99,7 @@ public class PurchaseRequestTicketService {
 		String requestReason
 	) {
 		UUID companyId = authenticatedMember.companyId();
-		Member requester = findActiveRequester(authenticatedMember.id(), companyId);
+		Member requester = ticketRequesterResolver.resolveActiveRequester(authenticatedMember.id(), companyId);
 		Member approver = ticketApprovalResolver.resolveDepartmentApprover(requester);
 		TangibleAssetCategory tangibleAssetCategory = null;
 		IntangibleAssetCategory intangibleAssetCategory = null;
@@ -150,16 +150,6 @@ public class PurchaseRequestTicketService {
 			assetType,
 			categoryId
 		);
-	}
-
-	private Member findActiveRequester(UUID memberId, UUID companyId) {
-		Member member = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(memberId, companyId)
-			.orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
-
-		if (!member.isActive()) {
-			throw new BusinessException(ErrorCode.INACTIVE_MEMBER);
-		}
-		return member;
 	}
 
 	private TangibleAssetCategory findTangibleAssetCategory(UUID categoryId, UUID companyId) {
