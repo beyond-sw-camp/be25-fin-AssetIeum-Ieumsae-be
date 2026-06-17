@@ -77,4 +77,8 @@ public class HrEvent extends BaseEntity {
     @Column(name = "cancelled_at")
     private LocalDateTime cancelledAt;
 
+    public void delete() {
+        this.hrEventStatus = HrEventStatus.CANCELLED;
+        this.cancelledAt = LocalDateTime.now();
+    }
 }

@@ -8,6 +8,7 @@ import com.ieumsae.assetieum.domain.hr.hrevent.dto.HrEventCreateRequest;
 import com.ieumsae.assetieum.domain.hr.hrevent.dto.HrEventResponse;
 import com.ieumsae.assetieum.domain.hr.hrevent.entity.HrEvent;
 import com.ieumsae.assetieum.domain.hr.hrevent.repository.HrEventRepository;
+import com.ieumsae.assetieum.domain.hr.hrevent.type.HrEventStatus;
 import com.ieumsae.assetieum.domain.hr.hrtemplate.dto.HrTemplateResponse;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
@@ -18,6 +19,8 @@ import com.ieumsae.assetieum.global.security.AuthenticatedMember;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -34,6 +37,7 @@ public class HrEventService {
 
     private final CodeGenerator codeGenerator;
 
+    @Transactional
     public HrEventResponse createHrEvent(
             HrEventCreateRequest request,
             AuthenticatedMember member
@@ -63,7 +67,25 @@ public class HrEventService {
         return HrEventResponse.from(savedHrEvent);
     }
 
-    public HrTemplateResponse deleteHrEvent(AuthenticatedMember member) {
+    @Transactional
+    public HrTemplateResponse deleteHrEvent(
+            UUID eventId,
+            AuthenticatedMember member
+    ) {
+        // 1. 입력값 검증
+        Company company = companyRepository.findById(member.companyId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
+
+        HrEvent hrEvent = hrEventRepository.findByIdAndCompany_IdAndCancelledAtIsNull(eventId, member.companyId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.HR_EVENT_NOT_FOUND));
+
+        if(hrEvent.getHrEventStatus() != HrEventStatus.PENDING) {
+            throw new BusinessException(ErrorCode.HR_EVENT_ALREADY_IN_PROGRESS);
+        }
+
+        // 2. 이벤트 삭제 (soft delete)
+        hrEvent.delete();
+
         return null;
     }
 }
