@@ -2,8 +2,10 @@ package com.ieumsae.assetieum.domain.hr.hrevent.controller;
 
 import com.ieumsae.assetieum.domain.hr.hrevent.dto.HrEventCreateRequest;
 import com.ieumsae.assetieum.domain.hr.hrevent.dto.HrEventResponse;
+import com.ieumsae.assetieum.domain.hr.hrevent.dto.HrEventSearchRequest;
 import com.ieumsae.assetieum.domain.hr.hrevent.service.HrEventService;
 import com.ieumsae.assetieum.domain.hr.hrtemplate.dto.HrTemplateResponse;
+import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.response.ApiResponse;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
 import jakarta.validation.Valid;
@@ -11,6 +13,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -50,5 +54,16 @@ public class HrEventController {
         return ApiResponse.ok("HR 이벤트가 삭제되었습니다.", response);
     }
 
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'DEPARTMENT_MANAGER')")
+    @GetMapping
+    public ApiResponse<PaginationResponse<HrEventResponse>> getHrEvents(
+            @AuthenticationPrincipal AuthenticatedMember member,
+            @Valid @ModelAttribute HrEventSearchRequest request
+    ) {
+        PaginationResponse<HrEventResponse> response =
+                hrEventService.getHrEvents(request, member);
+
+        return ApiResponse.ok("HR 이벤트 목록 조회에 성공했습니다.", response);
+    }
 
 }

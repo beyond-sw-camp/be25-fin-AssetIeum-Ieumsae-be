@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.ieumsae.assetieum.domain.hr.hrevent.entity.HrEvent;
 import com.ieumsae.assetieum.domain.hr.hrevent.type.HrEventStatus;
 import com.ieumsae.assetieum.domain.hr.hrevent.type.HrEventType;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -13,6 +14,7 @@ import java.util.UUID;
 
 @Getter
 @Builder
+@AllArgsConstructor
 @JsonPropertyOrder({
         "hrEventId",
         "hrEventNo",

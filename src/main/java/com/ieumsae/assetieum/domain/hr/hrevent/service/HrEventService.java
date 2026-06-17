@@ -6,17 +6,20 @@ import com.ieumsae.assetieum.domain.department.entity.Department;
 import com.ieumsae.assetieum.domain.department.repository.DepartmentRepository;
 import com.ieumsae.assetieum.domain.hr.hrevent.dto.HrEventCreateRequest;
 import com.ieumsae.assetieum.domain.hr.hrevent.dto.HrEventResponse;
+import com.ieumsae.assetieum.domain.hr.hrevent.dto.HrEventSearchRequest;
 import com.ieumsae.assetieum.domain.hr.hrevent.entity.HrEvent;
 import com.ieumsae.assetieum.domain.hr.hrevent.repository.HrEventRepository;
 import com.ieumsae.assetieum.domain.hr.hrevent.type.HrEventStatus;
 import com.ieumsae.assetieum.domain.hr.hrtemplate.dto.HrTemplateResponse;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
+import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.common.util.CodeGenerator;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -87,5 +90,28 @@ public class HrEventService {
         hrEvent.delete();
 
         return null;
+    }
+
+    public PaginationResponse<HrEventResponse> getHrEvents(
+            HrEventSearchRequest request,
+            AuthenticatedMember authenticatedMember
+    ) {
+        // 1. 입력값 검증
+        companyRepository.findById(authenticatedMember.companyId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
+
+        Member member = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(authenticatedMember.id(), authenticatedMember.companyId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+
+        // 2. 페이징 처리 및 반환
+        Page<HrEventResponse> eventPage = hrEventRepository.search(
+                member.getCompany().getId(),
+                member.getDepartment().getId(),
+                request.getHrEventStatus(),
+                request.getHrEventType(),
+                request.toPageable()
+        );
+
+        return PaginationResponse.from(eventPage);
     }
 }
