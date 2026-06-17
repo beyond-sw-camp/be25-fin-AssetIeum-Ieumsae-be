@@ -1,6 +1,8 @@
 package com.ieumsae.assetieum.domain.ticket.purchaserequest.controller;
 
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.dto.DirectPurchaseRequestTicketCreateRequest;
+import com.ieumsae.assetieum.domain.ticket.purchaserequest.dto.DirectPurchaseResultCreateRequest;
+import com.ieumsae.assetieum.domain.ticket.purchaserequest.dto.DirectPurchaseResultCreateResponse;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.dto.PurchaseRequestTicketCreateRequest;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.dto.PurchaseRequestTicketCreateResponse;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.service.PurchaseRequestTicketService;
@@ -10,10 +12,13 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
@@ -46,5 +51,34 @@ public class PurchaseRequestTicketController {
 			request
 		);
 		return ApiResponse.ok("직접 구매 요청 티켓 등록에 성공했습니다.", response);
+	}
+	@PreAuthorize("hasAnyRole('EMPLOYEE', 'DEPARTMENT_MANAGER', 'ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
+	@PostMapping("/{ticketId}/direct-purchase-result")
+	public ApiResponse<DirectPurchaseResultCreateResponse> createDirectPurchaseResult(
+		@AuthenticationPrincipal AuthenticatedMember authenticatedMember,
+		@PathVariable UUID ticketId,
+		@Valid @RequestBody DirectPurchaseResultCreateRequest request
+	) {
+		DirectPurchaseResultCreateResponse response = purchaseRequestTicketService.createDirectPurchaseResult(
+			authenticatedMember,
+			ticketId,
+			request
+		);
+		return ApiResponse.ok("직접구매 완료 정보 등록에 성공했습니다.", response);
+	}
+
+	@PreAuthorize("hasAnyRole('EMPLOYEE', 'DEPARTMENT_MANAGER', 'ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
+	@PutMapping("/{ticketId}/direct-purchase-result")
+	public ApiResponse<DirectPurchaseResultCreateResponse> updateDirectPurchaseResult(
+		@AuthenticationPrincipal AuthenticatedMember authenticatedMember,
+		@PathVariable UUID ticketId,
+		@Valid @RequestBody DirectPurchaseResultCreateRequest request
+	) {
+		DirectPurchaseResultCreateResponse response = purchaseRequestTicketService.updateDirectPurchaseResult(
+			authenticatedMember,
+			ticketId,
+			request
+		);
+		return ApiResponse.ok("직접구매 완료 정보 수정에 성공했습니다.", response);
 	}
 }
