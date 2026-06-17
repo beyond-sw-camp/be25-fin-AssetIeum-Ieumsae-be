@@ -19,34 +19,36 @@ import lombok.Setter;
 @NoArgsConstructor
 public class DirectPurchaseRequestTicketCreateRequest {
 
-	@NotNull(message = "요청 사용 유형은 필수입니다.")
+	@NotNull(message = "Requested usage type is required.")
 	private RequestedUsageType requestedUsageType;
 
-	@NotNull(message = "자산 유형은 필수입니다.")
+	@NotNull(message = "Asset type is required.")
 	private AssetType assetType;
 
-	@NotNull(message = "자산 카테고리 ID는 필수입니다.")
+	@NotNull(message = "Standard flag is required.")
+	private Boolean isStandard;
+
+	private UUID assetItemId;
+
 	private UUID categoryId;
 
-	@NotBlank(message = "요청 품목 상세는 필수입니다.")
-	@Size(max = 500, message = "요청 품목 상세는 500자 이하여야 합니다.")
+	@Size(max = 500, message = "Requested item detail must be 500 characters or less.")
 	private String requestedItemDetail;
 
-	@NotBlank(message = "제조사는 필수입니다.")
-	@Size(max = 100, message = "제조사는 100자 이하여야 합니다.")
+	@Size(max = 100, message = "Manufacturer must be 100 characters or less.")
 	private String manufacturer;
 
 	private LicenseType licenseType;
 
-	@NotNull(message = "수량은 필수입니다.")
-	@Min(value = 1, message = "수량은 1 이상이어야 합니다.")
+	@NotNull(message = "Quantity is required.")
+	@Min(value = 1, message = "Quantity must be greater than or equal to 1.")
 	private Integer quantity;
 
-	@NotNull(message = "예상 금액은 필수입니다.")
-	@DecimalMin(value = "0.00", message = "예상 금액은 0 이상이어야 합니다.")
+	@NotNull(message = "Expected price is required.")
+	@DecimalMin(value = "0.00", message = "Expected price must be greater than or equal to 0.")
 	private BigDecimal expectedPrice;
 
-	@NotBlank(message = "신청 사유는 필수입니다.")
-	@Size(max = 255, message = "신청 사유는 255자 이하여야 합니다.")
+	@NotBlank(message = "Request reason is required.")
+	@Size(max = 255, message = "Request reason must be 255 characters or less.")
 	private String requestReason;
 }

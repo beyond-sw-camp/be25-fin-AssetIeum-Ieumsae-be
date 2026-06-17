@@ -3,11 +3,15 @@ package com.ieumsae.assetieum.domain.ticket.purchaserequest.service;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.repository.IntangibleAssetRepository;
 import com.ieumsae.assetieum.domain.intangibleasset.category.entity.IntangibleAssetCategory;
 import com.ieumsae.assetieum.domain.intangibleasset.category.repository.IntangibleAssetCategoryRepository;
+import com.ieumsae.assetieum.domain.intangibleasset.item.entity.IntangibleAssetItem;
+import com.ieumsae.assetieum.domain.intangibleasset.item.repository.IntangibleAssetItemRepository;
 import com.ieumsae.assetieum.domain.intangibleasset.item.type.LicenseType;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.repository.TangibleAssetRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.category.entity.TangibleAssetCategory;
 import com.ieumsae.assetieum.domain.tangibleasset.category.repository.TangibleAssetCategoryRepository;
+import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
+import com.ieumsae.assetieum.domain.tangibleasset.item.repository.TangibleAssetItemRepository;
 import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
 import com.ieumsae.assetieum.domain.ticket.common.repository.TicketRepository;
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketApprovalResolver;
@@ -48,6 +52,8 @@ public class PurchaseRequestTicketService {
 	private final IntangibleAssetRepository intangibleAssetRepository;
 	private final TangibleAssetCategoryRepository tangibleAssetCategoryRepository;
 	private final IntangibleAssetCategoryRepository intangibleAssetCategoryRepository;
+	private final TangibleAssetItemRepository tangibleAssetItemRepository;
+	private final IntangibleAssetItemRepository intangibleAssetItemRepository;
 	private final TicketNoGenerator ticketNoGenerator;
 	private final TicketApprovalResolver ticketApprovalResolver;
 	private final TicketRequesterResolver ticketRequesterResolver;
@@ -78,15 +84,20 @@ public class PurchaseRequestTicketService {
 		AuthenticatedMember authenticatedMember,
 		DirectPurchaseRequestTicketCreateRequest request
 	) {
+		DirectPurchaseTarget target = resolveDirectPurchaseTarget(request, authenticatedMember.companyId());
 		return createPurchaseRequestTicket(
 			authenticatedMember,
 			RequestMethod.DIRECT_PURCHASE,
 			request.getRequestedUsageType(),
 			request.getAssetType(),
-			request.getCategoryId(),
-			request.getRequestedItemDetail(),
-			request.getManufacturer(),
-			request.getLicenseType(),
+			request.getIsStandard(),
+			target.tangibleAssetItem(),
+			target.intangibleAssetItem(),
+			target.tangibleAssetCategory(),
+			target.intangibleAssetCategory(),
+			target.requestedItemDetail(),
+			target.manufacturer(),
+			target.licenseType(),
 			null,
 			request.getQuantity(),
 			request.getExpectedPrice(),
@@ -217,6 +228,9 @@ public class PurchaseRequestTicketService {
 				requester.getCompany(),
 				requestMethod,
 				requestedUsageType,
+				Boolean.FALSE,
+				null,
+				null,
 				tangibleAssetCategory,
 				intangibleAssetCategory,
 				normalize(requestedItemDetail),
@@ -233,6 +247,65 @@ public class PurchaseRequestTicketService {
 			purchaseRequestTicket,
 			assetType,
 			categoryId
+		);
+	}
+
+	private PurchaseRequestTicketCreateResponse createPurchaseRequestTicket(
+		AuthenticatedMember authenticatedMember,
+		RequestMethod requestMethod,
+		RequestedUsageType requestedUsageType,
+		AssetType assetType,
+		Boolean isStandard,
+		TangibleAssetItem tangibleAssetItem,
+		IntangibleAssetItem intangibleAssetItem,
+		TangibleAssetCategory tangibleAssetCategory,
+		IntangibleAssetCategory intangibleAssetCategory,
+		String requestedItemDetail,
+		String manufacturer,
+		LicenseType licenseType,
+		String purchaseUrl,
+		int quantity,
+		BigDecimal expectedPrice,
+		String requestReason
+	) {
+		UUID companyId = authenticatedMember.companyId();
+		Member requester = ticketRequesterResolver.resolveActiveRequester(authenticatedMember.id(), companyId);
+		Member approver = ticketApprovalResolver.resolveDepartmentApprover(requester);
+
+		Ticket ticket = ticketRepository.save(Ticket.createPurchaseRequest(
+			requester.getCompany(),
+			ticketNoGenerator.generate(companyId),
+			requester,
+			requester.getDepartment(),
+			approver,
+			normalize(requestReason)
+		));
+
+		PurchaseRequestTicket purchaseRequestTicket = purchaseRequestTicketRepository.save(
+			PurchaseRequestTicket.create(
+				ticket,
+				requester.getCompany(),
+				requestMethod,
+				requestedUsageType,
+				isStandard,
+				tangibleAssetItem,
+				intangibleAssetItem,
+				tangibleAssetCategory,
+				intangibleAssetCategory,
+				normalize(requestedItemDetail),
+				normalize(manufacturer),
+				licenseType,
+				normalize(purchaseUrl),
+				quantity,
+				expectedPrice
+			)
+		);
+
+		return PurchaseRequestTicketCreateResponse.from(
+			ticket,
+			purchaseRequestTicket,
+			assetType,
+			resolveCategoryId(tangibleAssetCategory, intangibleAssetCategory)
 		);
 	}
 
@@ -254,6 +327,122 @@ public class PurchaseRequestTicketService {
 			throw new BusinessException(ErrorCode.INTANGIBLE_ASSET_CATEGORY_NOT_FOUND);
 		}
 		return category;
+	}
+
+	private DirectPurchaseTarget resolveDirectPurchaseTarget(
+		DirectPurchaseRequestTicketCreateRequest request,
+		UUID companyId
+	) {
+		if (Boolean.TRUE.equals(request.getIsStandard())) {
+			validateStandardDirectPurchaseRequest(request);
+			if (request.getAssetType() == AssetType.TANGIBLE) {
+				validateTangiblePurchaseRequest(request.getLicenseType());
+				TangibleAssetItem item = findStandardTangibleAssetItem(request.getAssetItemId(), companyId);
+				return new DirectPurchaseTarget(
+					item,
+					null,
+					item.getTangibleAssetCategory(),
+					null,
+					item.getProductName(),
+					item.getManufacturer(),
+					null
+				);
+			}
+
+			IntangibleAssetItem item = findStandardIntangibleAssetItem(request.getAssetItemId(), companyId);
+			if (request.getLicenseType() != null && request.getLicenseType() != item.getLicenseType()) {
+				throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "License type must match the selected standard asset item.");
+			}
+			return new DirectPurchaseTarget(
+				null,
+				item,
+				null,
+				item.getIntangibleAssetCategory(),
+				item.getProductName(),
+				item.getProvider(),
+				item.getLicenseType()
+			);
+		}
+
+		validateNonStandardDirectPurchaseRequest(request);
+		if (request.getAssetType() == AssetType.TANGIBLE) {
+			validateTangiblePurchaseRequest(request.getLicenseType());
+			return new DirectPurchaseTarget(
+				null,
+				null,
+				findTangibleAssetCategory(request.getCategoryId(), companyId),
+				null,
+				normalize(request.getRequestedItemDetail()),
+				normalize(request.getManufacturer()),
+				null
+			);
+		}
+
+		validateIntangiblePurchaseRequest(request.getLicenseType());
+		return new DirectPurchaseTarget(
+			null,
+			null,
+			null,
+			findIntangibleAssetCategory(request.getCategoryId(), companyId),
+			normalize(request.getRequestedItemDetail()),
+			normalize(request.getManufacturer()),
+			request.getLicenseType()
+		);
+	}
+
+	private TangibleAssetItem findStandardTangibleAssetItem(UUID itemId, UUID companyId) {
+		TangibleAssetItem item = tangibleAssetItemRepository.findByIdAndDeletedAtIsNull(itemId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_ITEM_NOT_FOUND));
+
+		if (!item.getCompany().getId().equals(companyId) || !Boolean.TRUE.equals(item.getIsStandard())) {
+			throw new BusinessException(ErrorCode.TANGIBLE_ASSET_ITEM_NOT_FOUND);
+		}
+		return item;
+	}
+
+	private IntangibleAssetItem findStandardIntangibleAssetItem(UUID itemId, UUID companyId) {
+		IntangibleAssetItem item = intangibleAssetItemRepository.findByIdAndDeletedAtIsNull(itemId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.INTANGIBLE_ASSET_ITEM_NOT_FOUND));
+
+		if (!item.getCompany().getId().equals(companyId) || !Boolean.TRUE.equals(item.getIsStandard())) {
+			throw new BusinessException(ErrorCode.INTANGIBLE_ASSET_ITEM_NOT_FOUND);
+		}
+		return item;
+	}
+
+	private UUID resolveCategoryId(
+		TangibleAssetCategory tangibleAssetCategory,
+		IntangibleAssetCategory intangibleAssetCategory
+	) {
+		if (tangibleAssetCategory != null) {
+			return tangibleAssetCategory.getId();
+		}
+		if (intangibleAssetCategory != null) {
+			return intangibleAssetCategory.getId();
+		}
+		return null;
+	}
+
+	private void validateStandardDirectPurchaseRequest(DirectPurchaseRequestTicketCreateRequest request) {
+		if (request.getAssetItemId() == null) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "Asset item ID is required for standard direct purchase requests.");
+		}
+		if (request.getCategoryId() != null
+			|| StringUtils.hasText(request.getRequestedItemDetail())
+			|| StringUtils.hasText(request.getManufacturer())) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "Category, item detail, and manufacturer are derived from the standard asset item.");
+		}
+	}
+
+	private void validateNonStandardDirectPurchaseRequest(DirectPurchaseRequestTicketCreateRequest request) {
+		if (request.getAssetItemId() != null) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "Asset item ID cannot be used for non-standard direct purchase requests.");
+		}
+		if (request.getCategoryId() == null
+			|| !StringUtils.hasText(request.getRequestedItemDetail())
+			|| !StringUtils.hasText(request.getManufacturer())) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "Category, item detail, and manufacturer are required for non-standard direct purchase requests.");
+		}
 	}
 
 	private void validateTangiblePurchaseRequest(LicenseType licenseType) {
@@ -393,5 +582,16 @@ public class PurchaseRequestTicketService {
 			return null;
 		}
 		return value.trim();
+	}
+
+	private record DirectPurchaseTarget(
+		TangibleAssetItem tangibleAssetItem,
+		IntangibleAssetItem intangibleAssetItem,
+		TangibleAssetCategory tangibleAssetCategory,
+		IntangibleAssetCategory intangibleAssetCategory,
+		String requestedItemDetail,
+		String manufacturer,
+		LicenseType licenseType
+	) {
 	}
 }
