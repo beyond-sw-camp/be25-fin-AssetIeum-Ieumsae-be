@@ -43,6 +43,7 @@ public enum ErrorCode {
 	TANGIBLE_ASSET_ITEM_DUPLICATED_MODEL_NAME(HttpStatus.BAD_REQUEST, "tangible-asset-007", "이미 존재하는 모델명입니다."),
 	TANGIBLE_ASSET_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "tangible-asset-008", "해당 유형 자산 품목은 존재하지 않습니다."),
 	TANGIBLE_ASSET_ITEM_HAS_ASSETS(HttpStatus.CONFLICT, "tangible-asset-009", "자산이 존재하는 경우 삭제할 수 없습니다."),
+	TANGIBLE_ASSET_ITEM_CATEGORY_NOT_LEAF(HttpStatus.BAD_REQUEST, "tangible-asset-008", "가장 하위의 카테고리로만 품목을 등록할 수 있습니다."),
 
 	// 유형 자산
 	TANGIBLE_ASSET_ITEM_DUPLICATED_SERIAL_NUMBER(HttpStatus.BAD_REQUEST, "tangible-asset-010", "이미 존재하는 시리얼넘버입니다."),
