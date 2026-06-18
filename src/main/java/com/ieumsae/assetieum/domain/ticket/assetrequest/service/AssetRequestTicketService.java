@@ -6,9 +6,9 @@ import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.type.MemberRole;
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
 import com.ieumsae.assetieum.domain.tangibleasset.item.repository.TangibleAssetItemRepository;
+import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.AssetRequestTicketCreateRequest;
+import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.AssetRequestTicketCreateResponse;
 import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.AssetRequestTicketDetailResponse;
-import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.StandardAssetRequestCreateRequest;
-import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.StandardAssetRequestCreateResponse;
 import com.ieumsae.assetieum.domain.ticket.assetrequest.entity.AssetRequestTicket;
 import com.ieumsae.assetieum.domain.ticket.assetrequest.repository.AssetRequestTicketRepository;
 import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
@@ -41,9 +41,9 @@ public class AssetRequestTicketService {
 	private final TicketRequesterResolver ticketRequesterResolver;
 
 	@Transactional
-	public StandardAssetRequestCreateResponse createStandardAssetRequest(
+	public AssetRequestTicketCreateResponse createAssetRequestTicket(
 		AuthenticatedMember authenticatedMember,
-		StandardAssetRequestCreateRequest request
+		AssetRequestTicketCreateRequest request
 	) {
 		UUID companyId = authenticatedMember.companyId();
 		Member requester = ticketRequesterResolver.resolveActiveRequester(authenticatedMember.id(), companyId);
@@ -52,9 +52,9 @@ public class AssetRequestTicketService {
 		IntangibleAssetItem intangibleAssetItem = null;
 
 		if (request.getAssetType() == AssetType.TANGIBLE) {
-			tangibleAssetItem = findStandardTangibleAssetItem(request.getAssetItemId(), companyId);
+			tangibleAssetItem = findTangibleAssetItem(request.getAssetItemId(), companyId);
 		} else {
-			intangibleAssetItem = findStandardIntangibleAssetItem(
+			intangibleAssetItem = findIntangibleAssetItem(
 				request.getAssetItemId(),
 				companyId
 			);
@@ -70,7 +70,7 @@ public class AssetRequestTicketService {
 		));
 
 		AssetRequestTicket assetRequestTicket = assetRequestTicketRepository.save(
-			AssetRequestTicket.createStandardRequest(
+			AssetRequestTicket.createRequest(
 				ticket,
 				requester.getCompany(),
 				request.getRequestedUsageType(),
@@ -80,7 +80,7 @@ public class AssetRequestTicketService {
 			)
 		);
 
-		return StandardAssetRequestCreateResponse.from(
+		return AssetRequestTicketCreateResponse.from(
 			ticket,
 			assetRequestTicket,
 			request.getAssetType(),
@@ -111,7 +111,7 @@ public class AssetRequestTicketService {
 		);
 	}
 
-	private TangibleAssetItem findStandardTangibleAssetItem(UUID itemId, UUID companyId) {
+	private TangibleAssetItem findTangibleAssetItem(UUID itemId, UUID companyId) {
 		TangibleAssetItem item = tangibleAssetItemRepository.findByIdAndDeletedAtIsNull(itemId)
 			.orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_ITEM_NOT_FOUND));
 
@@ -121,7 +121,7 @@ public class AssetRequestTicketService {
 		return item;
 	}
 
-	private IntangibleAssetItem findStandardIntangibleAssetItem(UUID itemId, UUID companyId) {
+	private IntangibleAssetItem findIntangibleAssetItem(UUID itemId, UUID companyId) {
 		IntangibleAssetItem item = intangibleAssetItemRepository.findByIdAndDeletedAtIsNull(itemId)
 			.orElseThrow(() -> new BusinessException(ErrorCode.INTANGIBLE_ASSET_ITEM_NOT_FOUND));
 

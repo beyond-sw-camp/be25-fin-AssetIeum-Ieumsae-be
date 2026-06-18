@@ -14,7 +14,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class StandardAssetRequestCreateRequest {
+public class AssetRequestTicketCreateRequest {
 
 	@NotNull(message = "요청 사용 유형은 필수입니다.")
 	private RequestedUsageType requestedUsageType;
