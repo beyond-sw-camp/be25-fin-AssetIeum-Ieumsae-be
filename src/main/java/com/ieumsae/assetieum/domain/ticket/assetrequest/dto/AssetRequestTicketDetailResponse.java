@@ -55,6 +55,7 @@ public class AssetRequestTicketDetailResponse {
 	private final ItemSummary assetItem;
 	private final int quantity;
 	private final MemberRole viewerRole;
+	private final ViewOptions viewOptions;
 	private final Actions actions;
 	private final List<HistoryItem> histories;
 
@@ -62,6 +63,7 @@ public class AssetRequestTicketDetailResponse {
 		Ticket ticket,
 		AssetRequestTicket assetRequestTicket,
 		MemberRole viewerRole,
+		boolean requesterView,
 		Actions actions
 	) {
 		AssetType assetType = resolveAssetType(assetRequestTicket);
@@ -77,7 +79,7 @@ public class AssetRequestTicketDetailResponse {
 			.departmentProcessedAt(resolveDepartmentProcessedAt(ticket))
 			.requestedAt(ticket.getCreatedAt())
 			.currentStatus(ticket.getTicketStatus())
-			.detailStatus(assetRequestTicket.getStatus())
+			.detailStatus(requesterView ? assetRequestTicket.getStatus() : null)
 			.linkedPurchaseId(null)
 			.assetAssignee(MemberSummary.from(ticket.getAssignee()))
 			.assetProcessedAt(resolveAssetProcessedAt(ticket))
@@ -90,6 +92,7 @@ public class AssetRequestTicketDetailResponse {
 			.assetItem(ItemSummary.from(assetRequestTicket))
 			.quantity(assetRequestTicket.getQuantity())
 			.viewerRole(viewerRole)
+			.viewOptions(ViewOptions.from(requesterView))
 			.actions(actions)
 			.histories(createHistories(ticket))
 			.build();
@@ -216,6 +219,20 @@ public class AssetRequestTicketDetailResponse {
 				.itemId(intangibleItem.getId())
 				.name(intangibleItem.getProductName())
 				.manufacturer(intangibleItem.getProvider())
+				.build();
+		}
+	}
+
+	@Getter
+	@Builder
+	public static class ViewOptions {
+		private final boolean showDetailStatus;
+		private final boolean showLinkedPurchaseId;
+
+		private static ViewOptions from(boolean requesterView) {
+			return ViewOptions.builder()
+				.showDetailStatus(requesterView)
+				.showLinkedPurchaseId(!requesterView)
 				.build();
 		}
 	}
