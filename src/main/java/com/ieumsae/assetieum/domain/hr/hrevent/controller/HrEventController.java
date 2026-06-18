@@ -31,7 +31,7 @@ public class HrEventController {
 
     private final HrEventService hrEventService;
 
-    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'DEPARTMENT_MANAGER')")
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'DEPARTMENT_MANAGER', 'ADMIN')")
     @PostMapping
     public ApiResponse<HrEventResponse> createHrEvent(
             @AuthenticationPrincipal AuthenticatedMember member,
@@ -43,7 +43,7 @@ public class HrEventController {
         return ApiResponse.ok("HR 이벤트가 등록되었습니다.", response);
     }
 
-    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'DEPARTMENT_MANAGER')")
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'DEPARTMENT_MANAGER', 'ADMIN')")
     @DeleteMapping("/{eventId}")
     public ApiResponse<HrTemplateResponse> deleteHrTemplate(
             @AuthenticationPrincipal AuthenticatedMember member,
@@ -55,7 +55,7 @@ public class HrEventController {
         return ApiResponse.ok("HR 이벤트가 삭제되었습니다.", response);
     }
 
-    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'DEPARTMENT_MANAGER')")
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'DEPARTMENT_MANAGER', 'ADMIN')")
     @GetMapping
     public ApiResponse<PaginationResponse<HrEventResponse>> getHrEvents(
             @AuthenticationPrincipal AuthenticatedMember member,
@@ -67,7 +67,7 @@ public class HrEventController {
         return ApiResponse.ok("HR 이벤트 목록 조회에 성공했습니다.", response);
     }
 
-    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'DEPARTMENT_MANAGER')")
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'DEPARTMENT_MANAGER', 'ADMIN')")
     @PatchMapping("/{eventId}/complete")
     public ApiResponse<HrEventResponse> completeHrEvent(
             @AuthenticationPrincipal AuthenticatedMember member,

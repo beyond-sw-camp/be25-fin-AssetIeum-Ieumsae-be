@@ -42,7 +42,7 @@ public class TangibleAssetAssignmentController {
         return ApiResponse.ok("유형자산 배정 이력 조회에 성공했습니다.", response);
     }
 
-    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
     @PostMapping("/{assetId}/assign")
     public ApiResponse<TangibleAssetAssignmentResponse> assignAsset(
             @AuthenticationPrincipal AuthenticatedMember member,
@@ -55,7 +55,7 @@ public class TangibleAssetAssignmentController {
         return ApiResponse.ok("유형자산이 배정되었습니다.", response);
     }
 
-    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
     @PostMapping("/{assetId}/return")
     public ApiResponse<TangibleAssetAssignmentResponse> cancelAsset(
             @AuthenticationPrincipal AuthenticatedMember member,
@@ -67,7 +67,7 @@ public class TangibleAssetAssignmentController {
         return ApiResponse.ok("유형자산이 해지되었습니다.", response);
     }
 
-    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
     @PostMapping("/{assetId}/reassign")
     public ApiResponse<TangibleAssetAssignmentResponse> reassignAsset(
             @AuthenticationPrincipal AuthenticatedMember member,
@@ -80,7 +80,7 @@ public class TangibleAssetAssignmentController {
         return ApiResponse.ok("유형자산의 사용자가 변경되었습니다.", response);
     }
 
-    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
     @PostMapping("/reassign-bulk")
     public ApiResponse<List<TangibleAssetAssignmentResponse>> reassignBulkAsset(
             @AuthenticationPrincipal AuthenticatedMember member,

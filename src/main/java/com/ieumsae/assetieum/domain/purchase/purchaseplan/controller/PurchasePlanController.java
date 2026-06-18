@@ -33,7 +33,7 @@ public class PurchasePlanController {
 
     private final PurchasePlanService purchasePlanService;
 
-    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
     @PostMapping
     public ApiResponse<PurchasePlanResponse> createPurchasePlan(
             @AuthenticationPrincipal AuthenticatedMember member,
@@ -45,7 +45,7 @@ public class PurchasePlanController {
         return ApiResponse.ok("구매 계획이 등록되었습니다.", response);
     }
 
-    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
     @DeleteMapping("/{planId}")
     public ApiResponse<PurchasePlanResponse> deletePurchasePlan(
             @AuthenticationPrincipal AuthenticatedMember member,
@@ -57,7 +57,7 @@ public class PurchasePlanController {
         return ApiResponse.ok("구매 계획이 삭제되었습니다.", response);
     }
 
-    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
     @GetMapping
     public ApiResponse<PaginationResponse<PurchasePlanResponse>> getPurchasePlans(
             @AuthenticationPrincipal AuthenticatedMember member,
@@ -69,7 +69,7 @@ public class PurchasePlanController {
         return ApiResponse.ok("구매 계획 목록 조회에 성공했습니다.", response);
     }
 
-    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
     @GetMapping("/{planId}")
     public ApiResponse<PurchasePlanDetailResponse> getPurchasePlanDetail(
             @AuthenticationPrincipal AuthenticatedMember member,
@@ -81,7 +81,7 @@ public class PurchasePlanController {
         return ApiResponse.ok("구매 계획 상세 조회에 성공했습니다.", response);
     }
 
-    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
     @GetMapping("/statistics")
     public ApiResponse<PurchasePlanStatisticResponse> getPurchasePlanStatistics(
             @AuthenticationPrincipal AuthenticatedMember member
@@ -92,7 +92,7 @@ public class PurchasePlanController {
         return ApiResponse.ok("구매 계획 통계 조회에 성공했습니다.", response);
     }
 
-    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
     @PatchMapping("/{planId}/status")
     public ApiResponse<PurchasePlanResponse> updatePurchasePlanStatus(
             @AuthenticationPrincipal AuthenticatedMember member,
@@ -102,7 +102,7 @@ public class PurchasePlanController {
         PurchasePlanResponse response =
                 purchasePlanService.updatePurchasePlanStatus(planId, request, member.companyId());
 
-        return ApiResponse.ok("구매 계획의 상태가 변겯되었습니다.", response);
+        return ApiResponse.ok("구매 계획의 상태가 변경되었습니다.", response);
     }
 
 }
