@@ -4,6 +4,7 @@ import com.ieumsae.assetieum.domain.ticket.rental.entity.RentalTicket;
 import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
 import com.ieumsae.assetieum.domain.ticket.common.type.TicketType;
 import java.util.Collection;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -15,4 +16,6 @@ public interface RentalTicketRepository extends JpaRepository<RentalTicket, UUID
 		TicketType ticketType,
 		Collection<TicketStatus> ticketStatuses
 	);
+
+	Optional<RentalTicket> findByIdAndCompany_IdAndDeletedAtIsNull(UUID ticketId, UUID companyId);
 }
