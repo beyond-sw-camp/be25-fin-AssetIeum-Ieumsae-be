@@ -7,6 +7,7 @@ import com.ieumsae.assetieum.domain.intangibleasset.item.entity.IntangibleAssetI
 import com.ieumsae.assetieum.domain.intangibleasset.item.repository.IntangibleAssetItemRepository;
 import com.ieumsae.assetieum.domain.intangibleasset.item.type.LicenseType;
 import com.ieumsae.assetieum.domain.member.entity.Member;
+import com.ieumsae.assetieum.domain.member.type.MemberRole;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.repository.TangibleAssetRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.category.entity.TangibleAssetCategory;
 import com.ieumsae.assetieum.domain.tangibleasset.category.repository.TangibleAssetCategoryRepository;
@@ -177,6 +178,26 @@ public class PurchaseRequestTicketService {
 		);
 
 		return DirectPurchaseResultCreateResponse.from(ticket, result, assetType);
+	}
+
+	public DirectPurchaseResultCreateResponse getDirectPurchaseResult(
+		AuthenticatedMember authenticatedMember,
+		UUID ticketId
+	) {
+		UUID companyId = authenticatedMember.companyId();
+		Member member = ticketRequesterResolver.resolveActiveRequester(authenticatedMember.id(), companyId);
+		DirectPurchaseResult result = directPurchaseResultRepository.findByIdAndCompany_Id(ticketId, companyId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+		PurchaseRequestTicket purchaseRequestTicket = result.getPurchaseRequestTicket();
+		Ticket ticket = purchaseRequestTicket.getTicket();
+
+		validateDirectPurchaseResultReadable(ticket, member);
+
+		return DirectPurchaseResultCreateResponse.from(
+			ticket,
+			result,
+			resolveAssetType(purchaseRequestTicket)
+		);
 	}
 
 	private PurchaseRequestTicketCreateResponse createPurchaseRequestTicket(
@@ -492,6 +513,19 @@ public class PurchaseRequestTicketService {
 		if (ticket.getTicketStatus() != TicketStatus.IN_PROGRESS) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "구매자산팀 승인 이후에 구매 완료 정보를 수정할 수 있습니다.");
 		}
+	}
+
+	private void validateDirectPurchaseResultReadable(Ticket ticket, Member member) {
+		if (ticket.getRequester().getId().equals(member.getId())) {
+			return;
+		}
+
+		MemberRole role = member.getRole();
+		if (role == MemberRole.ADMIN || role == MemberRole.ASSET_MANAGER || role == MemberRole.ASSET_TEAM) {
+			return;
+		}
+
+		throw new BusinessException(ErrorCode.ACCESS_DENIED);
 	}
 
 	private void validateDirectPurchaseResultRequest(
