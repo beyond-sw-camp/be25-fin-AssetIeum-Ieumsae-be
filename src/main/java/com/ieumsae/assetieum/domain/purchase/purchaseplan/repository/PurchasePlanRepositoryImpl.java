@@ -1,9 +1,13 @@
 package com.ieumsae.assetieum.domain.purchase.purchaseplan.repository;
 
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanResponse;
+import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanStatisticResponse;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.PurchasePlan;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.type.PurchaseRequestStatus;
 import com.querydsl.core.BooleanBuilder;
+import com.querydsl.core.Tuple;
+import com.querydsl.core.types.dsl.CaseBuilder;
+import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -79,6 +83,44 @@ public class PurchasePlanRepositoryImpl implements PurchasePlanRepositoryCustom 
         return new PageImpl<>(content, pageable, total == null ? 0 : total);
     }
 
+    @Override
+    public PurchasePlanStatisticResponse getPurchasePlanStatistics(UUID companyId) {
+
+        BooleanBuilder condition = new BooleanBuilder();
+        condition.and(purchasePlan.company.id.eq(companyId));
+
+        NumberExpression<Long> approvalWaitingCount = statusCount(PurchaseRequestStatus.REQUESTED);
+        NumberExpression<Long> orderedCount = statusCount(PurchaseRequestStatus.ORDERED);
+        NumberExpression<Long> completedCount = statusCount(PurchaseRequestStatus.COMPLETED);
+
+        Tuple result = queryFactory
+                .select(
+                        purchasePlan.count(),
+                        approvalWaitingCount,
+                        orderedCount,
+                        completedCount
+                )
+                .from(purchasePlan)
+                .where(condition)
+                .fetchOne();
+
+        if(result == null) {
+            return PurchasePlanStatisticResponse.builder()
+                    .totalCount(0L)
+                    .approvalWaitingCount(0L)
+                    .orderedCount(0L)
+                    .completedCount(0L)
+                    .build();
+        }
+
+        return PurchasePlanStatisticResponse.builder()
+                .totalCount(toLong(result.get(purchasePlan.count())))
+                .approvalWaitingCount(toLong(result.get(approvalWaitingCount)))
+                .orderedCount(toLong(result.get(orderedCount)))
+                .completedCount(toLong(result.get(completedCount)))
+                .build();
+    }
+
     private BooleanBuilder buildCondition(
             UUID companyId,
             PurchaseRequestStatus status,
@@ -107,6 +149,18 @@ public class PurchasePlanRepositoryImpl implements PurchasePlanRepositoryCustom 
         }
 
         return condition;
+    }
+
+    private NumberExpression<Long> statusCount(PurchaseRequestStatus... statuses) {
+        return new CaseBuilder()
+                .when(purchasePlan.purchaseRequestStatus.in(statuses))
+                .then(1L)
+                .otherwise(0L)
+                .sum();
+    }
+
+    private long toLong(Long value) {
+        return value == null ? 0 : value;
     }
 
 }

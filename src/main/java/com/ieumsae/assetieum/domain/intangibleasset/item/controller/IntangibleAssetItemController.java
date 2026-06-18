@@ -31,7 +31,7 @@ import java.util.UUID;
 public class IntangibleAssetItemController {
     private final IntangibleAssetItemService intangibleAssetItemService;
 
-    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
     @PostMapping
     public ApiResponse<IntangibleAssetItemResponse> createItem(
             @AuthenticationPrincipal AuthenticatedMember member,
@@ -54,7 +54,7 @@ public class IntangibleAssetItemController {
         return ApiResponse.ok("무형자산 품목 목록 조회에 성공했습니다.", response);
     }
 
-    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
     @PatchMapping("/{itemId}")
     public ApiResponse<IntangibleAssetItemResponse> updateItem(
             @AuthenticationPrincipal AuthenticatedMember member,
@@ -67,7 +67,7 @@ public class IntangibleAssetItemController {
         return ApiResponse.ok("무형자산 품목이 수정되었습니다.", response);
     }
 
-    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
     @DeleteMapping("/{itemId}")
     public ApiResponse<IntangibleAssetItemDeleteResponse> deleteItem(
             @AuthenticationPrincipal AuthenticatedMember member,

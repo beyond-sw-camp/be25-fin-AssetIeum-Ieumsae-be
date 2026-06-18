@@ -32,7 +32,7 @@ public class TangibleAssetController {
 
     private final TangibleAssetService tangibleAssetService;
 
-    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
     @PostMapping
     public ApiResponse<TangibleAssetResponse> createAsset(
             @AuthenticationPrincipal AuthenticatedMember member,
@@ -64,7 +64,7 @@ public class TangibleAssetController {
         return ApiResponse.ok("유형자산 상세 조회에 성공했습니다.", response);
     }
 
-    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
     @PatchMapping("/{assetId}")
     public ApiResponse<TangibleAssetResponse> updateAsset(
             @AuthenticationPrincipal AuthenticatedMember member,

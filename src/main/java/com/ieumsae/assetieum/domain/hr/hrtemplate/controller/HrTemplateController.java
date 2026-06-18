@@ -23,7 +23,7 @@ public class HrTemplateController {
 
     private final HrTemplateService hrTemplateService;
 
-    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'DEPARTMENT_MANAGER')")
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'DEPARTMENT_MANAGER', 'ADMIN')")
     @PostMapping
     public ApiResponse<HrTemplateResponse> createHrTemplate(
             @AuthenticationPrincipal AuthenticatedMember member,
@@ -35,7 +35,7 @@ public class HrTemplateController {
         return ApiResponse.ok("HR 템플릿이 등록되었습니다.", response);
     }
 
-    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'DEPARTMENT_MANAGER')")
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'DEPARTMENT_MANAGER', 'ADMIN')")
     @GetMapping
     public ApiResponse<HrTemplateResponse> getHrTemplate(
             @AuthenticationPrincipal AuthenticatedMember member
@@ -46,7 +46,7 @@ public class HrTemplateController {
         return ApiResponse.ok("HR 템플릿이 조회되었습니다.", response);
     }
 
-    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'DEPARTMENT_MANAGER')")
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'DEPARTMENT_MANAGER', 'ADMIN')")
     @DeleteMapping
     public ApiResponse<HrTemplateResponse> deleteHrTemplate(
             @AuthenticationPrincipal AuthenticatedMember member

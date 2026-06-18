@@ -12,6 +12,7 @@ import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanCreate
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanDetailResponse;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanResponse;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanSearchRequest;
+import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanStatisticResponse;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanUpdateStatusRequest;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.PurchasePlan;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.PurchasePlanItem;
@@ -322,5 +323,16 @@ public class PurchasePlanService {
         if (!isValid) {
             throw new BusinessException(ErrorCode.PURCHASE_PLAN_INVALID_STATUS_TRANSITION);
         }
+    }
+
+    public PurchasePlanStatisticResponse getPurchasePlanStatistics(UUID companyId) {
+
+        // 1. 입력값 검증
+        companyRepository.findByIdAndDeletedAtIsNull(companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
+
+        // 2. 통계값 반환
+        return purchasePlanRepository.getPurchasePlanStatistics(companyId);
+
     }
 }

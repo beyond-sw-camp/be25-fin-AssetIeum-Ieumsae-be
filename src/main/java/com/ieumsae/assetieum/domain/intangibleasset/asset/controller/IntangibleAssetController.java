@@ -32,7 +32,7 @@ public class IntangibleAssetController {
 
     private final IntangibleAssetService intangibleAssetService;
 
-    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
     @PostMapping
     public ApiResponse<IntangibleAssetResponse> createItem(
             @AuthenticationPrincipal AuthenticatedMember member,
@@ -65,7 +65,7 @@ public class IntangibleAssetController {
         return ApiResponse.ok("무형자산 상세 조회에 성공했습니다.", response);
     }
 
-    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
     @PatchMapping("/{assetId}")
     public ApiResponse<IntangibleAssetResponse> updateAsset(
             @AuthenticationPrincipal AuthenticatedMember member,
