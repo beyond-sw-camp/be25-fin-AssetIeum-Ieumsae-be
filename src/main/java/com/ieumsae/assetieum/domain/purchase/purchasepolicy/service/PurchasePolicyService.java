@@ -75,4 +75,18 @@ public class PurchasePolicyService {
                         IN_PROGRESS_TICKET_STATUSES
                 );
     }
+
+    public PurchasePolicyResponse getPurchasePolicy(UUID companyId) {
+
+        // 1. 입력값 검증
+        companyRepository.findByIdAndDeletedAtIsNull(companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
+
+        PurchasePolicy purchasePolicy = purchasePolicyRepository.findByCompany_Id(companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PURCHASE_POLICY_NOT_FOUND));
+
+        // 2. 구매 정책 반환
+        return PurchasePolicyResponse.from(purchasePolicy);
+
+    }
 }
