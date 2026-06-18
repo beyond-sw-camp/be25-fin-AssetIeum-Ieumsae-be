@@ -49,7 +49,7 @@ public class HrEventService {
         Company company = companyRepository.findById(member.companyId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
 
-        Member targetMember = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(member.id(), member.companyId())
+        Member targetMember = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(request.getMemberId(), member.companyId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
         Department department = departmentRepository.findByIdAndCompany_IdAndDeletedAtIsNull(targetMember.getDepartment().getId(), member.companyId())
