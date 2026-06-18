@@ -50,4 +50,8 @@ public class HrTemplate extends BaseEntity {
         this.deletedAt = LocalDateTime.now();
         return this.deletedAt;
     }
+
+    public void reactivate() {
+        this.deletedAt = null;
+    }
 }
