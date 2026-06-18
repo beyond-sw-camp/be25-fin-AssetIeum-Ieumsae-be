@@ -49,10 +49,17 @@ public class HrEventService {
         Company company = companyRepository.findById(member.companyId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
 
+        Member authenticatedMember = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(member.id(), member.companyId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+
         Member targetMember = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(request.getMemberId(), member.companyId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
-        Department department = departmentRepository.findByIdAndCompany_IdAndDeletedAtIsNull(targetMember.getDepartment().getId(), member.companyId())
+        if (!authenticatedMember.getDepartment().getId().equals(targetMember.getDepartment().getId())) {
+            throw new BusinessException(ErrorCode.HR_EVENT_MEMBER_DEPARTMENT_MISMATCH);
+        }
+
+        Department department = departmentRepository.findByIdAndCompany_IdAndDeletedAtIsNull(authenticatedMember.getDepartment().getId(), member.companyId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.DEPARTMENT_NOT_FOUND));
 
         // 2. HR 이벤트 등록

@@ -60,12 +60,13 @@ public class HrTemplateService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.DEPARTMENT_NOT_FOUND));
 
         // 2. HR 템플릿 등록
-        Optional<HrTemplate> existingTemplate = hrTemplateRepository
-                .findByCompany_IdAndDepartment_IdAndDeletedAtIsNull(company.getId(), department.getId());
+        Optional<HrTemplate> currentTemplate = hrTemplateRepository
+                .findByCompany_IdAndDepartment_Id(company.getId(), department.getId());
 
         HrTemplate hrTemplate;
-        if (existingTemplate.isPresent()) {
-            hrTemplate = existingTemplate.get();
+        if (currentTemplate.isPresent()) {
+            hrTemplate = currentTemplate.get();
+            hrTemplate.reactivate();
             hrTemplateItemRepository.deleteByHrTemplate(hrTemplate);
         } else {
             hrTemplate = hrTemplateRepository.save(HrTemplate.builder()
@@ -147,14 +148,14 @@ public class HrTemplateService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.DEPARTMENT_NOT_FOUND));
 
         // 2. HR 템플릿 반환
-        Optional<HrTemplate> existingTemplate = hrTemplateRepository
+        Optional<HrTemplate> currentTemplate = hrTemplateRepository
                 .findByCompany_IdAndDepartment_IdAndDeletedAtIsNull(member.companyId(), department.getId());
 
-        if (existingTemplate.isEmpty()) {
+        if (currentTemplate.isEmpty()) {
             return null;
         }
 
-        HrTemplate hrTemplate = existingTemplate.get();
+        HrTemplate hrTemplate = currentTemplate.get();
         List<HrTemplateItem> hrTemplateItems = hrTemplateItemRepository.findByHrTemplate(hrTemplate);
 
         return HrTemplateResponse.from(hrTemplate, hrTemplateItems);
