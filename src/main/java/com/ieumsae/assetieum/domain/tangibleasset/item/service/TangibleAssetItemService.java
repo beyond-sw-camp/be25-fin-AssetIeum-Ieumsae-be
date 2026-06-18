@@ -12,6 +12,7 @@ import com.ieumsae.assetieum.domain.tangibleasset.item.dto.TangibleAssetItemSear
 import com.ieumsae.assetieum.domain.tangibleasset.item.dto.TangibleAssetItemUpdateRequest;
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
 import com.ieumsae.assetieum.domain.tangibleasset.item.repository.TangibleAssetItemRepository;
+import com.ieumsae.assetieum.global.common.csv.CsvFileReader;
 import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
@@ -38,6 +39,7 @@ public class TangibleAssetItemService {
     private final TangibleAssetCategoryRepository tangibleAssetCategoryRepository;
     private final CompanyRepository companyRepository;
     private final TangibleAssetRepository tangibleAssetRepository;
+    private final CsvFileReader csvFileReader;
 
     /**
      * 유형자산 품목 등록.
@@ -101,49 +103,30 @@ public class TangibleAssetItemService {
             MultipartFile file,
             UUID companyId
     ) {
-        validateCsvFile(file);
-
         List<TangibleAssetItemResponse> responses = new ArrayList<>();
 
-        try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8)
-        )) {
-            String header = reader.readLine();
-            if (header == null || header.isBlank()) {
+        for (String[] columns : csvFileReader.readRows(file)) {
+            if (columns.length != 5) {
                 throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
             }
 
-            String line;
-            while ((line = reader.readLine()) != null) {
-                if (line.isBlank()) {
-                    continue;
-                }
+            TangibleAssetCategory category = tangibleAssetCategoryRepository.findByCompany_IdAndName(
+                            companyId,
+                            columns[0].trim()
+                    )
+                    .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_CATEGORY_NOT_FOUND));
 
-                String[] columns = line.split(",", -1);
-                if (columns.length != 5) {
-                    throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
-                }
+            validateLeafCategory(category, companyId);
 
-                TangibleAssetCategory category = tangibleAssetCategoryRepository.findByCompany_IdAndName(
-                                companyId,
-                                columns[0].trim()
-                        )
-                        .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_CATEGORY_NOT_FOUND));
+            TangibleAssetItemCreateRequest request = new TangibleAssetItemCreateRequest(
+                    category.getId(),
+                    columns[1].trim(),
+                    columns[2].trim(),
+                    columns[3].trim(),
+                    parseBoolean(columns[4].trim())
+            );
 
-                validateLeafCategory(category, companyId);
-
-                TangibleAssetItemCreateRequest request = new TangibleAssetItemCreateRequest(
-                        category.getId(),
-                        columns[1].trim(),
-                        columns[2].trim(),
-                        columns[3].trim(),
-                        parseBoolean(columns[4].trim())
-                );
-
-                responses.add(createItem(request, companyId));
-            }
-        } catch (IOException e) {
-            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR);
+            responses.add(createItem(request, companyId));
         }
 
         return responses;
