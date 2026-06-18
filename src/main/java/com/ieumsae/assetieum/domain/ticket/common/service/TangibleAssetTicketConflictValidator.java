@@ -1,5 +1,6 @@
 package com.ieumsae.assetieum.domain.ticket.common.service;
 
+import com.ieumsae.assetieum.domain.tangibleasset.asset.repository.TangibleAssetRepository;
 import com.ieumsae.assetieum.domain.ticket.assetreturn.repository.AssetReturnTicketRepository;
 import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
 import com.ieumsae.assetieum.domain.ticket.common.type.TicketType;
@@ -27,8 +28,12 @@ public class TangibleAssetTicketConflictValidator {
 	private final MaintenanceTicketRepository maintenanceTicketRepository;
 	private final AssetReturnTicketRepository assetReturnTicketRepository;
 	private final PurchaseReturnTicketRepository purchaseReturnTicketRepository;
+	private final TangibleAssetRepository tangibleAssetRepository;
 
 	public void validateNoOngoingTangibleAssetTicket(UUID companyId, UUID tangibleAssetId) {
+		tangibleAssetRepository.findWithLockByIdAndCompany_Id(tangibleAssetId, companyId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_NOT_FOUND));
+
 		if (hasOngoingRentalExtension(companyId, tangibleAssetId)
 			|| hasOngoingMaintenance(companyId, tangibleAssetId)
 			|| hasOngoingAssetReturn(companyId, tangibleAssetId)

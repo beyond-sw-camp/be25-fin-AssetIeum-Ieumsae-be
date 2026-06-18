@@ -74,7 +74,7 @@ public class TangibleAssetAssignmentService {
                 )
                 .orElseThrow(() -> new BusinessException(ErrorCode.DEPARTMENT_NOT_FOUND));
 
-        TangibleAsset asset = tangibleAssetRepository.findByIdAndCompany_Id(assetId, companyId)
+        TangibleAsset asset = tangibleAssetRepository.findWithLockByIdAndCompany_Id(assetId, companyId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_NOT_FOUND));
 
         validateAssignmentRequest(request);
@@ -134,7 +134,7 @@ public class TangibleAssetAssignmentService {
         companyRepository.findById(companyId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
 
-        TangibleAsset asset = tangibleAssetRepository.findByIdAndCompany_Id(assetId, companyId)
+        TangibleAsset asset = tangibleAssetRepository.findWithLockByIdAndCompany_Id(assetId, companyId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_NOT_FOUND));
 
         validateCancelableStatus(asset);
@@ -174,7 +174,7 @@ public class TangibleAssetAssignmentService {
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
 
-        TangibleAsset asset = tangibleAssetRepository.findByIdAndCompany_Id(assetId, companyId)
+        TangibleAsset asset = tangibleAssetRepository.findWithLockByIdAndCompany_Id(assetId, companyId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_NOT_FOUND));
 
         Member newMember = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(newMemberId, companyId)

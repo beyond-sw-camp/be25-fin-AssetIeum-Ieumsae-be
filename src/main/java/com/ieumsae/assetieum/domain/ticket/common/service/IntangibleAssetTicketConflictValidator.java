@@ -1,5 +1,6 @@
 package com.ieumsae.assetieum.domain.ticket.common.service;
 
+import com.ieumsae.assetieum.domain.intangibleasset.asset.repository.IntangibleAssetRepository;
 import com.ieumsae.assetieum.domain.ticket.assetreturn.repository.AssetReturnTicketRepository;
 import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
 import com.ieumsae.assetieum.domain.ticket.purchasereturn.repository.PurchaseReturnTicketRepository;
@@ -22,8 +23,12 @@ public class IntangibleAssetTicketConflictValidator {
 
 	private final AssetReturnTicketRepository assetReturnTicketRepository;
 	private final PurchaseReturnTicketRepository purchaseReturnTicketRepository;
+	private final IntangibleAssetRepository intangibleAssetRepository;
 
 	public void validateNoOngoingIntangibleAssetReturnTicket(UUID companyId, UUID intangibleAssetId) {
+		intangibleAssetRepository.findWithLockByIdAndCompany_Id(intangibleAssetId, companyId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.INTANGIBLE_ASSET_NOT_FOUND));
+
 		boolean existsAssetReturn = assetReturnTicketRepository
 			.existsByCompany_IdAndIntangibleAsset_IdAndTicket_TicketStatusInAndDeletedAtIsNull(
 				companyId,
