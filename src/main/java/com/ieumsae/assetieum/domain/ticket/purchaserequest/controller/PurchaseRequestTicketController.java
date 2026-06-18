@@ -12,6 +12,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -80,5 +81,18 @@ public class PurchaseRequestTicketController {
 			request
 		);
 		return ApiResponse.ok("직접구매 완료 정보 수정에 성공했습니다.", response);
+	}
+
+	@PreAuthorize("hasAnyRole('EMPLOYEE', 'DEPARTMENT_MANAGER', 'ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
+	@GetMapping("/{ticketId}/direct-purchase-result")
+	public ApiResponse<DirectPurchaseResultCreateResponse> getDirectPurchaseResult(
+		@AuthenticationPrincipal AuthenticatedMember authenticatedMember,
+		@PathVariable UUID ticketId
+	) {
+		DirectPurchaseResultCreateResponse response = purchaseRequestTicketService.getDirectPurchaseResult(
+			authenticatedMember,
+			ticketId
+		);
+		return ApiResponse.ok("직접구매 결제정보 조회에 성공했습니다.", response);
 	}
 }
