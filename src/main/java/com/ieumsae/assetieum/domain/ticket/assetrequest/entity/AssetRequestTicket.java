@@ -71,7 +71,7 @@ public class AssetRequestTicket {
 	@Column(name = "deleted_at")
 	private LocalDateTime deletedAt;
 
-	public static AssetRequestTicket createStandardRequest(
+	public static AssetRequestTicket createRequest(
 		Ticket ticket,
 		Company company,
 		RequestedUsageType requestedUsageType,

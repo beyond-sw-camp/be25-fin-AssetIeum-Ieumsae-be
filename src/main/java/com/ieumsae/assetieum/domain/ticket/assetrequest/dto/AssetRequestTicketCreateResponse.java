@@ -13,7 +13,7 @@ import lombok.Getter;
 
 @Getter
 @Builder
-public class StandardAssetRequestCreateResponse {
+public class AssetRequestTicketCreateResponse {
 
 	private final UUID ticketId;
 	private final String ticketNo;
@@ -25,13 +25,13 @@ public class StandardAssetRequestCreateResponse {
 	private final UUID assetItemId;
 	private final int quantity;
 
-	public static StandardAssetRequestCreateResponse from(
+	public static AssetRequestTicketCreateResponse from(
 		Ticket ticket,
 		AssetRequestTicket assetRequestTicket,
 		AssetType assetType,
 		UUID assetItemId
 	) {
-		return StandardAssetRequestCreateResponse.builder()
+		return AssetRequestTicketCreateResponse.builder()
 			.ticketId(ticket.getId())
 			.ticketNo(ticket.getTicketNo())
 			.ticketType(ticket.getTicketType())

@@ -19,7 +19,15 @@ public class TicketApprovalResolver {
 	public Member resolveDepartmentApprover(Member requester) {
 		MemberRole role = requester.getRole();
 
-		if (role == MemberRole.DEPARTMENT_MANAGER || role == MemberRole.ASSET_MANAGER) {
+		if (role == MemberRole.ADMIN) {
+			return requester;
+		}
+
+		if (role == MemberRole.ASSET_MANAGER) {
+			return findActiveAdmin(requester);
+		}
+
+		if (role == MemberRole.DEPARTMENT_MANAGER) {
 			return resolveUpperDepartmentManagerOrAdmin(requester);
 		}
 
@@ -35,20 +43,33 @@ public class TicketApprovalResolver {
 	}
 
 	private Member resolveUpperDepartmentManagerOrAdmin(Member requester) {
-		Department parentDepartment = requester.getDepartment().getParentDepartment();
-		if (parentDepartment != null) {
-			return validateManager(parentDepartment.getDepartmentManager());
+		Department department = requester.getDepartment().getParentDepartment();
+		while (department != null) {
+			Member manager = department.getDepartmentManager();
+			if (isValidManager(manager)) {
+				return manager;
+			}
+			department = department.getParentDepartment();
 		}
 
 		return findActiveAdmin(requester);
 	}
 
 	private Member resolveCurrentDepartmentManager(Member requester) {
-		return validateManager(requester.getDepartment().getDepartmentManager());
+		Department department = requester.getDepartment();
+		while (department != null) {
+			Member manager = department.getDepartmentManager();
+			if (isValidManager(manager)) {
+				return manager;
+			}
+			department = department.getParentDepartment();
+		}
+
+		return findActiveAdmin(requester);
 	}
 
 	private Member validateManager(Member manager) {
-		if (manager == null || !manager.isActive() || !isManagerRole(manager.getRole())) {
+		if (!isValidManager(manager)) {
 			throw new BusinessException(ErrorCode.INVALID_DEPARTMENT_MANAGER, "유효한 부서장이 지정되어 있지 않습니다.");
 		}
 
@@ -67,6 +88,10 @@ public class TicketApprovalResolver {
 		}
 
 		return admin;
+	}
+
+	private boolean isValidManager(Member manager) {
+		return manager != null && manager.isActive() && isManagerRole(manager.getRole());
 	}
 
 	private boolean isManagerRole(MemberRole role) {
