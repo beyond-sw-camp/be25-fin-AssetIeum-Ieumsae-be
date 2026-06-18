@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -32,5 +33,16 @@ public class PurchasePolicyController {
         );
 
         return ApiResponse.ok("구매 정책이 설정되었습니다.", response);
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping
+    public ApiResponse<PurchasePolicyResponse> getPurchasePolicy(
+            @AuthenticationPrincipal AuthenticatedMember member
+    ) {
+        PurchasePolicyResponse response =
+                purchasePolicyService.getPurchasePolicy(member.companyId());
+
+        return ApiResponse.ok("구매 정책 조회에 성공했습니다.", response);
     }
 }

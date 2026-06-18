@@ -22,7 +22,7 @@ public class BudgetHistoryController {
 
     private final BudgetHistoryService budgetHistoryService;
 
-    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
     @GetMapping
     public ApiResponse<PaginationResponse<BudgetHistoryResponse>> getBudgetHistories(
             @AuthenticationPrincipal AuthenticatedMember member,

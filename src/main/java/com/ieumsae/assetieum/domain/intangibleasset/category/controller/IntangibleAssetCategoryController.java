@@ -27,7 +27,7 @@ import java.util.UUID;
 public class IntangibleAssetCategoryController {
     private final IntangibleAssetCategoryService intangibleAssetCategoryService;
 
-    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
     @PostMapping
     public ApiResponse<IntangibleAssetCategoryResponse> createCategory(
             @AuthenticationPrincipal AuthenticatedMember member,
@@ -48,7 +48,7 @@ public class IntangibleAssetCategoryController {
         return ApiResponse.ok("무형자산 카테고리 목록 조회에 성공헀습니다.", response);
     }
 
-    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
     @DeleteMapping("/{categoryId}")
     public ApiResponse<Void> deleteCategory(
             @AuthenticationPrincipal AuthenticatedMember member,

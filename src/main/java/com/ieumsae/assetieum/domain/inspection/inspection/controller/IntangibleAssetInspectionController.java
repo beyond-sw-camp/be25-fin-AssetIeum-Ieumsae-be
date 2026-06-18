@@ -22,7 +22,7 @@ public class IntangibleAssetInspectionController {
 
     private final InspectionService inspectionService;
 
-    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
     @PostMapping
     public ApiResponse<InspectionResponse> createInspection(
             @AuthenticationPrincipal AuthenticatedMember member,
