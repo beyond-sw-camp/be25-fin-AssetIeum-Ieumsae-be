@@ -30,7 +30,7 @@ import java.util.UUID;
 public class TangibleAssetItemController {
     private final TangibleAssetItemService tangibleAssetItemService;
 
-    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
     @PostMapping
     public ApiResponse<TangibleAssetItemResponse> createItem(
             @AuthenticationPrincipal AuthenticatedMember member,
@@ -53,7 +53,7 @@ public class TangibleAssetItemController {
         return ApiResponse.ok("유형자산 품목 목록 조회에 성공했습니다.", response);
     }
 
-    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
     @PatchMapping("/{itemId}")
     public ApiResponse<TangibleAssetItemResponse> updateItem(
             @AuthenticationPrincipal AuthenticatedMember member,
@@ -66,7 +66,7 @@ public class TangibleAssetItemController {
         return ApiResponse.ok("유형자산 품목이 수정되었습니다.", response);
     }
 
-    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
     @DeleteMapping("/{itemId}")
     public ApiResponse<Void> deleteItem(
             @AuthenticationPrincipal AuthenticatedMember member,

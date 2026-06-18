@@ -22,7 +22,7 @@ public class budgetController {
 
     private final BudgetService budgetService;
 
-    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
     @GetMapping
     public ApiResponse<PaginationResponse<BudgetResponse>> getBudgets(
             @AuthenticationPrincipal AuthenticatedMember member,

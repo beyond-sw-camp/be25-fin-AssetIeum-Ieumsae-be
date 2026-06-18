@@ -41,7 +41,7 @@ public class IntangibleAssetAssignmentController {
         return ApiResponse.ok("무형자산 배정 이력 조회에 성공했습니다.", response);
     }
 
-    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
     @PostMapping("/{assetId}/assign")
     public ApiResponse<IntangibleAssetAssignmentResponse> assignAsset(
             @AuthenticationPrincipal AuthenticatedMember member,
@@ -54,7 +54,7 @@ public class IntangibleAssetAssignmentController {
         return ApiResponse.ok("무형자산이 배정되었습니다.", response);
     }
 
-    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
     @PostMapping("/{assetId}/cancel")
     public ApiResponse<List<IntangibleAssetAssignmentResponse>> cancelAsset(
             @AuthenticationPrincipal AuthenticatedMember member,
