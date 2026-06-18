@@ -4,6 +4,7 @@ import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanCreate
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanDetailResponse;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanResponse;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanSearchRequest;
+import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanStatisticResponse;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanUpdateStatusRequest;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.service.PurchasePlanService;
 import com.ieumsae.assetieum.global.common.page.PaginationResponse;
@@ -78,6 +79,17 @@ public class PurchasePlanController {
                 purchasePlanService.getPurchasePlanDetail(planId, member.companyId());
 
         return ApiResponse.ok("구매 계획 상세 조회에 성공했습니다.", response);
+    }
+
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
+    @GetMapping("/statistics")
+    public ApiResponse<PurchasePlanStatisticResponse> getPurchasePlanStatistics(
+            @AuthenticationPrincipal AuthenticatedMember member
+    ) {
+        PurchasePlanStatisticResponse response =
+                purchasePlanService.getPurchasePlanStatistics(member.companyId());
+
+        return ApiResponse.ok("구매 계획 통계 조회에 성공했습니다.", response);
     }
 
     @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM')")
