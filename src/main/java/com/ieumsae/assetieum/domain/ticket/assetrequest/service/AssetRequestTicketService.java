@@ -214,6 +214,7 @@ public class AssetRequestTicketService {
 				companyId
 			);
 			assetRequestTicket.markAssigned();
+			ticket.changeProcessingStatus(TicketStatus.IN_PROGRESS, java.time.LocalDateTime.now());
 			return AssetRequestAssignResponse.from(
 				ticket,
 				assetRequestTicket,
@@ -232,6 +233,7 @@ public class AssetRequestTicketService {
 			companyId
 		);
 		assetRequestTicket.markAssigned();
+		ticket.changeProcessingStatus(TicketStatus.IN_PROGRESS, java.time.LocalDateTime.now());
 		return AssetRequestAssignResponse.from(
 			ticket,
 			assetRequestTicket,
@@ -338,8 +340,8 @@ public class AssetRequestTicketService {
 		if (!isAssetRole(member.getRole())) {
 			throw new BusinessException(ErrorCode.ACCESS_DENIED);
 		}
-		if (ticket.getTicketStatus() != TicketStatus.IN_PROGRESS) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "구매자산팀 승인 후 처리중 상태의 자산요청만 할당할 수 있습니다.");
+		if (ticket.getTicketStatus() != TicketStatus.ASSET_APPROVED) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "구매자산팀 승인 상태의 자산요청만 할당할 수 있습니다.");
 		}
 		if (ticket.getRequester().getId().equals(member.getId())) {
 			throw new BusinessException(ErrorCode.ACCESS_DENIED);
@@ -542,7 +544,7 @@ public class AssetRequestTicketService {
 	}
 
 	private boolean isProcessingStatusChangeable(TicketStatus status) {
-		return status == TicketStatus.IN_PROGRESS;
+		return status == TicketStatus.ASSET_APPROVED || status == TicketStatus.IN_PROGRESS;
 	}
 
 	private String normalize(String value) {

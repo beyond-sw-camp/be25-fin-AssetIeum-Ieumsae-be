@@ -21,7 +21,11 @@ import com.ieumsae.assetieum.domain.purchase.purchaseplanitem.dto.PurchasePlanIt
 import com.ieumsae.assetieum.domain.purchase.purchaseplanitem.repository.PurchasePlanItemRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
 import com.ieumsae.assetieum.domain.tangibleasset.item.repository.TangibleAssetItemRepository;
+import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
+import com.ieumsae.assetieum.domain.ticket.common.repository.TicketRepository;
 import com.ieumsae.assetieum.domain.ticket.common.type.AssetType;
+import com.ieumsae.assetieum.domain.ticket.common.type.RequestMethod;
+import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.entity.PurchaseRequestTicket;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.repository.PurchaseRequestTicketRepository;
 import com.ieumsae.assetieum.global.common.page.PaginationResponse;
@@ -54,6 +58,7 @@ public class PurchasePlanService {
     private final TangibleAssetItemRepository tangibleAssetItemRepository;
     private final IntangibleAssetItemRepository intangibleAssetItemRepository;
     private final PurchaseRequestTicketRepository purchaseRequestTicketRepository;
+    private final TicketRepository ticketRepository;
     private final PurchasePlanRepository purchasePlanRepository;
     private final PurchasePlanItemRepository purchasePlanItemRepository;
 
@@ -147,8 +152,19 @@ public class PurchasePlanService {
             return null;
         }
 
-        return purchaseRequestTicketRepository.findByIdAndCompany_Id(ticketId, companyId)
+        Ticket ticket = ticketRepository.findWithLockByIdAndCompany_IdAndDeletedAtIsNull(ticketId, companyId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+        if (ticket.getTicketStatus() != TicketStatus.ASSET_APPROVED) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "구매자산팀 승인 상태의 티켓만 구매 계획에 추가할 수 있습니다.");
+        }
+
+        PurchaseRequestTicket purchaseRequestTicket = purchaseRequestTicketRepository.findByIdAndCompany_Id(ticketId, companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+        if (purchaseRequestTicket.getRequestMethod() != RequestMethod.TEAM_PURCHASE) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "구매자산팀 구매 티켓만 구매 계획에 추가할 수 있습니다.");
+        }
+
+        return purchaseRequestTicket;
     }
 
     private TangibleAssetItem findTangibleAssetItem(UUID itemId, UUID companyId) {
@@ -252,9 +268,38 @@ public class PurchasePlanService {
         // 2. 상태 변경
         validateStatusTransition(purchasePlan.getPurchaseRequestStatus(), request.getStatus());
         purchasePlan.updateStatus(request.getStatus());
+        startLinkedTicketsIfApproved(purchasePlan, request.getStatus(), companyId);
 
         return PurchasePlanResponse.from(purchasePlan);
 
+    }
+
+    private void startLinkedTicketsIfApproved(
+            PurchasePlan purchasePlan,
+            PurchaseRequestStatus status,
+            UUID companyId
+    ) {
+        if (status != PurchaseRequestStatus.APPROVED) {
+            return;
+        }
+
+        List<PurchasePlanItem> items = purchasePlanItemRepository.findAllByPurchasePlan_IdAndCompany_Id(
+                purchasePlan.getId(),
+                companyId
+        );
+        for (PurchasePlanItem item : items) {
+            PurchaseRequestTicket purchaseRequestTicket = item.getPurchaseRequestTicket();
+            if (purchaseRequestTicket == null) {
+                continue;
+            }
+            Ticket ticket = ticketRepository.findWithLockByIdAndCompany_IdAndDeletedAtIsNull(
+                    purchaseRequestTicket.getId(),
+                    companyId
+            ).orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+            if (ticket.getTicketStatus() == TicketStatus.ASSET_APPROVED) {
+                ticket.changeProcessingStatus(TicketStatus.IN_PROGRESS, java.time.LocalDateTime.now());
+            }
+        }
     }
 
     private void validateStatusTransition(

@@ -259,7 +259,7 @@ public class Ticket extends BaseEntity {
 	}
 
 	public void approveAsset(Member assignee, LocalDateTime approvedAt) {
-		this.ticketStatus = TicketStatus.IN_PROGRESS;
+		this.ticketStatus = TicketStatus.ASSET_APPROVED;
 		this.assignee = assignee;
 		this.purchaseApprovedAt = approvedAt;
 		this.purchaseRejectedAt = null;

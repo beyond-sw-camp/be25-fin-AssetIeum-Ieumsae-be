@@ -29,6 +29,9 @@ import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
 import com.ieumsae.assetieum.domain.ticket.common.repository.TicketRepository;
 import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
 import com.ieumsae.assetieum.domain.ticket.common.type.TicketType;
+import com.ieumsae.assetieum.domain.ticket.common.type.RequestMethod;
+import com.ieumsae.assetieum.domain.ticket.purchaserequest.entity.PurchaseRequestTicket;
+import com.ieumsae.assetieum.domain.ticket.purchaserequest.repository.PurchaseRequestTicketRepository;
 import com.ieumsae.assetieum.domain.ticket.rental.entity.RentalTicket;
 import com.ieumsae.assetieum.domain.ticket.rental.repository.RentalTicketRepository;
 import com.ieumsae.assetieum.global.common.page.PaginationResponse;
@@ -58,6 +61,7 @@ public class TicketService {
 	private final TangibleAssetRepository tangibleAssetRepository;
 	private final TangibleAssetAssignmentRepository tangibleAssetAssignmentRepository;
 	private final AssetRequestTicketRepository assetRequestTicketRepository;
+	private final PurchaseRequestTicketRepository purchaseRequestTicketRepository;
 	private final TicketApprovalResolver ticketApprovalResolver;
 
 	@Transactional
@@ -142,6 +146,7 @@ public class TicketService {
 
 		assignReservedRentalAssetIfNeeded(ticket, companyId);
 		ticket.approveAsset(assignee, LocalDateTime.now());
+		startProcessingAfterAssetApprovalIfNeeded(ticket, companyId);
 
 		return AssetApprovalResponse.from(ticket);
 	}
@@ -310,6 +315,25 @@ public class TicketService {
 		rentalTicket.cancelReservation();
 	}
 
+	private void startProcessingAfterAssetApprovalIfNeeded(Ticket ticket, UUID companyId) {
+		if (shouldStartProcessingAfterAssetApproval(ticket, companyId)) {
+			ticket.changeProcessingStatus(TicketStatus.IN_PROGRESS, LocalDateTime.now());
+		}
+	}
+
+	private boolean shouldStartProcessingAfterAssetApproval(Ticket ticket, UUID companyId) {
+		if (ticket.getTicketType() == TicketType.ASSET_REQUEST) {
+			return false;
+		}
+		if (ticket.getTicketType() == TicketType.PURCHASE_REQUEST) {
+			PurchaseRequestTicket purchaseRequestTicket = purchaseRequestTicketRepository
+				.findByIdAndCompany_Id(ticket.getId(), companyId)
+				.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+			return purchaseRequestTicket.getRequestMethod() == RequestMethod.DIRECT_PURCHASE;
+		}
+		return true;
+	}
+
 	private RentalTicket findRentalTicket(UUID ticketId, UUID companyId) {
 		return rentalTicketRepository.findByIdAndCompany_IdAndDeletedAtIsNull(ticketId, companyId)
 			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
@@ -412,11 +436,14 @@ public class TicketService {
 		if (!isProcessingTargetStatus(targetStatus)) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "처리상태는 IN_PROGRESS, COMPLETED, CANCELLED만 변경할 수 있습니다.");
 		}
-		if (!isProcessingTargetStatus(ticket.getTicketStatus())) {
+		if (!isProcessingChangeableStatus(ticket.getTicketStatus())) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "구매자산팀 승인 이후 티켓만 처리상태를 변경할 수 있습니다.");
 		}
 		if (isTerminalProcessingStatus(ticket.getTicketStatus())) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "완료 또는 취소된 티켓은 처리상태를 변경할 수 없습니다.");
+		}
+		if (ticket.getTicketStatus() == TicketStatus.ASSET_APPROVED && targetStatus == TicketStatus.COMPLETED) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "처리중 상태 이후 완료할 수 있습니다.");
 		}
 		if (processingStatusOrder(targetStatus) <= processingStatusOrder(ticket.getTicketStatus())) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "현재 처리상태 이후의 상태로만 변경할 수 있습니다.");
@@ -456,14 +483,19 @@ public class TicketService {
 			|| status == TicketStatus.CANCELLED;
 	}
 
+	private boolean isProcessingChangeableStatus(TicketStatus status) {
+		return status == TicketStatus.ASSET_APPROVED || isProcessingTargetStatus(status);
+	}
+
 	private boolean isTerminalProcessingStatus(TicketStatus status) {
 		return status == TicketStatus.COMPLETED || status == TicketStatus.CANCELLED;
 	}
 
 	private int processingStatusOrder(TicketStatus status) {
 		return switch (status) {
-			case IN_PROGRESS -> 1;
-			case COMPLETED, CANCELLED -> 2;
+			case ASSET_APPROVED -> 1;
+			case IN_PROGRESS -> 2;
+			case COMPLETED, CANCELLED -> 3;
 			default -> 0;
 		};
 	}
