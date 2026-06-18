@@ -91,6 +91,7 @@ public enum ErrorCode {
 	HR_TEMPLATE_NOT_FOUND(HttpStatus.NOT_FOUND, "hr-template-001", "HR 템플릿을 찾을 수 없습니다."),
 
 	// HR 이벤트
+	HR_EVENT_MEMBER_DEPARTMENT_MISMATCH(HttpStatus.FORBIDDEN, "hr-event-000", "HR 이벤트 요청 사원과 지정하는 멤버가 요청 사원과 같은 부서일 때만 만들 수 있습니다."),
 	HR_EVENT_NOT_FOUND(HttpStatus.NOT_FOUND, "hr-event-001", "HR 이벤트를 찾을 수 없습니다."),
 	HR_EVENT_ALREADY_IN_PROGRESS(HttpStatus.CONFLICT, "hr-event-002", "HR 이벤트가 진행중인 경우 삭제할 수 없습니다."),
 	HR_EVENT_NOT_IN_PROGRESS(HttpStatus.CONFLICT, "hr-event-003", "HR 이벤트가 진행중인 경우에만 완료 처리할 수 있습니다."),
