@@ -78,4 +78,8 @@ public class TangibleAssetAssignment extends BaseEntity {
         this.endedAt = endedAt;
         this.assignmentStatus = AssignmentStatus.ENDED;
     }
+
+    public void updateEndedAt(LocalDateTime endedAt) {
+        this.endedAt = endedAt;
+    }
 }

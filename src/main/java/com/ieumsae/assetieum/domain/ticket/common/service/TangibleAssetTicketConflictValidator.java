@@ -21,6 +21,7 @@ public class TangibleAssetTicketConflictValidator {
 	private static final List<TicketStatus> ONGOING_STATUSES = List.of(
 		TicketStatus.REQUESTED,
 		TicketStatus.DEPARTMENT_APPROVED,
+		TicketStatus.ASSET_APPROVED,
 		TicketStatus.IN_PROGRESS
 	);
 

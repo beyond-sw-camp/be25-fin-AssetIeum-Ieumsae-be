@@ -94,6 +94,7 @@ public class TicketService {
 		releaseReservedRentalAssetIfNeeded(ticket, companyId);
 		ticket.cancel(LocalDateTime.now());
 		syncCancelledDetailStatusIfNeeded(ticket, companyId);
+		syncCancelledRentalStatusIfNeeded(ticket, companyId);
 
 		return TicketCancelResponse.from(ticket);
 	}
@@ -109,6 +110,7 @@ public class TicketService {
 		validateDepartmentApprover(ticket, approver);
 		validateTicketStatus(ticket, TicketStatus.REQUESTED, "요청 상태의 티켓만 부서장 승인 처리할 수 있습니다.");
 
+		// 대여 티켓은 부서장 승인 시 가용 자산 1개를 선점해 중복 대여를 막는다.
 		reserveRentalAssetIfNeeded(ticket, companyId);
 		ticket.approveDepartment(LocalDateTime.now());
 
@@ -144,8 +146,8 @@ public class TicketService {
 		validateTicketStatus(ticket, TicketStatus.DEPARTMENT_APPROVED, "부서장 승인된 티켓만 구매자산팀 승인 처리할 수 있습니다.");
 		validateAssignee(ticket, assignee);
 
-		assignReservedRentalAssetIfNeeded(ticket, companyId);
 		ticket.approveAsset(assignee, LocalDateTime.now());
+		// 대여/대여연장은 구매자산팀 승인 후 실제 처리 API를 기다리기 위해 처리중으로 전환한다.
 		startProcessingAfterAssetApprovalIfNeeded(ticket, companyId);
 
 		return AssetApprovalResponse.from(ticket);
@@ -181,8 +183,9 @@ public class TicketService {
 		Ticket ticket = findActiveTicket(ticketId, companyId);
 
 		validateProcessingStatusChangeable(ticket, member, request.getTicketStatus());
+		releaseReservedRentalAssetForProcessingCancelIfNeeded(ticket, companyId, request.getTicketStatus());
 		ticket.changeProcessingStatus(request.getTicketStatus(), LocalDateTime.now());
-		syncAssetRequestStatus(ticket, companyId, request.getTicketStatus());
+		syncAssetRequestStatusIfNeeded(ticket, companyId, request.getTicketStatus());
 
 		return TicketProcessingStatusUpdateResponse.from(ticket);
 	}
@@ -252,6 +255,7 @@ public class TicketService {
 			.findFirst()
 			.orElseThrow(() -> new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "대여 가능한 자산 재고가 없습니다."));
 
+		// AVAILABLE에서 RESERVED로 바뀌면 가용 수량 조회에서 제외된다.
 		reservedAsset.reserveForRental();
 		rentalTicket.reserveAsset(reservedAsset);
 	}
@@ -304,6 +308,7 @@ public class TicketService {
 		RentalTicket rentalTicket = findRentalTicket(ticket.getId(), companyId);
 		TangibleAsset asset = rentalTicket.getTangibleAsset();
 		if (asset == null) {
+			rentalTicket.cancelReservation();
 			return;
 		}
 
@@ -324,6 +329,13 @@ public class TicketService {
 	private boolean shouldStartProcessingAfterAssetApproval(Ticket ticket, UUID companyId) {
 		if (ticket.getTicketType() == TicketType.ASSET_REQUEST) {
 			return false;
+		}
+		// 대여는 할당 API, 대여연장은 반납예정일 변경 API가 완료 처리를 담당한다.
+		if (ticket.getTicketType() == TicketType.RENTAL) {
+			return true;
+		}
+		if (ticket.getTicketType() == TicketType.RENTAL_EXTENSION) {
+			return true;
 		}
 		if (ticket.getTicketType() == TicketType.PURCHASE_REQUEST) {
 			PurchaseRequestTicket purchaseRequestTicket = purchaseRequestTicketRepository
@@ -427,7 +439,12 @@ public class TicketService {
 	}
 
 	private void validateProcessingStatusChangeable(Ticket ticket, Member member, TicketStatus targetStatus) {
-		if (ticket.getTicketType() != TicketType.ASSET_REQUEST) {
+		if (ticket.getTicketType() == TicketType.RENTAL) {
+			validateRentalProcessingStatusChangeable(ticket, member, targetStatus);
+			return;
+		}
+		if (ticket.getTicketType() != TicketType.ASSET_REQUEST
+			&& ticket.getTicketType() != TicketType.RENTAL) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "자산요청 티켓만 처리상태를 변경할 수 있습니다.");
 		}
 		if (!isAssetRole(member.getRole())) {
@@ -450,11 +467,51 @@ public class TicketService {
 		}
 	}
 
+	private void validateRentalProcessingStatusChangeable(Ticket ticket, Member member, TicketStatus targetStatus) {
+		if (!isAssetRole(member.getRole())) {
+			throw new BusinessException(ErrorCode.ACCESS_DENIED);
+		}
+		if (ticket.getAssignee() == null || !ticket.getAssignee().getId().equals(member.getId())) {
+			throw new BusinessException(ErrorCode.ACCESS_DENIED);
+		}
+		if (ticket.getTicketStatus() != TicketStatus.ASSET_APPROVED || targetStatus != TicketStatus.CANCELLED) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "대여 티켓은 구매자산팀 승인 이후 취소만 처리상태 변경으로 처리할 수 있습니다.");
+		}
+	}
+
+	private void releaseReservedRentalAssetForProcessingCancelIfNeeded(
+		Ticket ticket,
+		UUID companyId,
+		TicketStatus targetStatus
+	) {
+		if (ticket.getTicketType() != TicketType.RENTAL || targetStatus != TicketStatus.CANCELLED) {
+			return;
+		}
+		// 처리중 취소 시 선점해둔 대여 자산을 다시 AVAILABLE로 복구한다.
+		releaseReservedRentalAssetIfNeeded(ticket, companyId);
+	}
+
 	private void syncCancelledDetailStatusIfNeeded(Ticket ticket, UUID companyId) {
 		if (ticket.getTicketType() != TicketType.ASSET_REQUEST) {
 			return;
 		}
 		syncAssetRequestStatus(ticket, companyId, TicketStatus.CANCELLED);
+	}
+
+	private void syncCancelledRentalStatusIfNeeded(Ticket ticket, UUID companyId) {
+		if (ticket.getTicketType() != TicketType.RENTAL
+			&& ticket.getTicketType() != TicketType.RENTAL_EXTENSION) {
+			return;
+		}
+		RentalTicket rentalTicket = findRentalTicket(ticket.getId(), companyId);
+		rentalTicket.cancelReservation();
+	}
+
+	private void syncAssetRequestStatusIfNeeded(Ticket ticket, UUID companyId, TicketStatus targetStatus) {
+		if (ticket.getTicketType() != TicketType.ASSET_REQUEST) {
+			return;
+		}
+		syncAssetRequestStatus(ticket, companyId, targetStatus);
 	}
 
 	private void syncAssetRequestStatus(Ticket ticket, UUID companyId, TicketStatus targetStatus) {
