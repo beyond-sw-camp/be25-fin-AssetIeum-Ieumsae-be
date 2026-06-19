@@ -7,11 +7,12 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import java.math.BigDecimal;
-import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.validator.constraints.URL;
+
+import java.math.BigDecimal;
+import java.util.UUID;
 
 @Getter
 @NoArgsConstructor
@@ -20,15 +21,14 @@ public class PurchasePlanItemCreateRequest {
 
     private UUID ticketId;
 
-    @NotNull(message = "자산 유형은 필수입니다.")
+    @NotNull(message = "자산 타입은 필수입니다.")
     private AssetType assetType;
 
-    @NotNull(message = "자산 품목 ID는 필수입니다.")
     private UUID assetItemId;
 
-    @NotBlank(message = "품목명은 필수입니다.")
-    @Size(max = 255, message = "품목명은 255자 이하여야 합니다.")
-    private String itemName;
+    @NotBlank(message = "상품명은 필수입니다.")
+    @Size(max = 255, message = "상품명은 255자 이하여야 합니다.")
+    private String productName;
 
     private UUID departmentId;
 
@@ -43,7 +43,7 @@ public class PurchasePlanItemCreateRequest {
     @DecimalMin(value = "0.00", message = "예정 단가는 0 이상이어야 합니다.")
     private BigDecimal estimatedUnitPrice;
 
-    @URL(message = "외부 URL 형식이 올바르지 않습니다.")
+    @URL(message = "유효한 URL 형식이 아닙니다.")
     @Size(max = 500, message = "외부 URL은 500자 이하여야 합니다.")
     private String externalUrl;
 
@@ -59,8 +59,8 @@ public class PurchasePlanItemCreateRequest {
         this.assetItemId = assetItemId;
     }
 
-    public void setItemName(String itemName) {
-        this.itemName = itemName;
+    public void setProductName(String productName) {
+        this.productName = productName;
     }
 
     public void setDepartmentId(UUID departmentId) {

@@ -17,7 +17,7 @@ public class LocalLoginMemberClient implements LoginMemberClient {
 
 	@Override
 	public Optional<LoginMember> authenticate(String companyCode, String memberNo, String rawPassword) {
-		return memberRepository.findByMemberNoAndCompany_CompanyCode(memberNo, companyCode)
+		return memberRepository.findByMemberNoAndCompany_CompanyCodeAndCompany_DeletedAtIsNull(memberNo, companyCode)
 			.flatMap(member -> authenticate(member, rawPassword));
 	}
 

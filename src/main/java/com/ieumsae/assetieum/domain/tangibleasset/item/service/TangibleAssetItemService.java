@@ -249,4 +249,19 @@ public class TangibleAssetItemService {
             throw new BusinessException(ErrorCode.TANGIBLE_ASSET_ITEM_CATEGORY_NOT_LEAF);
         }
     }
+
+    public TangibleAssetItemResponse getItemByProductName(
+            String productName,
+            UUID companyId
+    ) {
+
+        // 1. 입력값 검증
+        companyRepository.findById(companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
+
+        // 2. 유형자산 품목명 조회
+        return tangibleAssetItemRepository.findByProductNameAndCompany_IdAndDeletedAtIsNull(productName, companyId)
+                .map(TangibleAssetItemResponse::from)
+                .orElse(null);
+    }
 }

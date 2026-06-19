@@ -57,6 +57,15 @@ public class IntangibleAssetItemController {
         return ApiResponse.ok("무형자산 품목 목록 조회에 성공했습니다.", response);
     }
 
+    @GetMapping({"/{productName}"})
+    public ApiResponse<IntangibleAssetItemResponse> getItemByProductName(
+            @AuthenticationPrincipal AuthenticatedMember member,
+            @PathVariable String productName
+    ) {
+        IntangibleAssetItemResponse response = intangibleAssetItemService.getItemByProductName(productName, member.companyId());
+        return ApiResponse.ok("무형자산 품목명 조회에 성공했습니다.", response);
+    }
+
     @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
     @PatchMapping("/{itemId}")
     public ApiResponse<IntangibleAssetItemResponse> updateItem(

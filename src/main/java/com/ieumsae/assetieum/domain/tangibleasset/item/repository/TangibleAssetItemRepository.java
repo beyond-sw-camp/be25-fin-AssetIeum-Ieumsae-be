@@ -37,4 +37,6 @@ public interface TangibleAssetItemRepository
               )
             """)
     Page<TangibleAssetItem> searchAssignableItems(UUID companyId, UUID categoryId, String keyword, Pageable pageable);
+
+    Optional<TangibleAssetItem> findByProductNameAndCompany_IdAndDeletedAtIsNull(String productName, UUID companyId);
 }

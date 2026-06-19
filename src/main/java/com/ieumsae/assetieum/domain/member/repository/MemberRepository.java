@@ -18,6 +18,11 @@ public interface MemberRepository extends JpaRepository<Member, UUID> {
 
 	Optional<Member> findByMemberNoAndCompany_CompanyCode(String memberNo, String companyCode);
 
+	Optional<Member> findByMemberNoAndCompany_CompanyCodeAndCompany_DeletedAtIsNull(
+		String memberNo,
+		String companyCode
+	);
+
 	boolean existsByDepartment_IdAndDeletedAtIsNull(UUID departmentId);
 
 	long countByDepartment_IdAndDeletedAtIsNull(UUID departmentId);
