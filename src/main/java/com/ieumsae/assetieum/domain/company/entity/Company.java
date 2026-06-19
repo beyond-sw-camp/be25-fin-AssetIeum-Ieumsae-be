@@ -33,6 +33,9 @@ public class Company extends BaseEntity {
 	@Column(name = "company_code", nullable = false, length = 100)
 	private String companyCode;
 
+	@Column(name = "company_name", nullable = false, length = 100)
+	private String companyName;
+
 	@Column(name = "deleted_at")
 	private LocalDateTime deletedAt;
 

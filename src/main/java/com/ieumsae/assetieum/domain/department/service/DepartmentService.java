@@ -34,6 +34,8 @@ import org.springframework.util.StringUtils;
 @Transactional(readOnly = true)
 public class DepartmentService {
 
+	private static final String ADMIN_DEPARTMENT_NAME = "관리자";
+
 	private final DepartmentRepository departmentRepository;
 	private final MemberRepository memberRepository;
 	private final CompanyRepository companyRepository;
@@ -42,7 +44,10 @@ public class DepartmentService {
 		validateActiveMember(authenticatedMember);
 		UUID companyId = authenticatedMember.companyId();
 		List<Department> departments =
-			departmentRepository.findAllByCompany_IdAndDeletedAtIsNullOrderByCreatedAtAsc(companyId);
+			departmentRepository.findAllByCompany_IdAndNameNotAndDeletedAtIsNullOrderByCreatedAtAsc(
+				companyId,
+				ADMIN_DEPARTMENT_NAME
+			);
 		Map<UUID, Long> memberCountMap = getMemberCountMap(companyId);
 
 		Map<UUID, DepartmentTreeResponse> departmentMap = new LinkedHashMap<>();
@@ -308,7 +313,7 @@ public class DepartmentService {
 	private Map<UUID, Long> getMemberCountMap(UUID companyId) {
 		Map<UUID, Long> memberCountMap = new LinkedHashMap<>();
 
-		for (Object[] row : departmentRepository.countMembersByDepartmentId(companyId)) {
+		for (Object[] row : departmentRepository.countMembersByDepartmentId(companyId, MemberRole.ADMIN)) {
 			memberCountMap.put((UUID) row[0], (Long) row[1]);
 		}
 

@@ -30,6 +30,8 @@ import org.springframework.util.StringUtils;
 @Transactional(readOnly = true)
 public class MemberService {
 
+	private static final String ADMIN_DEPARTMENT_NAME = "관리자";
+
 	private final MemberRepository memberRepository;
 	private final DepartmentRepository departmentRepository;
 	private final PasswordEncoder passwordEncoder;
@@ -47,6 +49,7 @@ public class MemberService {
 			normalizeKeyword(request.getKeyword()),
 			request.getDepartmentId(),
 			request.getStatus(),
+			MemberRole.ADMIN,
 			request.toPageable()
 		).map(MemberListItemResponse::from);
 
@@ -125,8 +128,14 @@ public class MemberService {
 	}
 
 	private Department findActiveDepartment(UUID departmentId, UUID companyId) {
-		return departmentRepository.findByIdAndCompany_IdAndDeletedAtIsNull(departmentId, companyId)
+		Department department = departmentRepository.findByIdAndCompany_IdAndDeletedAtIsNull(departmentId, companyId)
 			.orElseThrow(() -> new BusinessException(ErrorCode.DEPARTMENT_NOT_FOUND));
+
+		if (ADMIN_DEPARTMENT_NAME.equals(department.getName())) {
+			throw new BusinessException(ErrorCode.DEPARTMENT_NOT_FOUND);
+		}
+
+		return department;
 	}
 
 	private Member findActiveMember(UUID memberId, UUID companyId) {
