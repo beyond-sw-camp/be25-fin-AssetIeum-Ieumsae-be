@@ -89,4 +89,16 @@ public class AssetRequestTicket {
 			.quantity(quantity)
 			.build();
 	}
+
+	public void markAssigned() {
+		this.status = AssetRequestTicketStatus.ASSIGNED;
+	}
+
+	public void complete() {
+		this.status = AssetRequestTicketStatus.COMPLETED;
+	}
+
+	public void cancel() {
+		this.status = AssetRequestTicketStatus.CANCELLED;
+	}
 }

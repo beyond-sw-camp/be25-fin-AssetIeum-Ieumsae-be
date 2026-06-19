@@ -114,12 +114,13 @@ public class PurchaseRequestTicketService {
 	) {
 		UUID companyId = authenticatedMember.companyId();
 		Member submitter = ticketRequesterResolver.resolveActiveRequester(authenticatedMember.id(), companyId);
+		Ticket ticket = ticketRepository.findWithLockByIdAndCompany_IdAndDeletedAtIsNull(ticketId, companyId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
 		PurchaseRequestTicket purchaseRequestTicket = purchaseRequestTicketRepository.findByIdAndCompany_Id(
 				ticketId,
 				companyId
 			)
 			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
-		Ticket ticket = purchaseRequestTicket.getTicket();
 		AssetType assetType = resolveAssetType(purchaseRequestTicket);
 
 		validateDirectPurchaseResultTarget(purchaseRequestTicket, ticket, submitter);
@@ -153,10 +154,11 @@ public class PurchaseRequestTicketService {
 	) {
 		UUID companyId = authenticatedMember.companyId();
 		Member submitter = ticketRequesterResolver.resolveActiveRequester(authenticatedMember.id(), companyId);
+		Ticket ticket = ticketRepository.findWithLockByIdAndCompany_IdAndDeletedAtIsNull(ticketId, companyId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
 		DirectPurchaseResult result = directPurchaseResultRepository.findByIdAndCompany_Id(ticketId, companyId)
 			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
 		PurchaseRequestTicket purchaseRequestTicket = result.getPurchaseRequestTicket();
-		Ticket ticket = purchaseRequestTicket.getTicket();
 		AssetType assetType = resolveAssetType(purchaseRequestTicket);
 
 		validateDirectPurchaseResultUpdatable(purchaseRequestTicket, ticket, submitter);

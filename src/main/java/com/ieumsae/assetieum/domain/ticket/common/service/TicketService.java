@@ -5,17 +5,35 @@ import com.ieumsae.assetieum.domain.department.repository.DepartmentRepository;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
 import com.ieumsae.assetieum.domain.member.type.MemberRole;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.entity.TangibleAsset;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.repository.TangibleAssetRepository;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.type.AssetUsageType;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.type.TangibleAssetStatus;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.type.UsageType;
+import com.ieumsae.assetieum.domain.tangibleasset.assignment.entity.TangibleAssetAssignment;
+import com.ieumsae.assetieum.domain.tangibleasset.assignment.repository.TangibleAssetAssignmentRepository;
+import com.ieumsae.assetieum.domain.tangibleasset.assignment.type.AssignmentStatus;
+import com.ieumsae.assetieum.domain.ticket.assetrequest.entity.AssetRequestTicket;
+import com.ieumsae.assetieum.domain.ticket.assetrequest.repository.AssetRequestTicketRepository;
 import com.ieumsae.assetieum.domain.ticket.common.dto.AssetApprovalResponse;
 import com.ieumsae.assetieum.domain.ticket.common.dto.DepartmentApprovalResponse;
 import com.ieumsae.assetieum.domain.ticket.common.dto.TicketAssigneeResponse;
 import com.ieumsae.assetieum.domain.ticket.common.dto.TicketCancelResponse;
 import com.ieumsae.assetieum.domain.ticket.common.dto.TicketListItemResponse;
+import com.ieumsae.assetieum.domain.ticket.common.dto.TicketProcessingStatusUpdateRequest;
+import com.ieumsae.assetieum.domain.ticket.common.dto.TicketProcessingStatusUpdateResponse;
 import com.ieumsae.assetieum.domain.ticket.common.dto.TicketRejectionRequest;
 import com.ieumsae.assetieum.domain.ticket.common.dto.TicketSearchRequest;
 import com.ieumsae.assetieum.domain.ticket.common.dto.TicketStatisticsResponse;
 import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
 import com.ieumsae.assetieum.domain.ticket.common.repository.TicketRepository;
 import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
+import com.ieumsae.assetieum.domain.ticket.common.type.TicketType;
+import com.ieumsae.assetieum.domain.ticket.common.type.RequestMethod;
+import com.ieumsae.assetieum.domain.ticket.purchaserequest.entity.PurchaseRequestTicket;
+import com.ieumsae.assetieum.domain.ticket.purchaserequest.repository.PurchaseRequestTicketRepository;
+import com.ieumsae.assetieum.domain.ticket.rental.entity.RentalTicket;
+import com.ieumsae.assetieum.domain.ticket.rental.repository.RentalTicketRepository;
 import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
@@ -27,6 +45,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,6 +57,11 @@ public class TicketService {
 	private final TicketRepository ticketRepository;
 	private final MemberRepository memberRepository;
 	private final DepartmentRepository departmentRepository;
+	private final RentalTicketRepository rentalTicketRepository;
+	private final TangibleAssetRepository tangibleAssetRepository;
+	private final TangibleAssetAssignmentRepository tangibleAssetAssignmentRepository;
+	private final AssetRequestTicketRepository assetRequestTicketRepository;
+	private final PurchaseRequestTicketRepository purchaseRequestTicketRepository;
 	private final TicketApprovalResolver ticketApprovalResolver;
 
 	@Transactional
@@ -63,12 +87,13 @@ public class TicketService {
 		UUID ticketId
 	) {
 		UUID companyId = authenticatedMember.companyId();
-		Member requester = findActiveMember(authenticatedMember.id(), companyId);
+		Member member = findActiveMember(authenticatedMember.id(), companyId);
 		Ticket ticket = findActiveTicket(ticketId, companyId);
-		validateRequester(ticket, requester);
-		validateTicketStatus(ticket, TicketStatus.REQUESTED, "부서장 승인 전 티켓만 취소할 수 있습니다.");
+		validateCancellable(ticket, member);
 
+		releaseReservedRentalAssetIfNeeded(ticket, companyId);
 		ticket.cancel(LocalDateTime.now());
+		syncCancelledDetailStatusIfNeeded(ticket, companyId);
 
 		return TicketCancelResponse.from(ticket);
 	}
@@ -84,6 +109,7 @@ public class TicketService {
 		validateDepartmentApprover(ticket, approver);
 		validateTicketStatus(ticket, TicketStatus.REQUESTED, "요청 상태의 티켓만 부서장 승인 처리할 수 있습니다.");
 
+		reserveRentalAssetIfNeeded(ticket, companyId);
 		ticket.approveDepartment(LocalDateTime.now());
 
 		return DepartmentApprovalResponse.from(ticket);
@@ -118,7 +144,9 @@ public class TicketService {
 		validateTicketStatus(ticket, TicketStatus.DEPARTMENT_APPROVED, "부서장 승인된 티켓만 구매자산팀 승인 처리할 수 있습니다.");
 		validateAssignee(ticket, assignee);
 
+		assignReservedRentalAssetIfNeeded(ticket, companyId);
 		ticket.approveAsset(assignee, LocalDateTime.now());
+		startProcessingAfterAssetApprovalIfNeeded(ticket, companyId);
 
 		return AssetApprovalResponse.from(ticket);
 	}
@@ -136,9 +164,27 @@ public class TicketService {
 		validateTicketStatus(ticket, TicketStatus.DEPARTMENT_APPROVED, "부서장 승인된 티켓만 구매자산팀 반려 처리할 수 있습니다.");
 		validateAssignee(ticket, assignee);
 
+		releaseReservedRentalAssetIfNeeded(ticket, companyId);
 		ticket.rejectAsset(assignee, request.getRejectionReason().trim(), LocalDateTime.now());
 
 		return AssetApprovalResponse.from(ticket);
+	}
+
+	@Transactional
+	public TicketProcessingStatusUpdateResponse changeProcessingStatus(
+		AuthenticatedMember authenticatedMember,
+		UUID ticketId,
+		TicketProcessingStatusUpdateRequest request
+	) {
+		UUID companyId = authenticatedMember.companyId();
+		Member member = findActiveMember(authenticatedMember.id(), companyId);
+		Ticket ticket = findActiveTicket(ticketId, companyId);
+
+		validateProcessingStatusChangeable(ticket, member, request.getTicketStatus());
+		ticket.changeProcessingStatus(request.getTicketStatus(), LocalDateTime.now());
+		syncAssetRequestStatus(ticket, companyId, request.getTicketStatus());
+
+		return TicketProcessingStatusUpdateResponse.from(ticket);
 	}
 
 	public PaginationResponse<TicketListItemResponse> getTickets(
@@ -182,8 +228,122 @@ public class TicketService {
 	}
 
 	private Ticket findActiveTicket(UUID ticketId, UUID companyId) {
-		return ticketRepository.findByIdAndCompany_IdAndDeletedAtIsNull(ticketId, companyId)
+		return ticketRepository.findWithLockByIdAndCompany_IdAndDeletedAtIsNull(ticketId, companyId)
 			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+	}
+
+	private void reserveRentalAssetIfNeeded(Ticket ticket, UUID companyId) {
+		if (ticket.getTicketType() != TicketType.RENTAL) {
+			return;
+		}
+
+		RentalTicket rentalTicket = findRentalTicket(ticket.getId(), companyId);
+		if (rentalTicket.getTangibleAsset() != null) {
+			return;
+		}
+
+		TangibleAsset reservedAsset = tangibleAssetRepository.findAvailableAssetsWithLock(
+				companyId,
+				rentalTicket.getTangibleAssetItem().getId(),
+				TangibleAssetStatus.AVAILABLE,
+				PageRequest.of(0, 1)
+			)
+			.stream()
+			.findFirst()
+			.orElseThrow(() -> new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "대여 가능한 자산 재고가 없습니다."));
+
+		reservedAsset.reserveForRental();
+		rentalTicket.reserveAsset(reservedAsset);
+	}
+
+	private void assignReservedRentalAssetIfNeeded(Ticket ticket, UUID companyId) {
+		if (ticket.getTicketType() != TicketType.RENTAL) {
+			return;
+		}
+
+		RentalTicket rentalTicket = findRentalTicket(ticket.getId(), companyId);
+		TangibleAsset asset = rentalTicket.getTangibleAsset();
+		if (asset == null) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "예약된 대여 자산이 없습니다.");
+		}
+
+		TangibleAsset lockedAsset = tangibleAssetRepository.findWithLockByIdAndCompany_Id(asset.getId(), companyId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_NOT_FOUND));
+		if (lockedAsset.getTangibleAssetStatus() != TangibleAssetStatus.RESERVED) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "예약 상태의 대여 자산이 아닙니다.");
+		}
+
+		TangibleAssetAssignment assignment = TangibleAssetAssignment.builder()
+			.company(ticket.getCompany())
+			.tangibleAsset(lockedAsset)
+			.member(ticket.getRequester())
+			.department(ticket.getDepartment())
+			.assignmentType(UsageType.TEMPORARY)
+			.assignedAt(rentalTicket.getRentalStartDate())
+			.endedAt(rentalTicket.getRequestedDueDate())
+			.assignmentStatus(AssignmentStatus.ACTIVE)
+			.build();
+		tangibleAssetAssignmentRepository.save(assignment);
+
+		lockedAsset.markInUse(
+			ticket.getRequester(),
+			ticket.getDepartment(),
+			UsageType.TEMPORARY,
+			resolveAssetUsageType(rentalTicket),
+			rentalTicket.getRentalStartDate(),
+			rentalTicket.getRequestedDueDate()
+		);
+		rentalTicket.markAssigned();
+	}
+
+	private void releaseReservedRentalAssetIfNeeded(Ticket ticket, UUID companyId) {
+		if (ticket.getTicketType() != TicketType.RENTAL) {
+			return;
+		}
+
+		RentalTicket rentalTicket = findRentalTicket(ticket.getId(), companyId);
+		TangibleAsset asset = rentalTicket.getTangibleAsset();
+		if (asset == null) {
+			return;
+		}
+
+		TangibleAsset lockedAsset = tangibleAssetRepository.findWithLockByIdAndCompany_Id(asset.getId(), companyId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_NOT_FOUND));
+		if (lockedAsset.getTangibleAssetStatus() == TangibleAssetStatus.RESERVED) {
+			lockedAsset.releaseReservation();
+		}
+		rentalTicket.cancelReservation();
+	}
+
+	private void startProcessingAfterAssetApprovalIfNeeded(Ticket ticket, UUID companyId) {
+		if (shouldStartProcessingAfterAssetApproval(ticket, companyId)) {
+			ticket.changeProcessingStatus(TicketStatus.IN_PROGRESS, LocalDateTime.now());
+		}
+	}
+
+	private boolean shouldStartProcessingAfterAssetApproval(Ticket ticket, UUID companyId) {
+		if (ticket.getTicketType() == TicketType.ASSET_REQUEST) {
+			return false;
+		}
+		if (ticket.getTicketType() == TicketType.PURCHASE_REQUEST) {
+			PurchaseRequestTicket purchaseRequestTicket = purchaseRequestTicketRepository
+				.findByIdAndCompany_Id(ticket.getId(), companyId)
+				.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+			return purchaseRequestTicket.getRequestMethod() == RequestMethod.DIRECT_PURCHASE;
+		}
+		return true;
+	}
+
+	private RentalTicket findRentalTicket(UUID ticketId, UUID companyId) {
+		return rentalTicketRepository.findByIdAndCompany_IdAndDeletedAtIsNull(ticketId, companyId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+	}
+
+	private AssetUsageType resolveAssetUsageType(RentalTicket rentalTicket) {
+		return switch (rentalTicket.getRequestedUsageType()) {
+			case PERSONAL -> AssetUsageType.PERSONAL;
+			case DEPARTMENT -> AssetUsageType.DEPARTMENT;
+		};
 	}
 
 	private void validateDepartmentApprover(Ticket ticket, Member member) {
@@ -222,6 +382,19 @@ public class TicketService {
 		}
 	}
 
+	private void validateCancellable(Ticket ticket, Member member) {
+		if (ticket.getRequester().getId().equals(member.getId())) {
+			validateTicketStatus(ticket, TicketStatus.REQUESTED, "부서장 승인 전 티켓만 취소할 수 있습니다.");
+			return;
+		}
+
+		if (isAssetRole(member.getRole()) && isCancellableByAssetRole(ticket.getTicketStatus())) {
+			return;
+		}
+
+		throw new BusinessException(ErrorCode.ACCESS_DENIED);
+	}
+
 	private void validateUnassigned(Ticket ticket) {
 		if (ticket.getAssignee() != null) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "이미 담당자가 지정된 티켓입니다.");
@@ -251,6 +424,87 @@ public class TicketService {
 		if (ticket.getTicketStatus() != expectedStatus) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, message);
 		}
+	}
+
+	private void validateProcessingStatusChangeable(Ticket ticket, Member member, TicketStatus targetStatus) {
+		if (ticket.getTicketType() != TicketType.ASSET_REQUEST) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "자산요청 티켓만 처리상태를 변경할 수 있습니다.");
+		}
+		if (!isAssetRole(member.getRole())) {
+			throw new BusinessException(ErrorCode.ACCESS_DENIED);
+		}
+		if (!isProcessingTargetStatus(targetStatus)) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "처리상태는 IN_PROGRESS, COMPLETED, CANCELLED만 변경할 수 있습니다.");
+		}
+		if (!isProcessingChangeableStatus(ticket.getTicketStatus())) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "구매자산팀 승인 이후 티켓만 처리상태를 변경할 수 있습니다.");
+		}
+		if (isTerminalProcessingStatus(ticket.getTicketStatus())) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "완료 또는 취소된 티켓은 처리상태를 변경할 수 없습니다.");
+		}
+		if (ticket.getTicketStatus() == TicketStatus.ASSET_APPROVED && targetStatus == TicketStatus.COMPLETED) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "처리중 상태 이후 완료할 수 있습니다.");
+		}
+		if (processingStatusOrder(targetStatus) <= processingStatusOrder(ticket.getTicketStatus())) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "현재 처리상태 이후의 상태로만 변경할 수 있습니다.");
+		}
+	}
+
+	private void syncCancelledDetailStatusIfNeeded(Ticket ticket, UUID companyId) {
+		if (ticket.getTicketType() != TicketType.ASSET_REQUEST) {
+			return;
+		}
+		syncAssetRequestStatus(ticket, companyId, TicketStatus.CANCELLED);
+	}
+
+	private void syncAssetRequestStatus(Ticket ticket, UUID companyId, TicketStatus targetStatus) {
+		AssetRequestTicket assetRequestTicket = assetRequestTicketRepository
+			.findByIdAndCompany_IdAndDeletedAtIsNull(ticket.getId(), companyId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+
+		if (targetStatus == TicketStatus.IN_PROGRESS) {
+			assetRequestTicket.markAssigned();
+			return;
+		}
+		if (targetStatus == TicketStatus.COMPLETED) {
+			assetRequestTicket.complete();
+			return;
+		}
+		assetRequestTicket.cancel();
+	}
+
+	private boolean isAssetRole(MemberRole role) {
+		return role == MemberRole.ADMIN || role == MemberRole.ASSET_MANAGER || role == MemberRole.ASSET_TEAM;
+	}
+
+	private boolean isProcessingTargetStatus(TicketStatus status) {
+		return status == TicketStatus.IN_PROGRESS
+			|| status == TicketStatus.COMPLETED
+			|| status == TicketStatus.CANCELLED;
+	}
+
+	private boolean isProcessingChangeableStatus(TicketStatus status) {
+		return status == TicketStatus.ASSET_APPROVED || isProcessingTargetStatus(status);
+	}
+
+	private boolean isTerminalProcessingStatus(TicketStatus status) {
+		return status == TicketStatus.COMPLETED || status == TicketStatus.CANCELLED;
+	}
+
+	private int processingStatusOrder(TicketStatus status) {
+		return switch (status) {
+			case ASSET_APPROVED -> 1;
+			case IN_PROGRESS -> 2;
+			case COMPLETED, CANCELLED -> 3;
+			default -> 0;
+		};
+	}
+
+	private boolean isCancellableByAssetRole(TicketStatus status) {
+		return status == TicketStatus.REQUESTED
+			|| status == TicketStatus.DEPARTMENT_APPROVED
+			|| status == TicketStatus.IN_PROGRESS
+			|| status == TicketStatus.ASSET_APPROVED;
 	}
 
 	private void applySearchScope(Member member, TicketSearchRequest request) {

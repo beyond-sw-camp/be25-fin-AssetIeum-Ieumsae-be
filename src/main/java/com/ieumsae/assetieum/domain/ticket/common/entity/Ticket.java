@@ -259,7 +259,7 @@ public class Ticket extends BaseEntity {
 	}
 
 	public void approveAsset(Member assignee, LocalDateTime approvedAt) {
-		this.ticketStatus = TicketStatus.IN_PROGRESS;
+		this.ticketStatus = TicketStatus.ASSET_APPROVED;
 		this.assignee = assignee;
 		this.purchaseApprovedAt = approvedAt;
 		this.purchaseRejectedAt = null;
@@ -276,5 +276,23 @@ public class Ticket extends BaseEntity {
 	public void cancel(LocalDateTime cancelledAt) {
 		this.ticketStatus = TicketStatus.CANCELLED;
 		this.cancelledAt = cancelledAt;
+	}
+
+	public void changeProcessingStatus(TicketStatus status, LocalDateTime processedAt) {
+		this.ticketStatus = status;
+		if (status == TicketStatus.IN_PROGRESS) {
+			this.completedAt = null;
+			this.cancelledAt = null;
+			return;
+		}
+		if (status == TicketStatus.COMPLETED) {
+			this.completedAt = processedAt;
+			this.cancelledAt = null;
+			return;
+		}
+		if (status == TicketStatus.CANCELLED) {
+			this.cancelledAt = processedAt;
+			this.completedAt = null;
+		}
 	}
 }
