@@ -209,6 +209,7 @@ public class RentalTicketService {
 		validateRentalAssetTarget(rentalTicket, selectedAsset);
 		releaseDifferentReservedAssetIfNeeded(rentalTicket, selectedAsset, companyId);
 
+		// 대여 완료의 기준은 실제 자산 배정 이력 생성이다.
 		TangibleAssetAssignment assignment = TangibleAssetAssignment.builder()
 			.company(ticket.getCompany())
 			.tangibleAsset(selectedAsset)
@@ -231,6 +232,7 @@ public class RentalTicketService {
 		);
 		rentalTicket.reserveAsset(selectedAsset);
 		rentalTicket.markAssigned();
+		// 배정됨 상태를 거친 뒤 공통 티켓과 상세 티켓을 모두 완료 처리한다.
 		ticket.changeProcessingStatus(TicketStatus.COMPLETED, LocalDateTime.now());
 		rentalTicket.complete();
 
@@ -261,6 +263,7 @@ public class RentalTicketService {
 			.findByCompany_IdAndTangibleAsset_IdAndAssignmentStatus(companyId, asset.getId(), AssignmentStatus.ACTIVE)
 			.orElseThrow(() -> new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "활성 대여 배정 이력을 찾을 수 없습니다."));
 
+		// 대여연장 완료의 기준은 자산과 배정 이력의 반납 예정일 확정이다.
 		asset.updateReturnDueDate(request.getReturnDueDate());
 		assignment.updateEndedAt(request.getReturnDueDate());
 		ticket.changeProcessingStatus(TicketStatus.COMPLETED, LocalDateTime.now());
