@@ -143,8 +143,8 @@ public class PurchasePlanRepositoryImpl implements PurchasePlanRepositoryCustom 
             String trimmedKeyword = keyword.trim();
             condition.and(
                     purchasePlan.planNo.containsIgnoreCase(trimmedKeyword)
-                            .or(purchasePlanItem.itemName.equalsIgnoreCase(trimmedKeyword))
-                            .or(purchasePlanItem.itemName.containsIgnoreCase(trimmedKeyword))
+                            .or(purchasePlanItem.productName.equalsIgnoreCase(trimmedKeyword))
+                            .or(purchasePlanItem.productName.containsIgnoreCase(trimmedKeyword))
             );
         }
 
