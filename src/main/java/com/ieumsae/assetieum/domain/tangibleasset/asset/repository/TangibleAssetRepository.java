@@ -6,6 +6,7 @@ import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -48,6 +49,28 @@ public interface TangibleAssetRepository extends JpaRepository<TangibleAsset, UU
             order by asset.createdAt asc
             """)
     List<TangibleAsset> findAvailableAssetsWithLock(UUID companyId, UUID itemId, TangibleAssetStatus status, Pageable pageable);
+
+    @Query("""
+            select asset
+            from TangibleAsset asset
+            where asset.company.id = :companyId
+              and asset.tangibleAssetItem.id = :itemId
+              and asset.tangibleAssetStatus = :status
+              and (
+                    :keyword is null
+                    or lower(asset.assetCode) like lower(concat('%', :keyword, '%'))
+                    or lower(asset.serialNumber) like lower(concat('%', :keyword, '%'))
+                    or lower(asset.location) like lower(concat('%', :keyword, '%'))
+                  )
+            order by asset.createdAt asc
+            """)
+    Page<TangibleAsset> searchRentalAssignableAssets(
+            UUID companyId,
+            UUID itemId,
+            TangibleAssetStatus status,
+            String keyword,
+            Pageable pageable
+    );
 
     List<TangibleAsset> findAllByCompany_IdAndTangibleAssetStatus(UUID companyId, TangibleAssetStatus status);
 

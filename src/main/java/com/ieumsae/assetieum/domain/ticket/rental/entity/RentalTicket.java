@@ -128,6 +128,10 @@ public class RentalTicket {
 		this.status = RentalTicketStatus.ASSIGNED;
 	}
 
+	public void complete() {
+		this.status = RentalTicketStatus.COMPLETED;
+	}
+
 	public void cancelReservation() {
 		this.status = RentalTicketStatus.CANCELLED;
 	}
