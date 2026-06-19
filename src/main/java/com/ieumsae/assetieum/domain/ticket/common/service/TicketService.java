@@ -1,5 +1,6 @@
 package com.ieumsae.assetieum.domain.ticket.common.service;
 
+import com.ieumsae.assetieum.domain.budget.budget.service.BudgetExecutionService;
 import com.ieumsae.assetieum.domain.department.entity.Department;
 import com.ieumsae.assetieum.domain.department.repository.DepartmentRepository;
 import com.ieumsae.assetieum.domain.member.entity.Member;
@@ -63,6 +64,7 @@ public class TicketService {
 	private final AssetRequestTicketRepository assetRequestTicketRepository;
 	private final PurchaseRequestTicketRepository purchaseRequestTicketRepository;
 	private final TicketApprovalResolver ticketApprovalResolver;
+	private final BudgetExecutionService budgetExecutionService;
 
 	@Transactional
 	public TicketAssigneeResponse assignMe(
@@ -92,6 +94,7 @@ public class TicketService {
 		validateCancellable(ticket, member);
 
 		releaseReservedRentalAssetIfNeeded(ticket, companyId);
+		budgetExecutionService.releaseHoldForCancellation(ticket, companyId);
 		ticket.cancel(LocalDateTime.now());
 		syncCancelledDetailStatusIfNeeded(ticket, companyId);
 
@@ -110,6 +113,7 @@ public class TicketService {
 		validateTicketStatus(ticket, TicketStatus.REQUESTED, "요청 상태의 티켓만 부서장 승인 처리할 수 있습니다.");
 
 		reserveRentalAssetIfNeeded(ticket, companyId);
+		budgetExecutionService.holdForAssetRequest(ticket, companyId);
 		ticket.approveDepartment(LocalDateTime.now());
 
 		return DepartmentApprovalResponse.from(ticket);

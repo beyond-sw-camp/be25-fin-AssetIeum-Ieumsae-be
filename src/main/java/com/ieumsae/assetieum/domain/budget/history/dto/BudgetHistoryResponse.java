@@ -21,6 +21,10 @@ import lombok.NoArgsConstructor;
         "departmentName",
         "budgetId",
         "budgetYear",
+        "ticketId",
+        "ticketNo",
+        "purchasePlanId",
+        "purchasePlanNo",
         "historyType",
         "amount",
         "usedAmountBefore",
@@ -42,6 +46,14 @@ public class BudgetHistoryResponse {
     private UUID budgetId;
 
     private Integer budgetYear;
+
+    private UUID ticketId;
+
+    private String ticketNo;
+
+    private UUID purchasePlanId;
+
+    private String purchasePlanNo;
 
     private BudgetHistoryType historyType;
 
