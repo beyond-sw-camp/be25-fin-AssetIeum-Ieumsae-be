@@ -21,8 +21,11 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -75,6 +78,18 @@ public class TangibleAssetController {
                 tangibleAssetService.updateAsset(assetId, request, member.companyId());
 
         return ApiResponse.ok("유형자산이 수정되었습니다.", response);
+    }
+
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
+    @PostMapping("/import")
+    public ApiResponse<List<TangibleAssetResponse>> importAssets(
+            @AuthenticationPrincipal AuthenticatedMember member,
+            @RequestPart("file") MultipartFile file
+    ) {
+        List<TangibleAssetResponse> response =
+                tangibleAssetService.importAssets(file, member.companyId());
+
+        return ApiResponse.ok("유형자산이 일괄 등록되었습니다.", response);
     }
 
 }

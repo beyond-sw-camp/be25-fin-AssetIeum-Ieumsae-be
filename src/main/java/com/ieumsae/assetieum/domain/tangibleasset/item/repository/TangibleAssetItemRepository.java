@@ -18,4 +18,6 @@ public interface TangibleAssetItemRepository
     Optional<TangibleAssetItem> findByIdAndDeletedAtIsNull(UUID itemId);
 
     Optional<TangibleAssetItem> findByIdAndCompany_IdAndDeletedAtIsNull(UUID itemId, UUID companyId);
+
+    Optional<TangibleAssetItem> findByModelNameAndCompany_Id(String modelName, UUID companyId);
 }
