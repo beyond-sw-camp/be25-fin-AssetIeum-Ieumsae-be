@@ -19,6 +19,7 @@ import com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.PurchasePlanIte
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.repository.PurchasePlanRepository;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.type.PurchaseRequestStatus;
 import com.ieumsae.assetieum.domain.purchase.purchaseplanitem.dto.PurchasePlanItemCreateRequest;
+import com.ieumsae.assetieum.domain.purchase.purchaseplanitem.dto.PurchasePlanItemResponse;
 import com.ieumsae.assetieum.domain.purchase.purchaseplanitem.repository.PurchasePlanItemRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
 import com.ieumsae.assetieum.domain.tangibleasset.item.repository.TangibleAssetItemRepository;
@@ -247,7 +248,8 @@ public class PurchasePlanService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.PURCHASE_PLAN_NOT_FOUND));
 
         List<PurchasePlanItem> purchasePlanItems =
-                purchasePlanItemRepository.findAllByPurchasePlan_IdAndCompany_Id(planId, companyId);
+                purchasePlanItemRepository.findAllByPurchasePlan_IdAndCompany_Id(planId, companyId)
+                        .orElseThrow(() -> new BusinessException(ErrorCode.PURCHASE_PLAN_ITEM_NOT_FOUND));
 
         return PurchasePlanDetailResponse.from(purchasePlan, purchasePlanItems);
     }
@@ -287,7 +289,9 @@ public class PurchasePlanService {
         List<PurchasePlanItem> items = purchasePlanItemRepository.findAllByPurchasePlan_IdAndCompany_Id(
                 purchasePlan.getId(),
                 companyId
-        );
+        )
+                .orElseThrow(() -> new BusinessException(ErrorCode.PURCHASE_PLAN_ITEM_NOT_FOUND));
+
         for (PurchasePlanItem item : items) {
             PurchaseRequestTicket purchaseRequestTicket = item.getPurchaseRequestTicket();
             if (purchaseRequestTicket == null) {
@@ -334,5 +338,42 @@ public class PurchasePlanService {
         // 2. 통계값 반환
         return purchasePlanRepository.getPurchasePlanStatistics(companyId);
 
+    }
+
+    @Transactional
+    public PurchasePlanItemResponse updatePurchasePlanItemStatus(
+            UUID planId,
+            Long itemId,
+            UUID companyId
+    ) {
+        // 1. 입력값 확인
+        companyRepository.findByIdAndDeletedAtIsNull(companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
+
+        PurchasePlan purchasePlan = purchasePlanRepository.findByIdAndDeletedAtIsNullAndCompany_Id(planId, companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PURCHASE_PLAN_NOT_FOUND));
+
+        PurchasePlanItem purchasePlanItem = purchasePlanItemRepository.findByIdAndPurchasePlan_IdAndCompany_Id(itemId, planId, companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PURCHASE_PLAN_ITEM_NOT_FOUND));
+
+        List<PurchasePlanItem> purchasePlanItems = purchasePlanItemRepository.findAllByPurchasePlan_IdAndCompany_Id(planId, companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PURCHASE_PLAN_ITEM_NOT_FOUND));
+
+        // 2. 납품 확인으로 상태 변경
+        // 모든 상품이 납품 확인이 되었으면 해당 plan 의 상태도 delivered 로 변경
+
+        validateStatusTransition(purchasePlan.getPurchaseRequestStatus(), PurchaseRequestStatus.DELIVERED);
+
+        purchasePlanItem.updateStatus();
+
+        for (PurchasePlanItem item : purchasePlanItems) {
+            if (item.getReceivedAt() == null) {
+                return PurchasePlanItemResponse.from(purchasePlanItem);
+            }
+        }
+
+        purchasePlan.updateStatus(PurchaseRequestStatus.DELIVERED);
+
+        return PurchasePlanItemResponse.from(purchasePlanItem);
     }
 }

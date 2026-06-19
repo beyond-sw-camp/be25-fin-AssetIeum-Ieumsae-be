@@ -83,6 +83,7 @@ public enum ErrorCode {
 	PURCHASE_PLAN_NOT_FOUND(HttpStatus.NOT_FOUND, "purchase-plan-001", "구매 계획을 찾을 수 없습니다."),
 	PURCHASE_PLAN_DELETE_ONLY_REQUESTED(HttpStatus.CONFLICT, "purchase-plan-002", "구매 계획은 REQUESTED 상태일 때만 삭제할 수 있습니다."),
 	PURCHASE_PLAN_INVALID_STATUS_TRANSITION(HttpStatus.CONFLICT, "purchase-plan-003", "변경할 수 없는 구매 계획 상태입니다."),
+	PURCHASE_PLAN_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "purchase-plan-004", "구매 계획 아이템을 찾을 수 없습니다."),
 
 	// 구매 정책
 	PURCHASE_POLICY_NOT_FOUND(HttpStatus.NOT_FOUND, "purchase-policy-001", "구매 정책을 찾을 수 없습니다."),

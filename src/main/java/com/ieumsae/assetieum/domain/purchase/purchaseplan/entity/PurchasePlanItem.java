@@ -80,4 +80,8 @@ public class PurchasePlanItem extends BaseEntity {
 
     @Column(name = "received_at")
     private LocalDateTime receivedAt;
+
+    public void updateStatus() {
+        this.receivedAt = LocalDateTime.now();
+    }
 }
