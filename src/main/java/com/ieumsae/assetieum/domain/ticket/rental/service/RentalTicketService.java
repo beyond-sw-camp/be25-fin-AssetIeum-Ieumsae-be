@@ -1,6 +1,7 @@
 package com.ieumsae.assetieum.domain.ticket.rental.service;
 
 import com.ieumsae.assetieum.domain.member.entity.Member;
+import com.ieumsae.assetieum.domain.member.type.MemberRole;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.entity.TangibleAsset;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.repository.TangibleAssetRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.type.AssetUsageType;
@@ -21,11 +22,18 @@ import com.ieumsae.assetieum.domain.ticket.common.service.TicketNoGenerator;
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketRequesterResolver;
 import com.ieumsae.assetieum.domain.ticket.common.service.TangibleAssetTicketConflictValidator;
 import com.ieumsae.assetieum.domain.ticket.common.type.RequestedUsageType;
+import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
 import com.ieumsae.assetieum.domain.ticket.rental.dto.ActiveRentalAssetResponse;
+import com.ieumsae.assetieum.domain.ticket.rental.dto.RentalAssetAssignRequest;
+import com.ieumsae.assetieum.domain.ticket.rental.dto.RentalAssetAssignResponse;
 import com.ieumsae.assetieum.domain.ticket.rental.dto.RentalExtensionTicketCreateRequest;
 import com.ieumsae.assetieum.domain.ticket.rental.dto.RentalExtensionTicketCreateResponse;
+import com.ieumsae.assetieum.domain.ticket.rental.dto.RentalAssignableAssetResponse;
+import com.ieumsae.assetieum.domain.ticket.rental.dto.RentalAssignableAssetSearchRequest;
+import com.ieumsae.assetieum.domain.ticket.rental.dto.RentalAssignableAssetsResponse;
 import com.ieumsae.assetieum.domain.ticket.rental.dto.RentalTicketCreateRequest;
 import com.ieumsae.assetieum.domain.ticket.rental.dto.RentalTicketCreateResponse;
+import com.ieumsae.assetieum.domain.ticket.rental.dto.RentalTicketDetailResponse;
 import com.ieumsae.assetieum.domain.ticket.rental.entity.RentalTicket;
 import com.ieumsae.assetieum.domain.ticket.rental.repository.RentalTicketRepository;
 import com.ieumsae.assetieum.global.exception.BusinessException;
@@ -56,6 +64,7 @@ public class RentalTicketService {
 	private final TicketRequesterResolver ticketRequesterResolver;
 	private final AssignedAssetValidator assignedAssetValidator;
 	private final TangibleAssetTicketConflictValidator tangibleAssetTicketConflictValidator;
+	private final RentalTicketActionResolver rentalTicketActionResolver;
 
 	public PaginationResponse<AvailableRentalItemResponse> getAvailableRentalItems(
 		AuthenticatedMember authenticatedMember,
@@ -90,6 +99,117 @@ public class RentalTicketService {
 			.filter(this::isActiveRentalAsset)
 			.map(ActiveRentalAssetResponse::from)
 			.toList();
+	}
+
+	public RentalTicketDetailResponse getRentalTicket(
+		AuthenticatedMember authenticatedMember,
+		UUID ticketId
+	) {
+		UUID companyId = authenticatedMember.companyId();
+		Member viewer = ticketRequesterResolver.resolveActiveRequester(authenticatedMember.id(), companyId);
+		RentalTicket rentalTicket = findRentalTicket(ticketId, companyId);
+		Ticket ticket = rentalTicket.getTicket();
+
+		rentalTicketActionResolver.validateReadable(ticket, viewer);
+		boolean requesterView = ticket.getRequester().getId().equals(viewer.getId());
+
+		return RentalTicketDetailResponse.from(
+			ticket,
+			rentalTicket,
+			viewer.getRole(),
+			requesterView,
+			rentalTicketActionResolver.createActions(ticket, viewer)
+		);
+	}
+
+	public RentalAssignableAssetsResponse getAssignableAssets(
+		AuthenticatedMember authenticatedMember,
+		UUID ticketId,
+		RentalAssignableAssetSearchRequest request
+	) {
+		UUID companyId = authenticatedMember.companyId();
+		Member viewer = ticketRequesterResolver.resolveActiveRequester(authenticatedMember.id(), companyId);
+		RentalTicket rentalTicket = findRentalTicket(ticketId, companyId);
+		Ticket ticket = rentalTicket.getTicket();
+
+		rentalTicketActionResolver.validateReadable(ticket, viewer);
+
+		UUID reservedAssetId = rentalTicket.getTangibleAsset() == null
+			? null
+			: rentalTicket.getTangibleAsset().getId();
+		RentalAssignableAssetResponse reservedAsset = rentalTicket.getTangibleAsset() == null
+			? null
+			: RentalAssignableAssetResponse.from(rentalTicket.getTangibleAsset(), reservedAssetId);
+
+		Page<RentalAssignableAssetResponse> assets = tangibleAssetRepository.searchRentalAssignableAssets(
+				companyId,
+				rentalTicket.getTangibleAssetItem().getId(),
+				TangibleAssetStatus.AVAILABLE,
+				normalize(request.getKeyword()),
+				request.toPageable()
+			)
+			.map(asset -> RentalAssignableAssetResponse.from(asset, reservedAssetId));
+
+		return RentalAssignableAssetsResponse.builder()
+			.requestedItem(RentalTicketDetailResponse.ItemSummary.builder()
+				.itemId(rentalTicket.getTangibleAssetItem().getId())
+				.name(rentalTicket.getTangibleAssetItem().getProductName())
+				.manufacturer(rentalTicket.getTangibleAssetItem().getManufacturer())
+				.build())
+			.reservedAsset(reservedAsset)
+			.assets(PaginationResponse.from(assets))
+			.build();
+	}
+
+	@Transactional
+	public RentalAssetAssignResponse assignRentalAsset(
+		AuthenticatedMember authenticatedMember,
+		UUID ticketId,
+		RentalAssetAssignRequest request
+	) {
+		UUID companyId = authenticatedMember.companyId();
+		Member assignee = ticketRequesterResolver.resolveActiveRequester(authenticatedMember.id(), companyId);
+		RentalTicket rentalTicket = findRentalTicket(ticketId, companyId);
+		Ticket ticket = rentalTicket.getTicket();
+
+		validateRentalAssignable(ticket, assignee);
+		validateRentalAssignee(ticket, assignee);
+		validateRentalAssignStatus(ticket);
+
+		TangibleAsset selectedAsset = tangibleAssetRepository.findWithLockByIdAndCompany_Id(
+				request.getAssetId(),
+				companyId
+			)
+			.orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_NOT_FOUND));
+		validateRentalAssetTarget(rentalTicket, selectedAsset);
+		releaseDifferentReservedAssetIfNeeded(rentalTicket, selectedAsset, companyId);
+
+		TangibleAssetAssignment assignment = TangibleAssetAssignment.builder()
+			.company(ticket.getCompany())
+			.tangibleAsset(selectedAsset)
+			.member(ticket.getRequester())
+			.department(ticket.getDepartment())
+			.assignmentType(UsageType.TEMPORARY)
+			.assignedAt(rentalTicket.getRentalStartDate())
+			.endedAt(rentalTicket.getRequestedDueDate())
+			.assignmentStatus(AssignmentStatus.ACTIVE)
+			.build();
+		tangibleAssetAssignmentRepository.save(assignment);
+
+		selectedAsset.markInUse(
+			ticket.getRequester(),
+			ticket.getDepartment(),
+			UsageType.TEMPORARY,
+			resolveAssetUsageType(rentalTicket),
+			rentalTicket.getRentalStartDate(),
+			rentalTicket.getRequestedDueDate()
+		);
+		rentalTicket.reserveAsset(selectedAsset);
+		rentalTicket.markAssigned();
+		ticket.changeProcessingStatus(TicketStatus.COMPLETED, LocalDateTime.now());
+		rentalTicket.complete();
+
+		return RentalAssetAssignResponse.from(ticket, rentalTicket, selectedAsset);
 	}
 
 	@Transactional
@@ -198,6 +318,76 @@ public class RentalTicketService {
 			&& asset.getReturnDueDate() != null;
 	}
 
+	private void validateRentalAssignable(Ticket ticket, Member member) {
+		if (ticketApprovalResolver.requiresAdminAssetApproval(ticket)) {
+			if (member.getRole() != MemberRole.ADMIN) {
+				throw new BusinessException(ErrorCode.ACCESS_DENIED);
+			}
+			return;
+		}
+		if (ticketApprovalResolver.requiresAssetManagerApproval(ticket)) {
+			if (member.getRole() != MemberRole.ASSET_MANAGER) {
+				throw new BusinessException(ErrorCode.ACCESS_DENIED);
+			}
+			return;
+		}
+		if (member.getRole() == MemberRole.ASSET_MANAGER
+			|| member.getRole() == MemberRole.ASSET_TEAM) {
+			return;
+		}
+		throw new BusinessException(ErrorCode.ACCESS_DENIED);
+	}
+
+	private void validateRentalAssignStatus(Ticket ticket) {
+		if (ticket.getTicketStatus() != TicketStatus.ASSET_APPROVED) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "구매자산팀 승인 상태의 대여 티켓만 자산을 할당할 수 있습니다.");
+		}
+	}
+
+	private void validateRentalAssignee(Ticket ticket, Member assignee) {
+		if (ticket.getAssignee() == null) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "담당자 지정 후 대여 자산을 할당할 수 있습니다.");
+		}
+		if (!ticket.getAssignee().getId().equals(assignee.getId())) {
+			throw new BusinessException(ErrorCode.ACCESS_DENIED);
+		}
+	}
+
+	private void validateRentalAssetTarget(RentalTicket rentalTicket, TangibleAsset asset) {
+		if (!asset.getTangibleAssetItem().getId().equals(rentalTicket.getTangibleAssetItem().getId())) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "요청 품목과 다른 대여 자산은 할당할 수 없습니다.");
+		}
+		if (asset.getTangibleAssetStatus() == TangibleAssetStatus.AVAILABLE) {
+			return;
+		}
+		if (asset.getTangibleAssetStatus() == TangibleAssetStatus.RESERVED
+			&& rentalTicket.getTangibleAsset() != null
+			&& rentalTicket.getTangibleAsset().getId().equals(asset.getId())) {
+			return;
+		}
+		throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "할당 가능한 대여 자산이 아닙니다.");
+	}
+
+	private void releaseDifferentReservedAssetIfNeeded(
+		RentalTicket rentalTicket,
+		TangibleAsset selectedAsset,
+		UUID companyId
+	) {
+		TangibleAsset reservedAsset = rentalTicket.getTangibleAsset();
+		if (reservedAsset == null || reservedAsset.getId().equals(selectedAsset.getId())) {
+			return;
+		}
+
+		TangibleAsset lockedReservedAsset = tangibleAssetRepository.findWithLockByIdAndCompany_Id(
+				reservedAsset.getId(),
+				companyId
+			)
+			.orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_NOT_FOUND));
+		if (lockedReservedAsset.getTangibleAssetStatus() == TangibleAssetStatus.RESERVED) {
+			lockedReservedAsset.releaseReservation();
+		}
+	}
+
 	private void validateRentalExtensionTarget(TangibleAssetAssignment assignment, Member requester) {
 		TangibleAsset asset = assignment.getTangibleAsset();
 
@@ -220,6 +410,18 @@ public class RentalTicketService {
 		}
 
 		return RequestedUsageType.PERSONAL;
+	}
+
+	private RentalTicket findRentalTicket(UUID ticketId, UUID companyId) {
+		return rentalTicketRepository.findByIdAndCompany_IdAndDeletedAtIsNull(ticketId, companyId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+	}
+
+	private AssetUsageType resolveAssetUsageType(RentalTicket rentalTicket) {
+		return switch (rentalTicket.getRequestedUsageType()) {
+			case PERSONAL -> AssetUsageType.PERSONAL;
+			case DEPARTMENT -> AssetUsageType.DEPARTMENT;
+		};
 	}
 
 	private LocalDateTime resolveRentalStartDate(TangibleAsset asset, TangibleAssetAssignment assignment) {
