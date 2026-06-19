@@ -57,6 +57,15 @@ public class TangibleAssetItemController {
         return ApiResponse.ok("유형자산 품목 목록 조회에 성공했습니다.", response);
     }
 
+    @GetMapping({"/{productName}"})
+    public ApiResponse<TangibleAssetItemResponse> getItemByProductName(
+            @AuthenticationPrincipal AuthenticatedMember member,
+            @PathVariable String productName
+    ) {
+        TangibleAssetItemResponse response = tangibleAssetItemService.getItemByProductName(productName, member.companyId());
+        return ApiResponse.ok("유형자산 품목명 조회에 성공했습니다.", response);
+    }
+
     @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
     @PatchMapping("/{itemId}")
     public ApiResponse<TangibleAssetItemResponse> updateItem(
