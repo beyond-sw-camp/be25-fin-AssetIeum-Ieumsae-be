@@ -118,4 +118,17 @@ public class RentalTicket {
 			.requestedDueDate(requestedDueDate)
 			.build();
 	}
+
+	public void reserveAsset(TangibleAsset tangibleAsset) {
+		this.tangibleAsset = tangibleAsset;
+		this.status = RentalTicketStatus.RESERVED;
+	}
+
+	public void markAssigned() {
+		this.status = RentalTicketStatus.ASSIGNED;
+	}
+
+	public void cancelReservation() {
+		this.status = RentalTicketStatus.CANCELLED;
+	}
 }

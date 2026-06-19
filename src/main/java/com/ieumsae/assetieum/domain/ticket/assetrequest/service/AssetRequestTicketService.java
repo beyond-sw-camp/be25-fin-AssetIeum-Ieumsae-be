@@ -3,9 +3,12 @@ package com.ieumsae.assetieum.domain.ticket.assetrequest.service;
 import com.ieumsae.assetieum.domain.intangibleasset.item.entity.IntangibleAssetItem;
 import com.ieumsae.assetieum.domain.intangibleasset.item.repository.IntangibleAssetItemRepository;
 import com.ieumsae.assetieum.domain.member.entity.Member;
-import com.ieumsae.assetieum.domain.member.type.MemberRole;
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
 import com.ieumsae.assetieum.domain.tangibleasset.item.repository.TangibleAssetItemRepository;
+import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.AssetRequestAssignableItemSearchRequest;
+import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.AssetRequestAssignableItemsResponse;
+import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.AssetRequestAssignRequest;
+import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.AssetRequestAssignResponse;
 import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.AssetRequestTicketCreateRequest;
 import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.AssetRequestTicketCreateResponse;
 import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.AssetRequestTicketDetailResponse;
@@ -17,7 +20,6 @@ import com.ieumsae.assetieum.domain.ticket.common.service.TicketApprovalResolver
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketNoGenerator;
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketRequesterResolver;
 import com.ieumsae.assetieum.domain.ticket.common.type.AssetType;
-import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
@@ -39,6 +41,9 @@ public class AssetRequestTicketService {
 	private final TicketNoGenerator ticketNoGenerator;
 	private final TicketApprovalResolver ticketApprovalResolver;
 	private final TicketRequesterResolver ticketRequesterResolver;
+	private final AssetRequestAssignmentService assetRequestAssignmentService;
+	private final AssetRequestAvailabilityService assetRequestAvailabilityService;
+	private final AssetRequestActionResolver assetRequestActionResolver;
 
 	@Transactional
 	public AssetRequestTicketCreateResponse createAssetRequestTicket(
@@ -94,12 +99,10 @@ public class AssetRequestTicketService {
 	) {
 		UUID companyId = authenticatedMember.companyId();
 		Member viewer = ticketRequesterResolver.resolveActiveRequester(authenticatedMember.id(), companyId);
-		AssetRequestTicket assetRequestTicket = assetRequestTicketRepository
-			.findByIdAndCompany_IdAndDeletedAtIsNull(ticketId, companyId)
-			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+		AssetRequestTicket assetRequestTicket = findAssetRequestTicket(ticketId, companyId);
 		Ticket ticket = assetRequestTicket.getTicket();
 
-		validateReadable(ticket, viewer);
+		assetRequestActionResolver.validateReadable(ticket, viewer);
 		boolean requesterView = ticket.getRequester().getId().equals(viewer.getId());
 
 		return AssetRequestTicketDetailResponse.from(
@@ -107,8 +110,35 @@ public class AssetRequestTicketService {
 			assetRequestTicket,
 			viewer.getRole(),
 			requesterView,
-			createActions(ticket, viewer)
+			assetRequestActionResolver.createActions(ticket, viewer)
 		);
+	}
+
+	public AssetRequestAssignableItemsResponse getAssignableItems(
+		AuthenticatedMember authenticatedMember,
+		UUID ticketId,
+		AssetRequestAssignableItemSearchRequest request
+	) {
+		UUID companyId = authenticatedMember.companyId();
+		Member viewer = ticketRequesterResolver.resolveActiveRequester(authenticatedMember.id(), companyId);
+		AssetRequestTicket assetRequestTicket = findAssetRequestTicket(ticketId, companyId);
+		Ticket ticket = assetRequestTicket.getTicket();
+
+		assetRequestActionResolver.validateReadable(ticket, viewer);
+		return assetRequestAvailabilityService.getAssignableItems(companyId, assetRequestTicket, request);
+	}
+
+	@Transactional
+	public AssetRequestAssignResponse assignAssetRequest(
+		AuthenticatedMember authenticatedMember,
+		UUID ticketId,
+		AssetRequestAssignRequest request
+	) {
+		UUID companyId = authenticatedMember.companyId();
+		Member assignee = ticketRequesterResolver.resolveActiveRequester(authenticatedMember.id(), companyId);
+		AssetRequestTicket assetRequestTicket = findAssetRequestTicket(ticketId, companyId);
+
+		return assetRequestAssignmentService.assign(companyId, assignee, assetRequestTicket, request);
 	}
 
 	private TangibleAssetItem findTangibleAssetItem(UUID itemId, UUID companyId) {
@@ -131,72 +161,9 @@ public class AssetRequestTicketService {
 		return item;
 	}
 
-	private void validateReadable(Ticket ticket, Member viewer) {
-		if (ticket.getRequester().getId().equals(viewer.getId())
-			|| ticket.getApprover().getId().equals(viewer.getId())) {
-			return;
-		}
-
-		MemberRole role = viewer.getRole();
-		if (role == MemberRole.ADMIN || role == MemberRole.ASSET_MANAGER || role == MemberRole.ASSET_TEAM) {
-			return;
-		}
-
-		throw new BusinessException(ErrorCode.ACCESS_DENIED);
-	}
-
-	private AssetRequestTicketDetailResponse.Actions createActions(Ticket ticket, Member viewer) {
-		if (ticket.getRequester().getId().equals(viewer.getId())) {
-			return noActions();
-		}
-
-		boolean departmentApprover = ticket.getApprover().getId().equals(viewer.getId());
-		boolean requested = ticket.getTicketStatus() == TicketStatus.REQUESTED;
-		boolean departmentApproved = ticket.getTicketStatus() == TicketStatus.DEPARTMENT_APPROVED;
-		boolean assetAssignable = isAssetAssignable(ticket, viewer);
-		boolean assignee = ticket.getAssignee() != null && ticket.getAssignee().getId().equals(viewer.getId());
-		boolean assetRole = isAssetRole(viewer.getRole());
-
-		return AssetRequestTicketDetailResponse.Actions.builder()
-			.canApproveDepartment(departmentApprover && requested)
-			.canRejectDepartment(departmentApprover && requested)
-			.canAssignAsset(assetAssignable && ticket.getAssignee() == null && (requested || departmentApproved))
-			.canApproveAsset(assetAssignable && departmentApproved && assignee)
-			.canRejectAsset(assetAssignable && departmentApproved && assignee)
-			.canChangeProcessingStatus(assetRole && isProcessingStatusChangeable(ticket.getTicketStatus()))
-			.build();
-	}
-
-	private AssetRequestTicketDetailResponse.Actions noActions() {
-		return AssetRequestTicketDetailResponse.Actions.builder()
-			.canApproveDepartment(false)
-			.canRejectDepartment(false)
-			.canAssignAsset(false)
-			.canApproveAsset(false)
-			.canRejectAsset(false)
-			.canChangeProcessingStatus(false)
-			.build();
-	}
-
-	private boolean isAssetAssignable(Ticket ticket, Member member) {
-		MemberRole role = member.getRole();
-		if (ticketApprovalResolver.requiresAdminAssetApproval(ticket)) {
-			return role == MemberRole.ADMIN;
-		}
-		if (ticketApprovalResolver.requiresAssetManagerApproval(ticket)) {
-			return role == MemberRole.ASSET_MANAGER;
-		}
-		return role == MemberRole.ASSET_MANAGER || role == MemberRole.ASSET_TEAM;
-	}
-
-	private boolean isAssetRole(MemberRole role) {
-		return role == MemberRole.ADMIN || role == MemberRole.ASSET_MANAGER || role == MemberRole.ASSET_TEAM;
-	}
-
-	private boolean isProcessingStatusChangeable(TicketStatus status) {
-		return status == TicketStatus.IN_PROGRESS
-			|| status == TicketStatus.COMPLETED
-			|| status == TicketStatus.CANCELLED;
+	private AssetRequestTicket findAssetRequestTicket(UUID ticketId, UUID companyId) {
+		return assetRequestTicketRepository.findByIdAndCompany_IdAndDeletedAtIsNull(ticketId, companyId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
 	}
 
 	private String normalize(String value) {

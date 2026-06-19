@@ -2,10 +2,14 @@ package com.ieumsae.assetieum.domain.tangibleasset.asset.repository;
 
 import com.ieumsae.assetieum.domain.tangibleasset.asset.entity.TangibleAsset;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.type.TangibleAssetStatus;
+import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
 
 public interface TangibleAssetRepository extends JpaRepository<TangibleAsset, UUID>, TangibleAssetRepositoryCustom {
 
@@ -30,6 +34,20 @@ public interface TangibleAssetRepository extends JpaRepository<TangibleAsset, UU
     boolean existsByAssetCode(String assetCode);
 
     Optional<TangibleAsset> findByIdAndCompany_Id(UUID assetId, UUID companyId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<TangibleAsset> findWithLockByIdAndCompany_Id(UUID assetId, UUID companyId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select asset
+            from TangibleAsset asset
+            where asset.company.id = :companyId
+              and asset.tangibleAssetItem.id = :itemId
+              and asset.tangibleAssetStatus = :status
+            order by asset.createdAt asc
+            """)
+    List<TangibleAsset> findAvailableAssetsWithLock(UUID companyId, UUID itemId, TangibleAssetStatus status, Pageable pageable);
 
     List<TangibleAsset> findAllByCompany_IdAndTangibleAssetStatus(UUID companyId, TangibleAssetStatus status);
 

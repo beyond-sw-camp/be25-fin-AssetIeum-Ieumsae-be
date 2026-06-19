@@ -5,6 +5,8 @@ import com.ieumsae.assetieum.domain.ticket.common.dto.DepartmentApprovalResponse
 import com.ieumsae.assetieum.domain.ticket.common.dto.TicketAssigneeResponse;
 import com.ieumsae.assetieum.domain.ticket.common.dto.TicketCancelResponse;
 import com.ieumsae.assetieum.domain.ticket.common.dto.TicketListItemResponse;
+import com.ieumsae.assetieum.domain.ticket.common.dto.TicketProcessingStatusUpdateRequest;
+import com.ieumsae.assetieum.domain.ticket.common.dto.TicketProcessingStatusUpdateResponse;
 import com.ieumsae.assetieum.domain.ticket.common.dto.TicketRejectionRequest;
 import com.ieumsae.assetieum.domain.ticket.common.dto.TicketSearchRequest;
 import com.ieumsae.assetieum.domain.ticket.common.dto.TicketStatisticsResponse;
@@ -126,6 +128,22 @@ public class TicketController {
 		);
 
 		return ApiResponse.ok("구매자산팀 반려 처리에 성공했습니다.", response);
+	}
+
+	@PreAuthorize("isAuthenticated()")
+	@PatchMapping("/{ticketId}/processing-status")
+	public ApiResponse<TicketProcessingStatusUpdateResponse> changeProcessingStatus(
+		@AuthenticationPrincipal AuthenticatedMember authenticatedMember,
+		@PathVariable UUID ticketId,
+		@Valid @RequestBody TicketProcessingStatusUpdateRequest request
+	) {
+		TicketProcessingStatusUpdateResponse response = ticketService.changeProcessingStatus(
+			authenticatedMember,
+			ticketId,
+			request
+		);
+
+		return ApiResponse.ok("티켓 처리상태 변경에 성공했습니다.", response);
 	}
 
 	@PreAuthorize("isAuthenticated()")

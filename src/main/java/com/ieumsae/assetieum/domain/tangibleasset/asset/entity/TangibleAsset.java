@@ -155,6 +155,20 @@ public class TangibleAsset extends BaseEntity {
         }
     }
 
+    public void reserveForRental() {
+        this.tangibleAssetStatus = TangibleAssetStatus.RESERVED;
+    }
+
+    public void releaseReservation() {
+        this.member = null;
+        this.department = null;
+        this.usageType = null;
+        this.assetUsageType = null;
+        this.usedStartedAt = null;
+        this.returnDueDate = null;
+        this.tangibleAssetStatus = TangibleAssetStatus.AVAILABLE;
+    }
+
     public void returnRequest() {
         this.member = null;
         this.department = null;
