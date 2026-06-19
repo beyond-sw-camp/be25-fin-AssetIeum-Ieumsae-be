@@ -94,6 +94,7 @@ public class TicketService {
 		releaseReservedRentalAssetIfNeeded(ticket, companyId);
 		ticket.cancel(LocalDateTime.now());
 		syncCancelledDetailStatusIfNeeded(ticket, companyId);
+		syncCancelledRentalStatusIfNeeded(ticket, companyId);
 
 		return TicketCancelResponse.from(ticket);
 	}
@@ -327,7 +328,10 @@ public class TicketService {
 			return false;
 		}
 		if (ticket.getTicketType() == TicketType.RENTAL) {
-			return false;
+			return true;
+		}
+		if (ticket.getTicketType() == TicketType.RENTAL_EXTENSION) {
+			return true;
 		}
 		if (ticket.getTicketType() == TicketType.PURCHASE_REQUEST) {
 			PurchaseRequestTicket purchaseRequestTicket = purchaseRequestTicketRepository
@@ -487,6 +491,15 @@ public class TicketService {
 			return;
 		}
 		syncAssetRequestStatus(ticket, companyId, TicketStatus.CANCELLED);
+	}
+
+	private void syncCancelledRentalStatusIfNeeded(Ticket ticket, UUID companyId) {
+		if (ticket.getTicketType() != TicketType.RENTAL
+			&& ticket.getTicketType() != TicketType.RENTAL_EXTENSION) {
+			return;
+		}
+		RentalTicket rentalTicket = findRentalTicket(ticket.getId(), companyId);
+		rentalTicket.cancelReservation();
 	}
 
 	private void syncAssetRequestStatusIfNeeded(Ticket ticket, UUID companyId, TicketStatus targetStatus) {

@@ -9,6 +9,8 @@ import com.ieumsae.assetieum.domain.ticket.rental.dto.RentalAssignableAssetSearc
 import com.ieumsae.assetieum.domain.ticket.rental.dto.RentalAssignableAssetsResponse;
 import com.ieumsae.assetieum.domain.ticket.rental.dto.RentalExtensionTicketCreateRequest;
 import com.ieumsae.assetieum.domain.ticket.rental.dto.RentalExtensionTicketCreateResponse;
+import com.ieumsae.assetieum.domain.ticket.rental.dto.RentalExtensionDueDateUpdateRequest;
+import com.ieumsae.assetieum.domain.ticket.rental.dto.RentalExtensionDueDateUpdateResponse;
 import com.ieumsae.assetieum.domain.ticket.rental.dto.RentalTicketCreateRequest;
 import com.ieumsae.assetieum.domain.ticket.rental.dto.RentalTicketCreateResponse;
 import com.ieumsae.assetieum.domain.ticket.rental.dto.RentalTicketDetailResponse;
@@ -26,6 +28,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -119,6 +122,36 @@ public class RentalTicketController {
 		);
 
 		return ApiResponse.ok("대여 자산 요청 티켓 등록에 성공했습니다.", response);
+	}
+
+	@PreAuthorize("hasAnyRole('EMPLOYEE', 'DEPARTMENT_MANAGER', 'ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
+	@GetMapping("/extensions/{ticketId}")
+	public ApiResponse<RentalTicketDetailResponse> getRentalExtensionTicket(
+		@AuthenticationPrincipal AuthenticatedMember authenticatedMember,
+		@PathVariable UUID ticketId
+	) {
+		RentalTicketDetailResponse response = rentalTicketService.getRentalExtensionTicket(
+			authenticatedMember,
+			ticketId
+		);
+
+		return ApiResponse.ok("대여연장 티켓 상세 조회에 성공했습니다.", response);
+	}
+
+	@PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
+	@PatchMapping("/extensions/{ticketId}/return-due-date")
+	public ApiResponse<RentalExtensionDueDateUpdateResponse> updateRentalExtensionDueDate(
+		@AuthenticationPrincipal AuthenticatedMember authenticatedMember,
+		@PathVariable UUID ticketId,
+		@Valid @RequestBody RentalExtensionDueDateUpdateRequest request
+	) {
+		RentalExtensionDueDateUpdateResponse response = rentalTicketService.updateRentalExtensionDueDate(
+			authenticatedMember,
+			ticketId,
+			request
+		);
+
+		return ApiResponse.ok("대여연장 반납 예정일 변경에 성공했습니다.", response);
 	}
 
 	@PreAuthorize("hasAnyRole('EMPLOYEE', 'DEPARTMENT_MANAGER', 'ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")

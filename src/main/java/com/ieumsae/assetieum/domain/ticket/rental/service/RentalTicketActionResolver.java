@@ -39,18 +39,21 @@ public class RentalTicketActionResolver {
 		boolean departmentApprover = ticket.getApprover().getId().equals(viewer.getId());
 		boolean requested = ticket.getTicketStatus() == TicketStatus.REQUESTED;
 		boolean departmentApproved = ticket.getTicketStatus() == TicketStatus.DEPARTMENT_APPROVED;
-		boolean assetApproved = ticket.getTicketStatus() == TicketStatus.ASSET_APPROVED;
+		boolean inProgress = ticket.getTicketStatus() == TicketStatus.IN_PROGRESS;
 		boolean assetAssignable = isAssetAssignable(ticket, viewer);
 		boolean assignee = ticket.getAssignee() != null && ticket.getAssignee().getId().equals(viewer.getId());
 		boolean assetRole = isAssetRole(viewer.getRole());
+		boolean rental = ticket.getTicketType() == com.ieumsae.assetieum.domain.ticket.common.type.TicketType.RENTAL;
+		boolean rentalExtension = ticket.getTicketType() == com.ieumsae.assetieum.domain.ticket.common.type.TicketType.RENTAL_EXTENSION;
 
 		return RentalTicketDetailResponse.Actions.builder()
 			.canApproveDepartment(departmentApprover && requested)
 			.canRejectDepartment(departmentApprover && requested)
-			.canAssignAsset(assetAssignable && assignee && assetApproved)
+			.canAssignAsset(rental && assetAssignable && assignee && inProgress)
 			.canApproveAsset(assetAssignable && departmentApproved && assignee)
 			.canRejectAsset(assetAssignable && departmentApproved && assignee)
-			.canChangeProcessingStatus(assetRole && assignee && isProcessingStatusChangeable(ticket.getTicketStatus()))
+			.canChangeProcessingStatus(rental && assetRole && assignee && isProcessingStatusChangeable(ticket.getTicketStatus()))
+			.canUpdateReturnDueDate(rentalExtension && assetRole && assignee && inProgress)
 			.build();
 	}
 
@@ -62,6 +65,7 @@ public class RentalTicketActionResolver {
 			.canApproveAsset(false)
 			.canRejectAsset(false)
 			.canChangeProcessingStatus(false)
+			.canUpdateReturnDueDate(false)
 			.build();
 	}
 
@@ -81,6 +85,6 @@ public class RentalTicketActionResolver {
 	}
 
 	private boolean isProcessingStatusChangeable(TicketStatus status) {
-		return status == TicketStatus.ASSET_APPROVED;
+		return status == TicketStatus.IN_PROGRESS;
 	}
 }

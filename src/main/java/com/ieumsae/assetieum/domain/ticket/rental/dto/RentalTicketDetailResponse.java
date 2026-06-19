@@ -118,7 +118,7 @@ public class RentalTicketDetailResponse {
 		histories.add(HistoryItem.of(TicketStatus.REQUESTED.name(), ticket.getCreatedAt()));
 		addHistory(histories, TicketStatus.DEPARTMENT_APPROVED.name(), ticket.getDepartmentApprovedAt());
 		addHistory(histories, TicketStatus.DEPARTMENT_REJECTED.name(), ticket.getDepartmentRejectedAt());
-		addHistory(histories, TicketStatus.IN_PROGRESS.name(), ticket.getPurchaseApprovedAt());
+		addHistory(histories, TicketStatus.ASSET_APPROVED.name(), ticket.getPurchaseApprovedAt());
 		addHistory(histories, TicketStatus.ASSET_REJECTED.name(), ticket.getPurchaseRejectedAt());
 		addHistory(histories, TicketStatus.COMPLETED.name(), ticket.getCompletedAt());
 		addHistory(histories, TicketStatus.CANCELLED.name(), ticket.getCancelledAt());
@@ -219,6 +219,7 @@ public class RentalTicketDetailResponse {
 		private final boolean canApproveAsset;
 		private final boolean canRejectAsset;
 		private final boolean canChangeProcessingStatus;
+		private final boolean canUpdateReturnDueDate;
 	}
 
 	@Getter
