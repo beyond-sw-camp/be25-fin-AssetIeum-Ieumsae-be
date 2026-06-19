@@ -234,7 +234,7 @@ public class IntangibleAssetItemService {
 
     private void validateLeafCategory(IntangibleAssetCategory category, UUID companyId) {
         if (intangibleAssetCategoryRepository.existsByParent_IdAndCompany_Id(category.getId(), companyId)) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+            throw new BusinessException(ErrorCode.INTANGIBLE_ASSET_ITEM_CATEGORY_NOT_LEAF);
         }
     }
 }

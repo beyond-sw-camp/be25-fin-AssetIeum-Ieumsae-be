@@ -65,6 +65,7 @@ public enum ErrorCode {
 	INTANGIBLE_ASSET_ITEM_DUPLICATED_MODEL_NAME(HttpStatus.BAD_REQUEST, "intangible-asset-006", "이미 존재하는 모델명입니다."),
 	INTANGIBLE_ASSET_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "intangible-asset-007", "해당 무형 자산 품목은 존재하지 않습니다."),
 	INTANGIBLE_ASSET_ITEM_HAS_ASSETS(HttpStatus.CONFLICT, "intangible-asset-008", "자산이 존재하는 경우 삭제할 수 없습니다."),
+	INTANGIBLE_ASSET_ITEM_CATEGORY_NOT_LEAF(HttpStatus.BAD_REQUEST, "intangible-asset-009", "가장 하위의 카테고리로만 품목을 등록할 수 있습니다."),
 
 	// 무형 자산
 	INTANGIBLE_ASSET_ITEM_DUPLICATED_LICENSE_CODE(HttpStatus.BAD_REQUEST, "intangible-asset-009", "이미 존재하는 라이선스 코드입니다."),
