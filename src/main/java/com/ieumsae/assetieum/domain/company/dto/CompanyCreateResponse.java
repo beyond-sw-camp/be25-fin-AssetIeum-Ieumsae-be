@@ -13,6 +13,7 @@ public class CompanyCreateResponse {
 
 	private final UUID companyId;
 	private final String companyCode;
+	private final String companyName;
 	@JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
 	private final LocalDateTime createdAt;
 
@@ -20,6 +21,7 @@ public class CompanyCreateResponse {
 		return CompanyCreateResponse.builder()
 			.companyId(company.getId())
 			.companyCode(company.getCompanyCode())
+			.companyName(company.getCompanyName())
 			.createdAt(company.getCreatedAt())
 			.build();
 	}
