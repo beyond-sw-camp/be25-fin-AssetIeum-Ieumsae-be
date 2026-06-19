@@ -3,6 +3,7 @@ package com.ieumsae.assetieum.domain.tangibleasset.asset.repository;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.entity.TangibleAsset;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.type.TangibleAssetStatus;
 import jakarta.persistence.LockModeType;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -48,6 +49,16 @@ public interface TangibleAssetRepository extends JpaRepository<TangibleAsset, UU
             order by asset.createdAt asc
             """)
     List<TangibleAsset> findAvailableAssetsWithLock(UUID companyId, UUID itemId, TangibleAssetStatus status, Pageable pageable);
+
+    @Query("""
+            select asset.purchasePrice
+            from TangibleAsset asset
+            where asset.company.id = :companyId
+              and asset.tangibleAssetItem.id = :itemId
+              and asset.purchasePrice is not null
+            order by asset.purchaseDate desc, asset.createdAt desc
+            """)
+    List<BigDecimal> findRecentPurchasePrices(UUID companyId, UUID itemId, Pageable pageable);
 
     List<TangibleAsset> findAllByCompany_IdAndTangibleAssetStatus(UUID companyId, TangibleAssetStatus status);
 
