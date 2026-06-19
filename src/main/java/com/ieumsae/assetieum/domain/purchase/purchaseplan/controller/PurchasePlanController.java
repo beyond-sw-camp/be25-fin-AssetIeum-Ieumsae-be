@@ -2,7 +2,9 @@ package com.ieumsae.assetieum.domain.purchase.purchaseplan.controller;
 
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanCreateRequest;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanDetailResponse;
+import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanItemCreateIntangibleAssetRequest;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanItemCreateItemRequest;
+import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanItemCreateTangibleAssetRequest;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanResponse;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanSearchRequest;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanStatisticResponse;
@@ -131,6 +133,32 @@ public class PurchasePlanController {
         purchasePlanService.createItemFromPurchasePlan(planId, itemId, member.companyId(), request);
 
         return ApiResponse.ok("구매 계획의 품목이 등록되었습니다.", null);
+    }
+
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
+    @PostMapping("/{planId}/items/{itemId}/tangible-assets")
+    public ApiResponse<Void> createTangibleAssetFromPurchasePlan(
+            @AuthenticationPrincipal AuthenticatedMember member,
+            @PathVariable UUID planId,
+            @PathVariable Long itemId,
+            @Valid @RequestBody PurchasePlanItemCreateTangibleAssetRequest request
+    ) {
+        purchasePlanService.createTangibleAssetFromPurchasePlan(planId, itemId, member.companyId(), request);
+
+        return ApiResponse.ok("구매 계획의 자산이 등록되었습니다.", null);
+    }
+
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
+    @PostMapping("/{planId}/items/{itemId}/intangible-assets")
+    public ApiResponse<Void> createIntangibleAssetFromPurchasePlan(
+            @AuthenticationPrincipal AuthenticatedMember member,
+            @PathVariable UUID planId,
+            @PathVariable Long itemId,
+            @Valid @RequestBody PurchasePlanItemCreateIntangibleAssetRequest request
+    ) {
+        purchasePlanService.createIntangibleAssetFromPurchasePlan(planId, itemId, member.companyId(), request);
+
+        return ApiResponse.ok("구매 계획의 자산이 등록되었습니다.", null);
     }
 
 }

@@ -3,6 +3,7 @@ package com.ieumsae.assetieum.domain.purchase.purchaseplan.entity;
 import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.department.entity.Department;
 import com.ieumsae.assetieum.domain.intangibleasset.item.entity.IntangibleAssetItem;
+import com.ieumsae.assetieum.domain.purchase.purchaseplan.type.PurchasePlanItemStatus;
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
 import com.ieumsae.assetieum.domain.ticket.common.type.AssetType;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.entity.PurchaseRequestTicket;
@@ -85,6 +86,11 @@ public class PurchasePlanItem extends BaseEntity {
     @Column(name = "external_url", length = 500)
     private String externalUrl;
 
+    @Enumerated(jakarta.persistence.EnumType.STRING)
+    @Column(name = "purchase_plan_item_status", nullable = false, length = 30)
+    @Builder.Default
+    private PurchasePlanItemStatus purchasePlanItemStatus = PurchasePlanItemStatus.PENDING;
+
     @Column(name = "received_at")
     private LocalDateTime receivedAt;
 
@@ -100,5 +106,10 @@ public class PurchasePlanItem extends BaseEntity {
 
     public void updateStatus() {
         this.receivedAt = LocalDateTime.now();
+        this.purchasePlanItemStatus = PurchasePlanItemStatus.RECEIVED;
+    }
+
+    public void markAssetRegistered() {
+        this.purchasePlanItemStatus = PurchasePlanItemStatus.ASSET_REGISTERED;
     }
 }

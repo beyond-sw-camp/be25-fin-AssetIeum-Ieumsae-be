@@ -2,6 +2,7 @@ package com.ieumsae.assetieum.domain.purchase.purchaseplanitem.dto;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.PurchasePlanItem;
+import com.ieumsae.assetieum.domain.purchase.purchaseplan.type.PurchasePlanItemStatus;
 import com.ieumsae.assetieum.domain.ticket.common.type.AssetType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -16,6 +17,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @JsonPropertyOrder({
     "assetType",
+    "status",
     "category",
     "productName",
     "quantity",
@@ -25,6 +27,8 @@ import java.math.BigDecimal;
 public class PurchasePlanItemResponse {
 
     private AssetType assetType;
+
+    private PurchasePlanItemStatus status;
 
     private String category;
 
@@ -39,6 +43,7 @@ public class PurchasePlanItemResponse {
     public static PurchasePlanItemResponse from(PurchasePlanItem item) {
         return PurchasePlanItemResponse.builder()
                 .assetType(item.getAssetType())
+                .status(item.getPurchasePlanItemStatus())
                 .category(resolveCategory(item))
                 .productName(item.getProductName())
                 .quantity(item.getQuantity())
