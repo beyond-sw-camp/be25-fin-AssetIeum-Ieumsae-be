@@ -22,11 +22,13 @@ import com.ieumsae.assetieum.domain.purchase.purchaseplanitem.dto.PurchasePlanIt
 import com.ieumsae.assetieum.domain.purchase.purchaseplanitem.repository.PurchasePlanItemRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
 import com.ieumsae.assetieum.domain.tangibleasset.item.repository.TangibleAssetItemRepository;
+import com.ieumsae.assetieum.domain.ticket.assetrequest.repository.AssetRequestTicketRepository;
 import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
 import com.ieumsae.assetieum.domain.ticket.common.repository.TicketRepository;
 import com.ieumsae.assetieum.domain.ticket.common.type.AssetType;
 import com.ieumsae.assetieum.domain.ticket.common.type.RequestMethod;
 import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
+import com.ieumsae.assetieum.domain.ticket.common.type.TicketType;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.entity.PurchaseRequestTicket;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.repository.PurchaseRequestTicketRepository;
 import com.ieumsae.assetieum.global.common.page.PaginationResponse;
@@ -58,6 +60,7 @@ public class PurchasePlanService {
     private final DepartmentRepository departmentRepository;
     private final TangibleAssetItemRepository tangibleAssetItemRepository;
     private final IntangibleAssetItemRepository intangibleAssetItemRepository;
+    private final AssetRequestTicketRepository assetRequestTicketRepository;
     private final PurchaseRequestTicketRepository purchaseRequestTicketRepository;
     private final TicketRepository ticketRepository;
     private final PurchasePlanRepository purchasePlanRepository;
@@ -121,10 +124,11 @@ public class PurchasePlanService {
                 throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
             }
 
+            Ticket linkedTicket = findLinkedPurchasePlanTicket(request.getTicketId(), companyId);
             purchasePlanItems.add(PurchasePlanItem.builder()
                     .company(company)
                     .purchasePlan(purchasePlan)
-                    .purchaseRequestTicket(findPurchaseRequestTicket(request.getTicketId(), companyId))
+                    .ticket(linkedTicket)
                     .tangibleAssetItem(tangibleAssetItem)
                     .intangibleAssetItem(intangibleAssetItem)
                     .itemName(request.getItemName())
@@ -148,7 +152,7 @@ public class PurchasePlanService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.DEPARTMENT_NOT_FOUND));
     }
 
-    private PurchaseRequestTicket findPurchaseRequestTicket(UUID ticketId, UUID companyId) {
+    private Ticket findLinkedPurchasePlanTicket(UUID ticketId, UUID companyId) {
         if (ticketId == null) {
             return null;
         }
@@ -158,6 +162,14 @@ public class PurchasePlanService {
         if (ticket.getTicketStatus() != TicketStatus.ASSET_APPROVED) {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "구매자산팀 승인 상태의 티켓만 구매 계획에 추가할 수 있습니다.");
         }
+        if (ticket.getTicketType() == TicketType.ASSET_REQUEST) {
+            assetRequestTicketRepository.findByIdAndCompany_IdAndDeletedAtIsNull(ticketId, companyId)
+                    .orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+            return ticket;
+        }
+        if (ticket.getTicketType() != TicketType.PURCHASE_REQUEST) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "자산요청 또는 구매요청 티켓만 구매 계획에 추가할 수 있습니다.");
+        }
 
         PurchaseRequestTicket purchaseRequestTicket = purchaseRequestTicketRepository.findByIdAndCompany_Id(ticketId, companyId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
@@ -165,7 +177,7 @@ public class PurchasePlanService {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "구매자산팀 구매 티켓만 구매 계획에 추가할 수 있습니다.");
         }
 
-        return purchaseRequestTicket;
+        return ticket;
     }
 
     private TangibleAssetItem findTangibleAssetItem(UUID itemId, UUID companyId) {
@@ -289,12 +301,12 @@ public class PurchasePlanService {
                 companyId
         );
         for (PurchasePlanItem item : items) {
-            PurchaseRequestTicket purchaseRequestTicket = item.getPurchaseRequestTicket();
-            if (purchaseRequestTicket == null) {
+            Ticket linkedTicket = item.getTicket();
+            if (linkedTicket == null) {
                 continue;
             }
             Ticket ticket = ticketRepository.findWithLockByIdAndCompany_IdAndDeletedAtIsNull(
-                    purchaseRequestTicket.getId(),
+                    linkedTicket.getId(),
                     companyId
             ).orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
             if (ticket.getTicketStatus() == TicketStatus.ASSET_APPROVED) {
