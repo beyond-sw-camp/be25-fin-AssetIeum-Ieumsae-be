@@ -14,6 +14,11 @@ public interface TangibleAssetCategoryRepository
             String name
     );
 
+    Optional<TangibleAssetCategory> findByCompany_IdAndName(
+            UUID companyId,
+            String name
+    );
+
     List<TangibleAssetCategory> findAllByCompany_IdOrderByCreatedAtAsc(UUID companyId);
 
     Optional<TangibleAssetCategory> findByIdAndCompany_Id(UUID categoryId, UUID companyId);

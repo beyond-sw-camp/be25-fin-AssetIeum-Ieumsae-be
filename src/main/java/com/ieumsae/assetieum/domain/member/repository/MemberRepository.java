@@ -39,6 +39,7 @@ public interface MemberRepository extends JpaRepository<Member, UUID> {
 		FROM Member m
 		WHERE m.company.id = :companyId
 			AND m.deletedAt IS NULL
+			AND m.role <> :excludedRole
 			AND (
 				:keyword IS NULL
 				OR LOWER(m.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
@@ -53,6 +54,7 @@ public interface MemberRepository extends JpaRepository<Member, UUID> {
 		@Param("keyword") String keyword,
 		@Param("departmentId") UUID departmentId,
 		@Param("status") MemberStatus status,
+		@Param("excludedRole") MemberRole excludedRole,
 		Pageable pageable
 	);
 }

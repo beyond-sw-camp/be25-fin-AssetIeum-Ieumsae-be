@@ -22,6 +22,8 @@ import com.ieumsae.assetieum.domain.tangibleasset.assignment.type.AssignmentStat
 import com.ieumsae.assetieum.domain.tangibleasset.category.repository.TangibleAssetCategoryRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
 import com.ieumsae.assetieum.domain.tangibleasset.item.repository.TangibleAssetItemRepository;
+import com.ieumsae.assetieum.global.common.csv.CsvFileReader;
+import com.ieumsae.assetieum.global.common.csv.CsvValueParser;
 import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.common.util.CodeGenerator;
 import com.ieumsae.assetieum.global.exception.BusinessException;
@@ -30,9 +32,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -57,6 +62,7 @@ public class TangibleAssetService {
     private final MemberRepository memberRepository;
     private final DepartmentRepository departmentRepository;
     private final TangibleAssetAssignmentRepository tangibleAssetAssignmentRepository;
+    private final CsvFileReader csvFileReader;
 
     /**
      * 유형자산 등록.
@@ -383,5 +389,43 @@ public class TangibleAssetService {
                     "사용 시작일은 반납 예정일보다 늦을 수 없습니다."
             );
         }
+    }
+
+    /**
+     * CSV 파일로 유형자산 품목을 일괄 등록한다.
+     * 헤더 이후 각 행은 modelName,usageType,serialNumber,location,purchaseDate, purchasePrice, purchaseVendor, warrantyExpiredAt 순서여야 한다.
+     */
+    @Transactional
+    public List<TangibleAssetResponse> importAssets(
+            MultipartFile file,
+            UUID companyId
+    ) {
+        List<TangibleAssetResponse> responses = new ArrayList<>();
+
+        for(String[] columns : csvFileReader.readRows(file)) {
+            if(columns.length != 8) {
+                throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+            }
+
+            TangibleAssetItem item = tangibleAssetItemRepository.findByModelNameAndCompany_Id(
+                        columns[0].trim(), companyId
+                    )
+                    .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_ITEM_NOT_FOUND));
+
+            TangibleAssetCreateRequest request = TangibleAssetCreateRequest.builder()
+                    .tangibleItemId(item.getId())
+                    .usageType(CsvValueParser.parseEnum(UsageType.class, columns[1]))
+                    .serialNumber(columns[2].trim())
+                    .location(columns[3].trim())
+                    .purchaseDate(CsvValueParser.parseDateTime(columns[4]))
+                    .purchasePrice(CsvValueParser.parseBigDecimal(columns[5]))
+                    .purchaseVendor(columns[6].trim())
+                    .warrantyExpiredAt(CsvValueParser.parseDateTime(columns[7]))
+                    .build();
+
+            responses.add(createAsset(request, companyId));
+        }
+
+        return responses;
     }
 }

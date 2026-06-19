@@ -12,6 +12,8 @@ import com.ieumsae.assetieum.domain.tangibleasset.item.dto.TangibleAssetItemSear
 import com.ieumsae.assetieum.domain.tangibleasset.item.dto.TangibleAssetItemUpdateRequest;
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
 import com.ieumsae.assetieum.domain.tangibleasset.item.repository.TangibleAssetItemRepository;
+import com.ieumsae.assetieum.global.common.csv.CsvFileReader;
+import com.ieumsae.assetieum.global.common.csv.CsvValueParser;
 import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
@@ -19,7 +21,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -31,6 +36,7 @@ public class TangibleAssetItemService {
     private final TangibleAssetCategoryRepository tangibleAssetCategoryRepository;
     private final CompanyRepository companyRepository;
     private final TangibleAssetRepository tangibleAssetRepository;
+    private final CsvFileReader csvFileReader;
 
     /**
      * 유형자산 품목 등록.
@@ -51,14 +57,16 @@ public class TangibleAssetItemService {
                 )
                 .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_CATEGORY_NOT_FOUND));
 
-        if(tangibleAssetItemRepository.existsByCompany_IdAndProductName(
+        validateLeafCategory(category, companyId);
+
+        if (tangibleAssetItemRepository.existsByCompany_IdAndProductName(
                 companyId,
                 request.getProductName()
-        )){
+        )) {
             throw new BusinessException(ErrorCode.TANGIBLE_ASSET_ITEM_DUPLICATED_PRODUCT_NAME);
         }
 
-        if(tangibleAssetItemRepository.existsByCompany_IdAndModelName(
+        if (tangibleAssetItemRepository.existsByCompany_IdAndModelName(
                 companyId,
                 request.getModelName()
         )) {
@@ -84,9 +92,45 @@ public class TangibleAssetItemService {
     }
 
     /**
+     * CSV 파일로 유형자산 품목을 일괄 등록한다.
+     * 헤더 이후 각 행은 categoryName,productName,manufacturer,modelName,isStandard 순서여야 한다.
+     */
+    @Transactional
+    public List<TangibleAssetItemResponse> importItems(
+            MultipartFile file,
+            UUID companyId
+    ) {
+        List<TangibleAssetItemResponse> responses = new ArrayList<>();
+
+        for (String[] columns : csvFileReader.readRows(file)) {
+            if (columns.length != 5) {
+                throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+            }
+
+            TangibleAssetCategory category = tangibleAssetCategoryRepository.findByCompany_IdAndName(
+                            companyId,
+                            columns[0].trim()
+                    )
+                    .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_CATEGORY_NOT_FOUND));
+
+            validateLeafCategory(category, companyId);
+
+            TangibleAssetItemCreateRequest request = new TangibleAssetItemCreateRequest(
+                    category.getId(),
+                    columns[1].trim(),
+                    columns[2].trim(),
+                    columns[3].trim(),
+                    CsvValueParser.parseBoolean(columns[4])
+            );
+
+            responses.add(createItem(request, companyId));
+        }
+
+        return responses;
+    }
+
+    /**
      * 회사 기준 유형자산 품목 목록 조회.
-     * 카테고리, 품목명, 제조사, 모델명, 표준 여부를 기준으로 필터링하여
-     * 해당하는 품목만 조회하여 반환한다.
      */
     public PaginationResponse<TangibleAssetItemResponse> getItems(
             TangibleAssetItemSearchRequest request,
@@ -96,7 +140,7 @@ public class TangibleAssetItemService {
         companyRepository.findById(companyId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
 
-        // 2. 페이징 처리 및 필터링 후 품목 목록 반환
+        // 2. 페이지 처리 및 필터링 된 품목 목록 반환
         Page<TangibleAssetItemResponse> responsePage =
                 tangibleAssetItemRepository.search(
                         companyId,
@@ -110,9 +154,7 @@ public class TangibleAssetItemService {
     }
 
     /**
-     * 회사 기준 유형자산 품목 수정.
-     * 카테고리, 품목명, 제조사, 모델명, 표준 여부을 수정하여
-     * 해당하는 품목의 수정된 데이터를 반환한다.
+     * 유형자산 품목 수정.
      */
     @Transactional
     public TangibleAssetItemResponse updateItem(
@@ -126,19 +168,21 @@ public class TangibleAssetItemService {
 
         TangibleAssetCategory category = null;
 
-        if(request.getCategoryId() != null) {
+        if (request.getCategoryId() != null) {
             category = tangibleAssetCategoryRepository.findByIdAndCompany_Id(request.getCategoryId(), companyId)
                     .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_CATEGORY_NOT_FOUND));
+
+            validateLeafCategory(category, companyId);
         }
 
-        if(tangibleAssetItemRepository.existsByCompany_IdAndProductName(
+        if (tangibleAssetItemRepository.existsByCompany_IdAndProductName(
                 companyId,
                 request.getProductName()
-        )){
+        )) {
             throw new BusinessException(ErrorCode.TANGIBLE_ASSET_ITEM_DUPLICATED_PRODUCT_NAME);
         }
 
-        if(tangibleAssetItemRepository.existsByCompany_IdAndModelName(
+        if (tangibleAssetItemRepository.existsByCompany_IdAndModelName(
                 companyId,
                 request.getModelName()
         )) {
@@ -159,8 +203,6 @@ public class TangibleAssetItemService {
 
     /**
      * 유형자산 품목 삭제. (soft delete)
-     * 해당 품목의 자산이 존재하는 경우,
-     * 삭제를 제한한다.
      */
     @Transactional
     public void deleteItem(UUID itemId, UUID companyId) {
@@ -168,15 +210,43 @@ public class TangibleAssetItemService {
         TangibleAssetItem item = tangibleAssetItemRepository.findByIdAndCompany_IdAndDeletedAtIsNull(itemId, companyId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_ITEM_NOT_FOUND));
 
-        if(tangibleAssetRepository.existsByCompany_IdAndTangibleAssetItem_Id(
+        if (tangibleAssetRepository.existsByCompany_IdAndTangibleAssetItem_Id(
                 companyId,
                 item.getId()
-        )){
+        )) {
             throw new BusinessException(ErrorCode.TANGIBLE_ASSET_ITEM_HAS_ASSETS);
         }
 
         // 2. 품목 삭제
         item.delete();
+    }
 
+    private void validateCsvFile(MultipartFile file) {
+        String originalFilename = file.getOriginalFilename();
+        String contentType = file.getContentType();
+
+        boolean hasCsvExtension = originalFilename != null && originalFilename.toLowerCase().endsWith(".csv");
+        boolean hasCsvContentType = contentType != null
+                && (contentType.equalsIgnoreCase("text/csv")
+                || contentType.equalsIgnoreCase("application/csv")
+                || contentType.equalsIgnoreCase("application/vnd.ms-excel"));
+
+        if (file.isEmpty() || !hasCsvExtension || !hasCsvContentType) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+    }
+
+    private UUID parseUuid(String value) {
+        try {
+            return UUID.fromString(value);
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+    }
+
+    private void validateLeafCategory(TangibleAssetCategory category, UUID companyId) {
+        if (tangibleAssetCategoryRepository.existsByParent_IdAndCompany_Id(category.getId(), companyId)) {
+            throw new BusinessException(ErrorCode.TANGIBLE_ASSET_ITEM_CATEGORY_NOT_LEAF);
+        }
     }
 }
