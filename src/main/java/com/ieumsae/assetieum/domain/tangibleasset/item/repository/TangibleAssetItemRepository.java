@@ -22,6 +22,7 @@ public interface TangibleAssetItemRepository
 
     Optional<TangibleAssetItem> findByIdAndCompany_IdAndDeletedAtIsNull(UUID itemId, UUID companyId);
 
+    Optional<TangibleAssetItem> findByModelNameAndCompany_Id(String modelName, UUID companyId);
     @Query("""
             select item
             from TangibleAssetItem item

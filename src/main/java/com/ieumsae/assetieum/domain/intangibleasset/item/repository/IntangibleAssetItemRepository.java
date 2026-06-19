@@ -19,6 +19,7 @@ public interface IntangibleAssetItemRepository extends JpaRepository<IntangibleA
 
     boolean existsByCompany_IdAndIntangibleAssetCategory_Id(UUID companyId, UUID categoryId);
 
+    Optional<IntangibleAssetItem> findByProductNameAndCompany_Id(String trim, UUID companyId);
     @Query("""
             select item
             from IntangibleAssetItem item

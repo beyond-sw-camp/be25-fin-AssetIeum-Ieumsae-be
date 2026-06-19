@@ -3,8 +3,8 @@ package com.ieumsae.assetieum.domain.intangibleasset.item.service;
 import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.company.repository.CompanyRepository;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.entity.IntangibleAsset;
-import com.ieumsae.assetieum.domain.intangibleasset.asset.type.IntangibleAssetStatus;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.repository.IntangibleAssetRepository;
+import com.ieumsae.assetieum.domain.intangibleasset.asset.type.IntangibleAssetStatus;
 import com.ieumsae.assetieum.domain.intangibleasset.assignment.repository.IntangibleAssetAssignmentRepository;
 import com.ieumsae.assetieum.domain.intangibleasset.assignment.type.AssignmentStatus;
 import com.ieumsae.assetieum.domain.intangibleasset.category.entity.IntangibleAssetCategory;
@@ -16,6 +16,9 @@ import com.ieumsae.assetieum.domain.intangibleasset.item.dto.IntangibleAssetItem
 import com.ieumsae.assetieum.domain.intangibleasset.item.dto.IntangibleAssetItemUpdateRequest;
 import com.ieumsae.assetieum.domain.intangibleasset.item.entity.IntangibleAssetItem;
 import com.ieumsae.assetieum.domain.intangibleasset.item.repository.IntangibleAssetItemRepository;
+import com.ieumsae.assetieum.domain.intangibleasset.item.type.LicenseType;
+import com.ieumsae.assetieum.global.common.csv.CsvFileReader;
+import com.ieumsae.assetieum.global.common.csv.CsvValueParser;
 import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
@@ -23,7 +26,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -37,6 +42,7 @@ public class IntangibleAssetItemService {
     private final IntangibleAssetAssignmentRepository intangibleAssetAssignmentRepository;
     private final IntangibleAssetCategoryRepository intangibleAssetCategoryRepository;
     private final CompanyRepository companyRepository;
+    private final CsvFileReader csvFileReader;
 
     /**
      * 무형자산 품목 삭제 (soft delete)
@@ -64,7 +70,6 @@ public class IntangibleAssetItemService {
                 .intangibleAssetItemId(item.getId())
                 .deletedAt(item.getDeletedAt())
                 .build();
-
     }
 
     /**
@@ -87,6 +92,7 @@ public class IntangibleAssetItemService {
         if(request.getCategoryId() != null) {
             category = intangibleAssetCategoryRepository.findByIdAndCompany_Id(request.getCategoryId(), companyId)
                     .orElseThrow(() -> new BusinessException(ErrorCode.INTANGIBLE_ASSET_CATEGORY_NOT_FOUND));
+            validateLeafCategory(category, companyId);
         }
 
         if(intangibleAssetItemRepository.existsByCompany_IdAndProductName(
@@ -99,11 +105,7 @@ public class IntangibleAssetItemService {
         // 2. 품목 수정
         item.update(request, category);
 
-        int availableSeatCount = calculateAvailableSeatCount(
-                companyId,
-                item.getId()
-        );
-
+        int availableSeatCount = calculateAvailableSeatCount(companyId, item.getId());
         return IntangibleAssetItemResponse.from(item, availableSeatCount);
     }
 
@@ -125,11 +127,12 @@ public class IntangibleAssetItemService {
                 companyId
         )
                 .orElseThrow(() -> new BusinessException(ErrorCode.INTANGIBLE_ASSET_CATEGORY_NOT_FOUND));
+        validateLeafCategory(category, companyId);
 
-        if(intangibleAssetItemRepository.existsByCompany_IdAndProductName(
+        if (intangibleAssetItemRepository.existsByCompany_IdAndProductName(
                 companyId,
                 request.getProductName()
-        )){
+        )) {
             throw new BusinessException(ErrorCode.INTANGIBLE_ASSET_ITEM_DUPLICATED_PRODUCT_NAME);
         }
 
@@ -174,6 +177,39 @@ public class IntangibleAssetItemService {
         return PaginationResponse.from(responsePage);
     }
 
+    @Transactional
+    public List<IntangibleAssetItemResponse> importItems(
+            MultipartFile file,
+            UUID companyId
+    ) {
+        List<IntangibleAssetItemResponse> responses = new ArrayList<>();
+
+        for (String[] columns : csvFileReader.readRows(file)) {
+            if (columns.length != 5) {
+                throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+            }
+
+            IntangibleAssetCategory category = intangibleAssetCategoryRepository.findByCompany_IdAndName(
+                            companyId,
+                            columns[0].trim()
+                    )
+                    .orElseThrow(() -> new BusinessException(ErrorCode.INTANGIBLE_ASSET_CATEGORY_NOT_FOUND));
+            validateLeafCategory(category, companyId);
+
+            IntangibleAssetItemCreateRequest request = new IntangibleAssetItemCreateRequest(
+                    category.getId(),
+                    columns[1].trim(),
+                    columns[2].trim(),
+                    CsvValueParser.parseEnum(LicenseType.class, columns[3]),
+                    CsvValueParser.parseBoolean(columns[4])
+            );
+
+            responses.add(createItem(request, companyId));
+        }
+
+        return responses;
+    }
+
     private int calculateAvailableSeatCount(UUID companyId, UUID itemId) {
         List<IntangibleAsset> assets = intangibleAssetRepository
                 .findAllByCompany_IdAndIntangibleAssetItem_IdAndIntangibleAssetStatusIn(
@@ -194,5 +230,11 @@ public class IntangibleAssetItemService {
         }
 
         return availableSeatCount;
+    }
+
+    private void validateLeafCategory(IntangibleAssetCategory category, UUID companyId) {
+        if (intangibleAssetCategoryRepository.existsByParent_IdAndCompany_Id(category.getId(), companyId)) {
+            throw new BusinessException(ErrorCode.INTANGIBLE_ASSET_ITEM_CATEGORY_NOT_LEAF);
+        }
     }
 }

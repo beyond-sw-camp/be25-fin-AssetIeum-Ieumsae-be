@@ -22,6 +22,8 @@ import com.ieumsae.assetieum.domain.intangibleasset.item.entity.IntangibleAssetI
 import com.ieumsae.assetieum.domain.intangibleasset.item.repository.IntangibleAssetItemRepository;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
+import com.ieumsae.assetieum.global.common.csv.CsvFileReader;
+import com.ieumsae.assetieum.global.common.csv.CsvValueParser;
 import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.common.util.CodeGenerator;
 import com.ieumsae.assetieum.global.exception.BusinessException;
@@ -30,8 +32,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -51,6 +58,7 @@ public class IntangibleAssetService {
     private final IntangibleAssetAssignmentRepository intangibleAssetAssignmentRepository;
 
     private final CodeGenerator codeGenerator;
+    private final CsvFileReader csvFileReader;
 
 
     /**
@@ -70,14 +78,10 @@ public class IntangibleAssetService {
                 )
                 .orElseThrow(() -> new BusinessException(ErrorCode.INTANGIBLE_ASSET_ITEM_NOT_FOUND));
 
-        if(request.getLicenseCode() != null) {
-            if(intangibleAssetRepository.existsByCompany_IdAndLicenseCodeAndIntangibleAssetItem_Id(
-                    companyId,
-                    request.getLicenseCode(),
-                    request.getIntangibleItemId()
-            )) {
-                throw new BusinessException(ErrorCode.INTANGIBLE_ASSET_ITEM_DUPLICATED_LICENSE_CODE);
-            }
+        String licenseCode = normalizeNullableString(request.getLicenseCode());
+
+        if(licenseCode != null && intangibleAssetRepository.existsByCompany_IdAndLicenseCode(companyId, licenseCode)) {
+            throw new BusinessException(ErrorCode.INTANGIBLE_ASSET_ITEM_DUPLICATED_LICENSE_CODE);
         }
 
         Member member = findMember(request.getMemberId(), companyId);
@@ -96,7 +100,7 @@ public class IntangibleAssetService {
         IntangibleAsset asset = IntangibleAsset.builder()
                 .company(company)
                 .intangibleAssetItem(item)
-                .licenseCode(request.getLicenseCode())
+                .licenseCode(licenseCode)
                 .intangibleAssetStatus(status)
                 .seatCount(request.getSeatCount())
                 .member(member)
@@ -202,6 +206,14 @@ public class IntangibleAssetService {
             return IntangibleAssetStatus.AVAILABLE;
         }
         return request.getIntangibleAssetStatus();
+    }
+
+    private String normalizeNullableString(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+
+        return value.trim();
     }
 
     /**
@@ -361,5 +373,59 @@ public class IntangibleAssetService {
         asset.update(request, null, null);
 
         return IntangibleAssetResponse.from(asset);
+    }
+
+    /**
+     * CSV 파일로 유형자산 품목을 일괄 등록한다.
+     * 헤더 이후 각 행은 productName,licenseCode,seatCount,isAutoRenewal,purchaseDate, purchasePrice, purchaseVendor, billingCycle 순서여야 한다.
+     */
+    @Transactional
+    public List<IntangibleAssetResponse> importAssets(
+            MultipartFile file,
+            UUID companyId
+    ) {
+        List<IntangibleAssetResponse> responses = new ArrayList<>();
+        Set<String> licenseCodes = new HashSet<>();
+
+        for(String[] columns : csvFileReader.readRows(file)) {
+            if(columns.length != 8) {
+                throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+            }
+
+            IntangibleAssetItem item = intangibleAssetItemRepository.findByProductNameAndCompany_Id(
+                        columns[0].trim(),
+                        companyId
+                    )
+                    .orElseThrow(() -> new BusinessException(ErrorCode.INTANGIBLE_ASSET_ITEM_NOT_FOUND));
+
+            String licenseCode = CsvValueParser.parseNullableString(columns[1]);
+            validateImportLicenseCode(companyId, licenseCode, licenseCodes);
+
+            IntangibleAssetCreateRequest request = IntangibleAssetCreateRequest.builder()
+                    .intangibleItemId(item.getId())
+                    .licenseCode(licenseCode)
+                    .seatCount(CsvValueParser.parseInteger(columns[2]))
+                    .isAutoRenewal(CsvValueParser.parseBoolean(columns[3]))
+                    .purchaseDate(CsvValueParser.parseDateTime(columns[4]))
+                    .purchasePrice(CsvValueParser.parseBigDecimal(columns[5]))
+                    .purchaseVendor(columns[6].trim())
+                    .billingCycle(CsvValueParser.parseNullableEnum(BillingCycle.class, columns[7]))
+                    .build();
+
+            responses.add(createAsset(request, companyId));
+        }
+
+        return responses;
+    }
+
+    private void validateImportLicenseCode(UUID companyId, String licenseCode, Set<String> licenseCodes) {
+        if (licenseCode == null) {
+            return;
+        }
+
+        if (!licenseCodes.add(licenseCode)
+                || intangibleAssetRepository.existsByCompany_IdAndLicenseCode(companyId, licenseCode)) {
+            throw new BusinessException(ErrorCode.INTANGIBLE_ASSET_ITEM_DUPLICATED_LICENSE_CODE);
+        }
     }
 }
