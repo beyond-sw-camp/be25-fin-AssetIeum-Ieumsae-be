@@ -18,6 +18,7 @@ import com.ieumsae.assetieum.domain.intangibleasset.item.entity.IntangibleAssetI
 import com.ieumsae.assetieum.domain.intangibleasset.item.repository.IntangibleAssetItemRepository;
 import com.ieumsae.assetieum.domain.intangibleasset.item.type.LicenseType;
 import com.ieumsae.assetieum.global.common.csv.CsvFileReader;
+import com.ieumsae.assetieum.global.common.csv.CsvValueParser;
 import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
@@ -199,8 +200,8 @@ public class IntangibleAssetItemService {
                     category.getId(),
                     columns[1].trim(),
                     columns[2].trim(),
-                    LicenseType.valueOf(columns[3].trim().toUpperCase()),
-                    parseBoolean(columns[4].trim())
+                    CsvValueParser.parseEnum(LicenseType.class, columns[3]),
+                    CsvValueParser.parseBoolean(columns[4])
             );
 
             responses.add(createItem(request, companyId));
@@ -229,16 +230,6 @@ public class IntangibleAssetItemService {
         }
 
         return availableSeatCount;
-    }
-
-    private Boolean parseBoolean(String value) {
-        if ("true".equalsIgnoreCase(value)) {
-            return true;
-        }
-        if ("false".equalsIgnoreCase(value)) {
-            return false;
-        }
-        throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
     }
 
     private void validateLeafCategory(IntangibleAssetCategory category, UUID companyId) {

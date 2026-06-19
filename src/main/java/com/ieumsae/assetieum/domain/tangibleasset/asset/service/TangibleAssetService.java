@@ -23,6 +23,7 @@ import com.ieumsae.assetieum.domain.tangibleasset.category.repository.TangibleAs
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
 import com.ieumsae.assetieum.domain.tangibleasset.item.repository.TangibleAssetItemRepository;
 import com.ieumsae.assetieum.global.common.csv.CsvFileReader;
+import com.ieumsae.assetieum.global.common.csv.CsvValueParser;
 import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.common.util.CodeGenerator;
 import com.ieumsae.assetieum.global.exception.BusinessException;
@@ -33,11 +34,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
@@ -51,11 +48,6 @@ public class TangibleAssetService {
 
     private static final String TANGIBLE_ASSET_CODE_PREFIX = "TA";
     private static final String REDIS_KEY_PREFIX = "tangible-asset:code:";
-    private static final List<DateTimeFormatter> CSV_DATE_FORMATTERS = List.of(
-            DateTimeFormatter.ofPattern("yyyy. M. d"),
-            DateTimeFormatter.ofPattern("yyyy.M.d"),
-            DateTimeFormatter.ISO_LOCAL_DATE
-    );
     private static final Set<TangibleAssetStatus> TICKET_ONLY_UPDATE_STATUSES = EnumSet.of(
             TangibleAssetStatus.IN_USE,
             TangibleAssetStatus.RETURN_REQUESTED,
@@ -422,54 +414,18 @@ public class TangibleAssetService {
 
             TangibleAssetCreateRequest request = TangibleAssetCreateRequest.builder()
                     .tangibleItemId(item.getId())
-                    .usageType(parseUsageType(columns[1]))
+                    .usageType(CsvValueParser.parseEnum(UsageType.class, columns[1]))
                     .serialNumber(columns[2].trim())
                     .location(columns[3].trim())
-                    .purchaseDate(parseDateTime(columns[4]))
-                    .purchasePrice(parsePrice(columns[5]))
+                    .purchaseDate(CsvValueParser.parseDateTime(columns[4]))
+                    .purchasePrice(CsvValueParser.parseBigDecimal(columns[5]))
                     .purchaseVendor(columns[6].trim())
-                    .warrantyExpiredAt(parseDateTime(columns[7]))
+                    .warrantyExpiredAt(CsvValueParser.parseDateTime(columns[7]))
                     .build();
 
             responses.add(createAsset(request, companyId));
         }
 
         return responses;
-    }
-
-    private UsageType parseUsageType(String value) {
-        try {
-            return UsageType.valueOf(value.trim());
-        } catch (RuntimeException e) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
-        }
-    }
-
-    private LocalDateTime parseDateTime(String value) {
-        String trimmedValue = value.trim();
-
-        try {
-            return LocalDateTime.parse(trimmedValue);
-        } catch (DateTimeParseException ignored) {
-            // Try date-only CSV formats below.
-        }
-
-        for (DateTimeFormatter formatter : CSV_DATE_FORMATTERS) {
-            try {
-                return LocalDate.parse(trimmedValue, formatter).atStartOfDay();
-            } catch (DateTimeParseException ignored) {
-                // Try the next supported CSV date format.
-            }
-        }
-
-        throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
-    }
-
-    private BigDecimal parsePrice(String value) {
-        try {
-            return new BigDecimal(value.trim());
-        } catch (RuntimeException e) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
-        }
     }
 }

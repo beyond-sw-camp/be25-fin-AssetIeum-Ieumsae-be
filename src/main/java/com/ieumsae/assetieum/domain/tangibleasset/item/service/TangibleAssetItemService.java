@@ -13,6 +13,7 @@ import com.ieumsae.assetieum.domain.tangibleasset.item.dto.TangibleAssetItemUpda
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
 import com.ieumsae.assetieum.domain.tangibleasset.item.repository.TangibleAssetItemRepository;
 import com.ieumsae.assetieum.global.common.csv.CsvFileReader;
+import com.ieumsae.assetieum.global.common.csv.CsvValueParser;
 import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
@@ -22,10 +23,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -123,7 +120,7 @@ public class TangibleAssetItemService {
                     columns[1].trim(),
                     columns[2].trim(),
                     columns[3].trim(),
-                    parseBoolean(columns[4].trim())
+                    CsvValueParser.parseBoolean(columns[4])
             );
 
             responses.add(createItem(request, companyId));
@@ -245,18 +242,6 @@ public class TangibleAssetItemService {
         } catch (IllegalArgumentException e) {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
         }
-    }
-
-    private Boolean parseBoolean(String value) {
-        if ("true".equalsIgnoreCase(value)) {
-            return true;
-        }
-
-        if ("false".equalsIgnoreCase(value)) {
-            return false;
-        }
-
-        throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
     }
 
     private void validateLeafCategory(TangibleAssetCategory category, UUID companyId) {
