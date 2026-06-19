@@ -4,12 +4,17 @@ import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.company.repository.CompanyRepository;
 import com.ieumsae.assetieum.domain.department.entity.Department;
 import com.ieumsae.assetieum.domain.department.repository.DepartmentRepository;
+import com.ieumsae.assetieum.domain.intangibleasset.category.entity.IntangibleAssetCategory;
+import com.ieumsae.assetieum.domain.intangibleasset.category.repository.IntangibleAssetCategoryRepository;
+import com.ieumsae.assetieum.domain.intangibleasset.item.dto.IntangibleAssetItemCreateRequest;
 import com.ieumsae.assetieum.domain.intangibleasset.item.entity.IntangibleAssetItem;
 import com.ieumsae.assetieum.domain.intangibleasset.item.repository.IntangibleAssetItemRepository;
+import com.ieumsae.assetieum.domain.intangibleasset.item.service.IntangibleAssetItemService;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanCreateRequest;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanDetailResponse;
+import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanItemCreateItemRequest;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanResponse;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanSearchRequest;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanStatisticResponse;
@@ -21,8 +26,12 @@ import com.ieumsae.assetieum.domain.purchase.purchaseplan.type.PurchaseRequestSt
 import com.ieumsae.assetieum.domain.purchase.purchaseplanitem.dto.PurchasePlanItemCreateRequest;
 import com.ieumsae.assetieum.domain.purchase.purchaseplanitem.dto.PurchasePlanItemResponse;
 import com.ieumsae.assetieum.domain.purchase.purchaseplanitem.repository.PurchasePlanItemRepository;
+import com.ieumsae.assetieum.domain.tangibleasset.category.entity.TangibleAssetCategory;
+import com.ieumsae.assetieum.domain.tangibleasset.category.repository.TangibleAssetCategoryRepository;
+import com.ieumsae.assetieum.domain.tangibleasset.item.dto.TangibleAssetItemCreateRequest;
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
 import com.ieumsae.assetieum.domain.tangibleasset.item.repository.TangibleAssetItemRepository;
+import com.ieumsae.assetieum.domain.tangibleasset.item.service.TangibleAssetItemService;
 import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
 import com.ieumsae.assetieum.domain.ticket.common.repository.TicketRepository;
 import com.ieumsae.assetieum.domain.ticket.common.type.AssetType;
@@ -39,6 +48,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -57,12 +67,16 @@ public class PurchasePlanService {
     private final CompanyRepository companyRepository;
     private final MemberRepository memberRepository;
     private final DepartmentRepository departmentRepository;
+    private final TangibleAssetCategoryRepository tangibleAssetCategoryRepository;
+    private final IntangibleAssetCategoryRepository intangibleAssetCategoryRepository;
     private final TangibleAssetItemRepository tangibleAssetItemRepository;
     private final IntangibleAssetItemRepository intangibleAssetItemRepository;
     private final PurchaseRequestTicketRepository purchaseRequestTicketRepository;
     private final TicketRepository ticketRepository;
     private final PurchasePlanRepository purchasePlanRepository;
     private final PurchasePlanItemRepository purchasePlanItemRepository;
+    private final TangibleAssetItemService tangibleAssetItemService;
+    private final IntangibleAssetItemService intangibleAssetItemService;
 
     @Transactional
     public PurchasePlanResponse createPurchasePlan(
@@ -126,9 +140,10 @@ public class PurchasePlanService {
                     .company(company)
                     .purchasePlan(purchasePlan)
                     .purchaseRequestTicket(findPurchaseRequestTicket(request.getTicketId(), companyId))
+                    .assetType(request.getAssetType())
                     .tangibleAssetItem(tangibleAssetItem)
                     .intangibleAssetItem(intangibleAssetItem)
-                    .itemName(request.getItemName())
+                    .productName(request.getProductName())
                     .department(findDepartment(request.getDepartmentId(), companyId))
                     .isStandard(request.getIsStandard())
                     .quantity(request.getQuantity())
@@ -376,4 +391,147 @@ public class PurchasePlanService {
 
         return PurchasePlanItemResponse.from(purchasePlanItem);
     }
+
+    /**
+     * 구매 계획에서 품목 등록
+     */
+    @Transactional
+    public Void createItemFromPurchasePlan(
+            UUID planId,
+            Long itemId,
+            UUID companyId,
+            PurchasePlanItemCreateItemRequest request
+    ) {
+        companyRepository.findByIdAndDeletedAtIsNull(companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
+
+        PurchasePlan purchasePlan = purchasePlanRepository.findByIdAndDeletedAtIsNullAndCompany_Id(planId, companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PURCHASE_PLAN_NOT_FOUND));
+
+        PurchasePlanItem purchasePlanItem = purchasePlanItemRepository.findByIdAndPurchasePlan_IdAndCompany_Id(itemId, planId, companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PURCHASE_PLAN_ITEM_NOT_FOUND));
+
+        if(purchasePlanItem.getTangibleAssetItem() != null || purchasePlanItem.getIntangibleAssetItem() != null) {
+            throw new BusinessException(ErrorCode.PURCHASE_PLAN_ITEM_ALREADY_HAS_ITEM_ID);
+        }
+        
+        validateCreateItemRequest(purchasePlanItem.getAssetType(), request);
+
+        if (purchasePlanItem.getAssetType() == AssetType.TANGIBLE) {
+            TangibleAssetItem tangibleAssetItem = findOrCreateTangibleItem(purchasePlanItem, request, companyId);
+            purchasePlanItem.attachTangibleAssetItem(tangibleAssetItem);
+            purchasePlanItemRepository.save(purchasePlanItem);
+            return null;
+        }
+
+        if (purchasePlanItem.getAssetType() == AssetType.INTANGIBLE) {
+            IntangibleAssetItem intangibleAssetItem = findOrCreateIntangibleItem(purchasePlanItem, request, companyId);
+            purchasePlanItem.attachIntangibleAssetItem(intangibleAssetItem);
+            purchasePlanItemRepository.save(purchasePlanItem);
+            return null;
+        }
+
+        throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+    }
+
+    private void validateCreateItemRequest(AssetType assetType, PurchasePlanItemCreateItemRequest request) {
+        if (request.getCategoryId() == null || request.getIsStandard() == null) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+
+        if (assetType == AssetType.TANGIBLE) {
+            if (!StringUtils.hasText(request.getManufacturer()) || !StringUtils.hasText(request.getModelName())) {
+                throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+            }
+            if (StringUtils.hasText(request.getProvider()) || request.getLicenseType() != null) {
+                throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+            }
+            return;
+        }
+
+        if (assetType == AssetType.INTANGIBLE) {
+            if (!StringUtils.hasText(request.getProvider()) || request.getLicenseType() == null) {
+                throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+            }
+            if (StringUtils.hasText(request.getManufacturer()) || StringUtils.hasText(request.getModelName())) {
+                throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+            }
+            return;
+        }
+
+        throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+    }
+
+    private TangibleAssetCategory resolveTangibleCategory(
+            PurchasePlanItemCreateItemRequest request,
+            UUID companyId
+    ) {
+        return tangibleAssetCategoryRepository.findByIdAndCompany_Id(request.getCategoryId(), companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_CATEGORY_NOT_FOUND));
+    }
+
+    private TangibleAssetItem findOrCreateTangibleItem(
+            PurchasePlanItem purchasePlanItem,
+            PurchasePlanItemCreateItemRequest request,
+            UUID companyId
+    ) {
+        if (tangibleAssetItemRepository.existsByCompany_IdAndProductName(companyId, purchasePlanItem.getProductName())) {
+            throw new BusinessException(ErrorCode.TANGIBLE_ASSET_ITEM_DUPLICATED_PRODUCT_NAME);
+        }
+
+        TangibleAssetCategory category = resolveTangibleCategory(request, companyId);
+        TangibleAssetItemCreateRequest createRequest = new TangibleAssetItemCreateRequest(
+                category.getId(),
+                purchasePlanItem.getProductName(),
+                request.getManufacturer().trim(),
+                request.getModelName().trim(),
+                resolveBoolean(request.getIsStandard(), purchasePlanItem.getIsStandard())
+        );
+        tangibleAssetItemService.createItem(createRequest, companyId);
+        return tangibleAssetItemRepository.findByProductNameAndCompany_IdAndDeletedAtIsNull(
+                purchasePlanItem.getProductName(),
+                companyId
+        ).orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_ITEM_NOT_FOUND));
+    }
+
+    private IntangibleAssetCategory resolveIntangibleCategory(
+            PurchasePlanItemCreateItemRequest request,
+            UUID companyId
+    ) {
+        return intangibleAssetCategoryRepository.findByIdAndCompany_Id(request.getCategoryId(), companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.INTANGIBLE_ASSET_CATEGORY_NOT_FOUND));
+    }
+
+    private IntangibleAssetItem findOrCreateIntangibleItem(
+            PurchasePlanItem purchasePlanItem,
+            PurchasePlanItemCreateItemRequest request,
+            UUID companyId
+    ) {
+        if (intangibleAssetItemRepository.existsByCompany_IdAndProductName(companyId, purchasePlanItem.getProductName())) {
+            throw new BusinessException(ErrorCode.INTANGIBLE_ASSET_ITEM_DUPLICATED_PRODUCT_NAME);
+        }
+
+        IntangibleAssetCategory category = resolveIntangibleCategory(request, companyId);
+        IntangibleAssetItemCreateRequest createRequest = new IntangibleAssetItemCreateRequest(
+                category.getId(),
+                purchasePlanItem.getProductName(),
+                request.getProvider().trim(),
+                request.getLicenseType(),
+                resolveBoolean(request.getIsStandard(), purchasePlanItem.getIsStandard())
+        );
+        intangibleAssetItemService.createItem(createRequest, companyId);
+        return intangibleAssetItemRepository.findByProductNameAndCompany_IdAndDeletedAtIsNull(
+                purchasePlanItem.getProductName(),
+                companyId
+        ).orElseThrow(() -> new BusinessException(ErrorCode.INTANGIBLE_ASSET_ITEM_NOT_FOUND));
+    }
+
+    private Boolean resolveBoolean(Boolean requestedValue, Boolean fallbackValue) {
+        if (requestedValue != null) {
+            return requestedValue;
+        }
+
+        return fallbackValue != null ? fallbackValue : Boolean.TRUE;
+    }
+
 }

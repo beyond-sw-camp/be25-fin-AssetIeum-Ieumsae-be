@@ -88,6 +88,16 @@ public class PurchasePlanItem extends BaseEntity {
     @Column(name = "received_at")
     private LocalDateTime receivedAt;
 
+    public void attachTangibleAssetItem(TangibleAssetItem tangibleAssetItem) {
+        this.tangibleAssetItem = tangibleAssetItem;
+        this.intangibleAssetItem = null;
+    }
+
+    public void attachIntangibleAssetItem(IntangibleAssetItem intangibleAssetItem) {
+        this.intangibleAssetItem = intangibleAssetItem;
+        this.tangibleAssetItem = null;
+    }
+
     public void updateStatus() {
         this.receivedAt = LocalDateTime.now();
     }

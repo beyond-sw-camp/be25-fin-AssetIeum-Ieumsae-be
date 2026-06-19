@@ -2,6 +2,7 @@ package com.ieumsae.assetieum.domain.purchase.purchaseplan.controller;
 
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanCreateRequest;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanDetailResponse;
+import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanItemCreateItemRequest;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanResponse;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanSearchRequest;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanStatisticResponse;
@@ -117,6 +118,19 @@ public class PurchasePlanController {
                 purchasePlanService.updatePurchasePlanItemStatus(planId, itemId, member.companyId());
 
         return ApiResponse.ok("구매 계획 품목이 납품 확인이 되었습니다.", response);
+    }
+
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
+    @PostMapping("/{planId}/items/{itemId}")
+    public ApiResponse<Void> createItemFromPurchasePlan(
+            @AuthenticationPrincipal AuthenticatedMember member,
+            @PathVariable UUID planId,
+            @PathVariable Long itemId,
+            @Valid @RequestBody PurchasePlanItemCreateItemRequest request
+    ) {
+        purchasePlanService.createItemFromPurchasePlan(planId, itemId, member.companyId(), request);
+
+        return ApiResponse.ok("구매 계획의 품목이 등록되었습니다.", null);
     }
 
 }
