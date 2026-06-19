@@ -1,6 +1,7 @@
 package com.ieumsae.assetieum.domain.company.repository;
 
 import com.ieumsae.assetieum.domain.company.dto.CompanySearchResponse;
+import com.ieumsae.assetieum.domain.member.type.MemberStatus;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.CaseBuilder;
@@ -51,6 +52,7 @@ public class CompanyRepositoryImpl implements CompanyRepositoryCustom {
                 .from(company)
                 .leftJoin(member).on(
                         member.company.eq(company),
+                        member.status.eq(MemberStatus.ACTIVE),
                         member.deletedAt.isNull()
                 )
                 .where(condition)

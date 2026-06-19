@@ -54,7 +54,6 @@ public class CompanyController {
 	@PreAuthorize("hasRole('SUPER_ADMIN')")
 	@GetMapping
 	public ApiResponse<PaginationResponse<CompanySearchResponse>> getCompanies(
-			@AuthenticationPrincipal AuthenticatedMember authenticatedMember,
 			@Valid @ModelAttribute CompanySearchRequest request
 	) {
 		PaginationResponse<CompanySearchResponse> response = companyService.getCompanies(request);
