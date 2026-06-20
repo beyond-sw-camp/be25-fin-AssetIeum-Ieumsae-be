@@ -24,6 +24,7 @@ import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanItemCr
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanItemCreateTangibleAssetRequest;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanResponse;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanSearchRequest;
+import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanSearchResponse;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanStatisticResponse;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanUpdateStatusRequest;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.PurchasePlan;
@@ -240,7 +241,7 @@ public class PurchasePlanService {
 
     }
 
-    public PaginationResponse<PurchasePlanResponse> getPurchasePlans(
+    public PaginationResponse<PurchasePlanSearchResponse> getPurchasePlans(
             PurchasePlanSearchRequest request,
             UUID companyId
     ) {
@@ -254,7 +255,7 @@ public class PurchasePlanService {
         }
 
         // 2. 페이징 처리 및 필터링 후 구매 계획 목록 반환
-        Page<PurchasePlanResponse> purchasePlanPage = purchasePlanRepository.search(
+        Page<PurchasePlanSearchResponse> purchasePlanPage = purchasePlanRepository.search(
                 companyId,
                 request.getStatus(),
                 request.getRequesterId(),
