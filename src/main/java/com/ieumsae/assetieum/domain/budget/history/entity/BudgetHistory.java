@@ -4,6 +4,8 @@ import com.ieumsae.assetieum.domain.budget.budget.entity.Budget;
 import com.ieumsae.assetieum.domain.budget.history.type.BudgetHistoryType;
 import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.department.entity.Department;
+import com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.PurchasePlan;
+import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
@@ -51,6 +53,14 @@ public class BudgetHistory {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "budget_id", nullable = false)
     private Budget budget;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ticket_id")
+    private Ticket ticket;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "purchase_plan_id")
+    private PurchasePlan purchasePlan;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "history_type", nullable = false, length = 30)

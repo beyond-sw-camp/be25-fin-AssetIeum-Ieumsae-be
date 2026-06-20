@@ -1,5 +1,6 @@
 package com.ieumsae.assetieum.domain.ticket.assetrequest.service;
 
+import com.ieumsae.assetieum.domain.budget.budget.service.BudgetExecutionService;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.entity.IntangibleAsset;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.repository.IntangibleAssetRepository;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.type.IntangibleAssetStatus;
@@ -49,6 +50,7 @@ public class AssetRequestAssignmentService {
 	private final TangibleAssetAssignmentRepository tangibleAssetAssignmentRepository;
 	private final IntangibleAssetAssignmentRepository intangibleAssetAssignmentRepository;
 	private final AssetRequestValidator assetRequestValidator;
+	private final BudgetExecutionService budgetExecutionService;
 
 	@Transactional
 	public AssetRequestAssignResponse assign(
@@ -73,8 +75,9 @@ public class AssetRequestAssignmentService {
 				assetRequestTicket.getRequestedUsageType(),
 				companyId
 			);
-			assetRequestTicket.markAssigned();
-			ticket.changeProcessingStatus(TicketStatus.IN_PROGRESS, LocalDateTime.now());
+			budgetExecutionService.releaseHoldForInventoryAssignment(ticket, companyId);
+			assetRequestTicket.complete();
+			ticket.changeProcessingStatus(TicketStatus.COMPLETED, LocalDateTime.now());
 			return AssetRequestAssignResponse.from(
 				ticket,
 				assetRequestTicket,
@@ -92,8 +95,9 @@ public class AssetRequestAssignmentService {
 			assetRequestTicket.getQuantity(),
 			companyId
 		);
-		assetRequestTicket.markAssigned();
-		ticket.changeProcessingStatus(TicketStatus.IN_PROGRESS, LocalDateTime.now());
+		budgetExecutionService.releaseHoldForInventoryAssignment(ticket, companyId);
+		assetRequestTicket.complete();
+		ticket.changeProcessingStatus(TicketStatus.COMPLETED, LocalDateTime.now());
 		return AssetRequestAssignResponse.from(
 			ticket,
 			assetRequestTicket,

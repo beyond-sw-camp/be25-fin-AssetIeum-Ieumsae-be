@@ -161,7 +161,7 @@ public class IntangibleAssetAssignmentService {
 
         assignments.forEach(assignment -> assignment.end(endedAt));
 
-        // 3. memberId가 null일 때만 해당 자산 CANCELED 처리
+        // 3. memberId가 null일 때만 해당 자산 CANCELLED 처리
         asset.cancel();
 
         return assignments.stream()

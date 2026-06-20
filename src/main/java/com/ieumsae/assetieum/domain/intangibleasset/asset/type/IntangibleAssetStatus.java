@@ -4,5 +4,5 @@ public enum IntangibleAssetStatus {
     AVAILABLE,
     IN_USE,
     EXPIRED,
-    CANCELED
+    CANCELLED
 }

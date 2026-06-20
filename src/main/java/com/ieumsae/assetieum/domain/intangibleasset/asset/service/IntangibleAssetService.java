@@ -245,14 +245,14 @@ public class IntangibleAssetService {
             Department department,
             LocalDateTime startedAt
     ) {
-        if (status == IntangibleAssetStatus.AVAILABLE || status == IntangibleAssetStatus.EXPIRED || status == IntangibleAssetStatus.CANCELED) {
+        if (status == IntangibleAssetStatus.AVAILABLE || status == IntangibleAssetStatus.EXPIRED || status == IntangibleAssetStatus.CANCELLED) {
             return;
         }
 
         if (member == null || department == null || startedAt == null) {
             throw new BusinessException(
                     ErrorCode.INTANGIBLE_ASSET_INVALID_REQUEST,
-                    "AVAILABLE, EXPIRED, CANCELED 상태가 아닌 자산은 사용자, 부서, 사용 시작일이 필요합니다."
+                    "AVAILABLE, EXPIRED, CANCELLED 상태가 아닌 자산은 사용자, 부서, 사용 시작일이 필요합니다."
             );
         }
     }

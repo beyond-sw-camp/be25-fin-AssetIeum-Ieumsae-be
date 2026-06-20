@@ -54,4 +54,20 @@ public class Budget extends BaseEntity {
 
     @Column(name = "used_amount", nullable = false, precision = 15, scale = 2)
     private BigDecimal usedAmount;
+
+    public void increaseHold(BigDecimal amount) {
+        this.heldAmount = this.heldAmount.add(amount);
+    }
+
+    public void decreaseHold(BigDecimal amount) {
+        this.heldAmount = this.heldAmount.subtract(amount);
+    }
+
+    public void increaseUsed(BigDecimal amount) {
+        this.usedAmount = this.usedAmount.add(amount);
+    }
+
+    public BigDecimal getAvailableAmount() {
+        return totalAmount.subtract(heldAmount).subtract(usedAmount);
+    }
 }
