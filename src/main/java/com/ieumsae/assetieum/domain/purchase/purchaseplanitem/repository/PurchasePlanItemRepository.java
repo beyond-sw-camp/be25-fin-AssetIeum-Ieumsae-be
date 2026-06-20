@@ -14,4 +14,6 @@ public interface PurchasePlanItemRepository extends JpaRepository<PurchasePlanIt
     Optional<PurchasePlanItem> findByIdAndCompany_Id(Long id, UUID company_id);
 
     Optional<PurchasePlanItem> findByIdAndPurchasePlan_IdAndCompany_Id(Long id, UUID planId, UUID companyId);
+
+    Optional<PurchasePlanItem> findFirstByTicket_IdAndCompany_IdOrderByIdAsc(UUID ticketId, UUID companyId);
 }

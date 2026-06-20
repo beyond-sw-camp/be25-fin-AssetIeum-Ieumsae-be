@@ -1,5 +1,6 @@
 package com.ieumsae.assetieum.domain.ticket.purchaserequest.service;
 
+import com.ieumsae.assetieum.domain.budget.budget.service.BudgetExecutionService;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.repository.IntangibleAssetRepository;
 import com.ieumsae.assetieum.domain.intangibleasset.category.entity.IntangibleAssetCategory;
 import com.ieumsae.assetieum.domain.intangibleasset.category.repository.IntangibleAssetCategoryRepository;
@@ -8,6 +9,8 @@ import com.ieumsae.assetieum.domain.intangibleasset.item.repository.IntangibleAs
 import com.ieumsae.assetieum.domain.intangibleasset.item.type.LicenseType;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.type.MemberRole;
+import com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.PurchasePlanItem;
+import com.ieumsae.assetieum.domain.purchase.purchaseplanitem.repository.PurchasePlanItemRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.repository.TangibleAssetRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.category.entity.TangibleAssetCategory;
 import com.ieumsae.assetieum.domain.tangibleasset.category.repository.TangibleAssetCategoryRepository;
@@ -27,6 +30,7 @@ import com.ieumsae.assetieum.domain.ticket.purchaserequest.dto.DirectPurchaseRes
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.dto.DirectPurchaseResultCreateResponse;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.dto.PurchaseRequestTicketCreateRequest;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.dto.PurchaseRequestTicketCreateResponse;
+import com.ieumsae.assetieum.domain.ticket.purchaserequest.dto.PurchaseRequestTicketDetailResponse;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.entity.DirectPurchaseResult;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.entity.PurchaseRequestTicket;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.repository.DirectPurchaseResultRepository;
@@ -58,6 +62,9 @@ public class PurchaseRequestTicketService {
 	private final TicketNoGenerator ticketNoGenerator;
 	private final TicketApprovalResolver ticketApprovalResolver;
 	private final TicketRequesterResolver ticketRequesterResolver;
+	private final PurchaseRequestActionResolver purchaseRequestActionResolver;
+	private final PurchasePlanItemRepository purchasePlanItemRepository;
+	private final BudgetExecutionService budgetExecutionService;
 
 	@Transactional
 	public PurchaseRequestTicketCreateResponse createTeamPurchaseRequestTicket(
@@ -142,6 +149,9 @@ public class PurchaseRequestTicketService {
 			request.getExpiredAt(),
 			request.getBillingCycle()
 		));
+		budgetExecutionService.executeForDirectPurchaseResult(ticket, companyId, request.getActualPrice());
+		purchaseRequestTicket.complete();
+		ticket.changeProcessingStatus(TicketStatus.COMPLETED, java.time.LocalDateTime.now());
 
 		return DirectPurchaseResultCreateResponse.from(ticket, result, assetType);
 	}
@@ -200,6 +210,47 @@ public class PurchaseRequestTicketService {
 			result,
 			resolveAssetType(purchaseRequestTicket)
 		);
+	}
+
+	public PurchaseRequestTicketDetailResponse getPurchaseRequestTicket(
+		AuthenticatedMember authenticatedMember,
+		UUID ticketId
+	) {
+		UUID companyId = authenticatedMember.companyId();
+		Member viewer = ticketRequesterResolver.resolveActiveRequester(authenticatedMember.id(), companyId);
+		PurchaseRequestTicket purchaseRequestTicket = purchaseRequestTicketRepository
+			.findByIdAndCompany_Id(ticketId, companyId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+		Ticket ticket = purchaseRequestTicket.getTicket();
+		PurchasePlanItem linkedPurchasePlanItem = findLinkedPurchasePlanItem(ticket.getId(), companyId);
+		DirectPurchaseResult directPurchaseResult = findDirectPurchaseResult(ticket.getId(), companyId);
+
+		purchaseRequestActionResolver.validateReadable(ticket, viewer);
+
+		return PurchaseRequestTicketDetailResponse.from(
+			ticket,
+			purchaseRequestTicket,
+			viewer.getRole(),
+			ticket.getRequester().getId().equals(viewer.getId()),
+			resolveLinkedPurchasePlanId(linkedPurchasePlanItem),
+			linkedPurchasePlanItem,
+			directPurchaseResult,
+			purchaseRequestActionResolver.createActions(ticket, viewer)
+		);
+	}
+
+	private PurchasePlanItem findLinkedPurchasePlanItem(UUID ticketId, UUID companyId) {
+		return purchasePlanItemRepository.findFirstByTicket_IdAndCompany_IdOrderByIdAsc(ticketId, companyId)
+			.orElse(null);
+	}
+
+	private UUID resolveLinkedPurchasePlanId(PurchasePlanItem linkedPurchasePlanItem) {
+		return linkedPurchasePlanItem == null ? null : linkedPurchasePlanItem.getPurchasePlan().getId();
+	}
+
+	private DirectPurchaseResult findDirectPurchaseResult(UUID ticketId, UUID companyId) {
+		return directPurchaseResultRepository.findByIdAndCompany_Id(ticketId, companyId)
+			.orElse(null);
 	}
 
 	private PurchaseRequestTicketCreateResponse createPurchaseRequestTicket(

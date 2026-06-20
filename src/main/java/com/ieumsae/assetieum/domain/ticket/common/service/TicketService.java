@@ -97,6 +97,7 @@ public class TicketService {
 		budgetExecutionService.releaseHoldForCancellation(ticket, companyId);
 		ticket.cancel(LocalDateTime.now());
 		syncCancelledDetailStatusIfNeeded(ticket, companyId);
+		syncCancelledPurchaseRequestStatusIfNeeded(ticket, companyId);
 		syncCancelledRentalStatusIfNeeded(ticket, companyId);
 
 		return TicketCancelResponse.from(ticket);
@@ -116,6 +117,7 @@ public class TicketService {
 		// 대여 티켓은 부서장 승인 시 가용 자산 1개를 선점해 중복 대여를 막는다.
 		reserveRentalAssetIfNeeded(ticket, companyId);
 		budgetExecutionService.holdForAssetRequest(ticket, companyId);
+		budgetExecutionService.holdForPurchaseRequest(ticket, companyId);
 		ticket.approveDepartment(LocalDateTime.now());
 
 		return DepartmentApprovalResponse.from(ticket);
@@ -171,7 +173,9 @@ public class TicketService {
 		validateAssignee(ticket, assignee);
 
 		releaseReservedRentalAssetIfNeeded(ticket, companyId);
+		budgetExecutionService.releaseHoldForCancellation(ticket, companyId);
 		ticket.rejectAsset(assignee, request.getRejectionReason().trim(), LocalDateTime.now());
+		syncCancelledPurchaseRequestStatusIfNeeded(ticket, companyId);
 
 		return AssetApprovalResponse.from(ticket);
 	}
@@ -502,6 +506,17 @@ public class TicketService {
 			return;
 		}
 		syncAssetRequestStatus(ticket, companyId, TicketStatus.CANCELLED);
+	}
+
+	private void syncCancelledPurchaseRequestStatusIfNeeded(Ticket ticket, UUID companyId) {
+		if (ticket.getTicketType() != TicketType.PURCHASE_REQUEST) {
+			return;
+		}
+
+		PurchaseRequestTicket purchaseRequestTicket = purchaseRequestTicketRepository
+			.findByIdAndCompany_Id(ticket.getId(), companyId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+		purchaseRequestTicket.cancel();
 	}
 
 	private void syncCancelledRentalStatusIfNeeded(Ticket ticket, UUID companyId) {

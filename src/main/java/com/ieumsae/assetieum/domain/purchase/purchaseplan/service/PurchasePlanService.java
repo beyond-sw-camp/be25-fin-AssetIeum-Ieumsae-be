@@ -401,7 +401,27 @@ public class PurchasePlanService {
             // 현재 상태가 변경 대상 상태와 일치하는 티켓만 다음 상태로 변경한다.
             if (ticket.getTicketStatus() == currentStatus) {
                 ticket.changeProcessingStatus(nextStatus, java.time.LocalDateTime.now());
+                syncPurchaseRequestDetailStatus(ticket, companyId, nextStatus);
             }
+        }
+    }
+
+    private void syncPurchaseRequestDetailStatus(Ticket ticket, UUID companyId, TicketStatus nextStatus) {
+        if (ticket.getTicketType() != TicketType.PURCHASE_REQUEST) {
+            return;
+        }
+
+        PurchaseRequestTicket purchaseRequestTicket = purchaseRequestTicketRepository.findByIdAndCompany_Id(
+                        ticket.getId(),
+                        companyId
+                )
+                .orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+        if (nextStatus == TicketStatus.IN_PROGRESS) {
+            purchaseRequestTicket.markOrdered();
+            return;
+        }
+        if (nextStatus == TicketStatus.ASSET_APPROVED) {
+            purchaseRequestTicket.markRequested();
         }
     }
 
@@ -466,6 +486,7 @@ public class PurchasePlanService {
         }
 
         purchasePlanItem.updateStatus();
+        markLinkedPurchaseRequestReceivedIfNeeded(purchasePlanItem, companyId);
 
         for (PurchasePlanItem item : purchasePlanItems) {
             if (item.getPurchasePlanItemStatus() == PurchasePlanItemStatus.PENDING) {
@@ -481,6 +502,20 @@ public class PurchasePlanService {
     /**
      * 구매 계획에서 품목 등록
      */
+    private void markLinkedPurchaseRequestReceivedIfNeeded(PurchasePlanItem purchasePlanItem, UUID companyId) {
+        Ticket linkedTicket = purchasePlanItem.getTicket();
+        if (linkedTicket == null || linkedTicket.getTicketType() != TicketType.PURCHASE_REQUEST) {
+            return;
+        }
+
+        PurchaseRequestTicket purchaseRequestTicket = purchaseRequestTicketRepository.findByIdAndCompany_Id(
+                        linkedTicket.getId(),
+                        companyId
+                )
+                .orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+        purchaseRequestTicket.markReceived();
+    }
+
     @Transactional
     public void createItemFromPurchasePlan(
             UUID planId,
@@ -653,8 +688,12 @@ public class PurchasePlanService {
                     .build(), companyId);
         }
 
-        purchasePlanItem.markAssetRegistered();
-        completeLinkedAssetRequestTicketIfReady(purchasePlanItem, companyId);
+        purchasePlanItem.markAssetRegistered(request.getPurchasePrice());
+        completeLinkedAssetRequestTicketIfReady(
+                purchasePlanItem,
+                companyId,
+                calculateActualAmount(request.getPurchasePrice(), purchasePlanItem.getQuantity())
+        );
     }
 
     @Transactional
@@ -692,8 +731,12 @@ public class PurchasePlanService {
             assignAdditionalIntangibleAssetMembers(asset.getIntangibleAssetId(), memberIdsByAsset.get(i), request, companyId);
         }
 
-        purchasePlanItem.markAssetRegistered();
-        completeLinkedAssetRequestTicketIfReady(purchasePlanItem, companyId);
+        purchasePlanItem.markAssetRegistered(request.getPurchasePrice());
+        completeLinkedAssetRequestTicketIfReady(
+                purchasePlanItem,
+                companyId,
+                calculateActualAmount(request.getPurchasePrice(), purchasePlanItem.getQuantity())
+        );
     }
 
     private PurchasePlanItem findPurchasePlanItemForAssetCreation(UUID planId, Long itemId, UUID companyId) {
@@ -853,6 +896,10 @@ public class PurchasePlanService {
         return requestedDepartmentId;
     }
 
+    private BigDecimal calculateActualAmount(BigDecimal purchasePrice, Integer quantity) {
+        return purchasePrice.multiply(BigDecimal.valueOf(quantity));
+    }
+
     private UUID resolvePrimaryMemberId(List<UUID> memberIds) {
         if (memberIds == null || memberIds.isEmpty()) {
             return null;
@@ -920,9 +967,15 @@ public class PurchasePlanService {
         }
     }
 
-    private void completeLinkedAssetRequestTicketIfReady(PurchasePlanItem purchasePlanItem, UUID companyId) {
+    private void completeLinkedAssetRequestTicketIfReady(
+            PurchasePlanItem purchasePlanItem,
+            UUID companyId,
+            BigDecimal actualAmount
+    ) {
         Ticket linkedTicket = purchasePlanItem.getTicket();
-        if (linkedTicket == null || linkedTicket.getTicketType() != TicketType.ASSET_REQUEST) {
+        if (linkedTicket == null
+                || (linkedTicket.getTicketType() != TicketType.ASSET_REQUEST
+                && linkedTicket.getTicketType() != TicketType.PURCHASE_REQUEST)) {
             return;
         }
 
@@ -941,15 +994,30 @@ public class PurchasePlanService {
             return;
         }
 
-        AssetRequestTicket assetRequestTicket = assetRequestTicketRepository
-                .findByIdAndCompany_IdAndDeletedAtIsNull(ticket.getId(), companyId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
-        assetRequestTicket.complete();
+        completeLinkedTicketDetail(ticket, companyId);
         ticket.changeProcessingStatus(TicketStatus.COMPLETED, java.time.LocalDateTime.now());
         budgetExecutionService.executeForPurchasePlanItemRegistration(
                 purchasePlanItem.getPurchasePlan(),
                 purchasePlanItem,
-                companyId
+                companyId,
+                actualAmount
         );
+    }
+
+    private void completeLinkedTicketDetail(Ticket ticket, UUID companyId) {
+        if (ticket.getTicketType() == TicketType.ASSET_REQUEST) {
+            AssetRequestTicket assetRequestTicket = assetRequestTicketRepository
+                    .findByIdAndCompany_IdAndDeletedAtIsNull(ticket.getId(), companyId)
+                    .orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+            assetRequestTicket.complete();
+            return;
+        }
+
+        PurchaseRequestTicket purchaseRequestTicket = purchaseRequestTicketRepository.findByIdAndCompany_Id(
+                        ticket.getId(),
+                        companyId
+                )
+                .orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+        purchaseRequestTicket.complete();
     }
 }

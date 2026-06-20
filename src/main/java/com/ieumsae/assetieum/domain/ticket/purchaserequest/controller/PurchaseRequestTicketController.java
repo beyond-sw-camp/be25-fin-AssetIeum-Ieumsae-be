@@ -5,6 +5,7 @@ import com.ieumsae.assetieum.domain.ticket.purchaserequest.dto.DirectPurchaseRes
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.dto.DirectPurchaseResultCreateResponse;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.dto.PurchaseRequestTicketCreateRequest;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.dto.PurchaseRequestTicketCreateResponse;
+import com.ieumsae.assetieum.domain.ticket.purchaserequest.dto.PurchaseRequestTicketDetailResponse;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.service.PurchaseRequestTicketService;
 import com.ieumsae.assetieum.global.response.ApiResponse;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
@@ -81,6 +82,19 @@ public class PurchaseRequestTicketController {
 			request
 		);
 		return ApiResponse.ok("직접구매 완료 정보 수정에 성공했습니다.", response);
+	}
+
+	@PreAuthorize("hasAnyRole('EMPLOYEE', 'DEPARTMENT_MANAGER', 'ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
+	@GetMapping("/{ticketId}")
+	public ApiResponse<PurchaseRequestTicketDetailResponse> getPurchaseRequestTicket(
+		@AuthenticationPrincipal AuthenticatedMember authenticatedMember,
+		@PathVariable UUID ticketId
+	) {
+		PurchaseRequestTicketDetailResponse response = purchaseRequestTicketService.getPurchaseRequestTicket(
+			authenticatedMember,
+			ticketId
+		);
+		return ApiResponse.ok("구매 요청 티켓 상세 조회에 성공했습니다.", response);
 	}
 
 	@PreAuthorize("hasAnyRole('EMPLOYEE', 'DEPARTMENT_MANAGER', 'ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
