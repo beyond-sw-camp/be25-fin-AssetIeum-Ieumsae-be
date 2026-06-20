@@ -5,6 +5,7 @@ import com.ieumsae.assetieum.domain.inspection.inspection.dto.InspectionDetailRe
 import com.ieumsae.assetieum.domain.inspection.inspection.dto.InspectionResponse;
 import com.ieumsae.assetieum.domain.inspection.inspection.dto.InspectionSearchRequest;
 import com.ieumsae.assetieum.domain.inspection.inspection.dto.InspectionSearchResponse;
+import com.ieumsae.assetieum.domain.inspection.inspection.dto.InspectionStatisticsResponse;
 import com.ieumsae.assetieum.domain.inspection.inspection.service.InspectionService;
 import com.ieumsae.assetieum.domain.inspection.inspection.type.InspectionType;
 import com.ieumsae.assetieum.global.common.page.PaginationResponse;
@@ -65,5 +66,16 @@ public class IntangibleAssetInspectionController {
                 inspectionService.getInspectionDetail(inspectionId, InspectionType.INTANGIBLE_ASSET, member.companyId());
 
         return ApiResponse.ok("무형자산 전수조사 상세 조회에 성공했습니다.", response);
+    }
+
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
+    @GetMapping("/statistics")
+    public ApiResponse<InspectionStatisticsResponse> getInspectionStatistics(
+            @AuthenticationPrincipal AuthenticatedMember member
+    ) {
+        InspectionStatisticsResponse response =
+                inspectionService.getInspectionStatistics(InspectionType.INTANGIBLE_ASSET, member.companyId());
+
+        return ApiResponse.ok("무형자산 전수조사 통계 조회에 성공했습니다.", response);
     }
 }

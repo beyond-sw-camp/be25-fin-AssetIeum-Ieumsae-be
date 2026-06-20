@@ -1,6 +1,7 @@
 package com.ieumsae.assetieum.domain.inspection.inspection.repository;
 
 import com.ieumsae.assetieum.domain.inspection.inspection.entity.Inspection;
+import com.ieumsae.assetieum.domain.inspection.inspection.dto.InspectionStatisticsResponse;
 import com.ieumsae.assetieum.domain.inspection.inspection.type.InspectionStatus;
 import com.ieumsae.assetieum.domain.inspection.inspection.type.InspectionType;
 import com.ieumsae.assetieum.domain.inspection.result.entity.InspectionResult;
@@ -31,4 +32,6 @@ public interface InspectionRepositoryCustom {
     List<InspectionTarget> findTargetsWithAssets(UUID inspectionId, UUID companyId);
 
     List<InspectionResult> findResults(UUID inspectionId, UUID companyId);
+
+    InspectionStatisticsResponse getInspectionStatistics(UUID companyId, InspectionType inspectionType);
 }

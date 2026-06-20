@@ -9,6 +9,7 @@ import com.ieumsae.assetieum.domain.inspection.inspection.dto.InspectionDetailRe
 import com.ieumsae.assetieum.domain.inspection.inspection.dto.InspectionResponse;
 import com.ieumsae.assetieum.domain.inspection.inspection.dto.InspectionSearchRequest;
 import com.ieumsae.assetieum.domain.inspection.inspection.dto.InspectionSearchResponse;
+import com.ieumsae.assetieum.domain.inspection.inspection.dto.InspectionStatisticsResponse;
 import com.ieumsae.assetieum.domain.inspection.inspection.entity.Inspection;
 import com.ieumsae.assetieum.domain.inspection.inspection.repository.InspectionRepository;
 import com.ieumsae.assetieum.domain.inspection.inspection.type.InspectionTargetType;
@@ -25,15 +26,16 @@ import com.ieumsae.assetieum.domain.tangibleasset.category.repository.TangibleAs
 import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -307,5 +309,15 @@ public class InspectionService {
         }
 
         return null;
+    }
+
+    public InspectionStatisticsResponse getInspectionStatistics(
+            InspectionType inspectionType,
+            UUID companyId
+    ) {
+        companyRepository.findByIdAndDeletedAtIsNull(companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
+
+        return inspectionRepository.getInspectionStatistics(companyId, inspectionType);
     }
 }
