@@ -9,12 +9,13 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.validator.constraints.URL;
+import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.util.UUID;
 
 @Getter
+@Setter
 @NoArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class PurchasePlanItemCreateRequest {
@@ -43,29 +44,8 @@ public class PurchasePlanItemCreateRequest {
     @DecimalMin(value = "0.00", message = "예정 단가는 0 이상이어야 합니다.")
     private BigDecimal estimatedUnitPrice;
 
-    @URL(message = "유효한 URL 형식이 아닙니다.")
     @Size(max = 500, message = "외부 URL은 500자 이하여야 합니다.")
     private String externalUrl;
-
-    public void setTicketId(UUID ticketId) {
-        this.ticketId = ticketId;
-    }
-
-    public void setAssetType(AssetType assetType) {
-        this.assetType = assetType;
-    }
-
-    public void setAssetItemId(UUID assetItemId) {
-        this.assetItemId = assetItemId;
-    }
-
-    public void setProductName(String productName) {
-        this.productName = productName;
-    }
-
-    public void setDepartmentId(UUID departmentId) {
-        this.departmentId = departmentId;
-    }
 
     public void setIsStandard(Object isStandard) {
         if (isStandard instanceof Boolean value) {
@@ -86,15 +66,4 @@ public class PurchasePlanItemCreateRequest {
         this.isStandard = null;
     }
 
-    public void setQuantity(Integer quantity) {
-        this.quantity = quantity;
-    }
-
-    public void setEstimatedUnitPrice(BigDecimal estimatedUnitPrice) {
-        this.estimatedUnitPrice = estimatedUnitPrice;
-    }
-
-    public void setExternalUrl(String externalUrl) {
-        this.externalUrl = externalUrl;
-    }
 }

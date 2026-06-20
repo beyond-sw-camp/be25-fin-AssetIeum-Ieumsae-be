@@ -7,6 +7,7 @@ import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanItemCr
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanItemCreateTangibleAssetRequest;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanResponse;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanSearchRequest;
+import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanSearchResponse;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanStatisticResponse;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanUpdateStatusRequest;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.service.PurchasePlanService;
@@ -63,11 +64,11 @@ public class PurchasePlanController {
 
     @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
     @GetMapping
-    public ApiResponse<PaginationResponse<PurchasePlanResponse>> getPurchasePlans(
+    public ApiResponse<PaginationResponse<PurchasePlanSearchResponse>> getPurchasePlans(
             @AuthenticationPrincipal AuthenticatedMember member,
             @Valid @ModelAttribute PurchasePlanSearchRequest request
     ) {
-        PaginationResponse<PurchasePlanResponse> response =
+        PaginationResponse<PurchasePlanSearchResponse> response =
                 purchasePlanService.getPurchasePlans(request, member.companyId());
 
         return ApiResponse.ok("구매 계획 목록 조회에 성공했습니다.", response);
@@ -145,7 +146,7 @@ public class PurchasePlanController {
     ) {
         purchasePlanService.createTangibleAssetFromPurchasePlan(planId, itemId, member.companyId(), request);
 
-        return ApiResponse.ok("구매 계획의 자산이 등록되었습니다.", null);
+        return ApiResponse.ok("구매 계획의 유형자산이 등록되었습니다.", null);
     }
 
     @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
@@ -158,7 +159,7 @@ public class PurchasePlanController {
     ) {
         purchasePlanService.createIntangibleAssetFromPurchasePlan(planId, itemId, member.companyId(), request);
 
-        return ApiResponse.ok("구매 계획의 자산이 등록되었습니다.", null);
+        return ApiResponse.ok("구매 계획의 무형자산이 등록되었습니다.", null);
     }
 
 }

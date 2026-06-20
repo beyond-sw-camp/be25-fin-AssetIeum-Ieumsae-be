@@ -1,6 +1,6 @@
 package com.ieumsae.assetieum.domain.purchase.purchaseplan.repository;
 
-import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanResponse;
+import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanSearchResponse;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanStatisticResponse;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.PurchasePlan;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.type.PurchaseRequestStatus;
@@ -31,7 +31,7 @@ public class PurchasePlanRepositoryImpl implements PurchasePlanRepositoryCustom 
     private final JPAQueryFactory queryFactory;
 
     @Override
-    public Page<PurchasePlanResponse> search(
+    public Page<PurchasePlanSearchResponse> search(
             UUID companyId,
             PurchaseRequestStatus status,
             UUID requesterId,
@@ -57,6 +57,7 @@ public class PurchasePlanRepositoryImpl implements PurchasePlanRepositoryCustom 
 
         Map<UUID, PurchasePlan> purchasePlanById = queryFactory
                 .selectFrom(purchasePlan)
+                .leftJoin(purchasePlan.requester).fetchJoin()
                 .where(purchasePlan.id.in(planIds))
                 .orderBy(purchasePlan.createdAt.desc())
                 .fetch()
@@ -68,9 +69,27 @@ public class PurchasePlanRepositoryImpl implements PurchasePlanRepositoryCustom 
                         LinkedHashMap::new
                 ));
 
-        List<PurchasePlanResponse> content = planIds.stream()
+        Map<UUID, String> firstItemNameByPlanId = queryFactory
+                .select(purchasePlanItem.purchasePlan.id, purchasePlanItem.productName)
+                .from(purchasePlanItem)
+                .where(purchasePlanItem.purchasePlan.id.in(planIds))
+                .orderBy(purchasePlanItem.id.asc())
+                .fetch()
+                .stream()
+                .collect(Collectors.toMap(
+                        tuple -> tuple.get(purchasePlanItem.purchasePlan.id),
+                        tuple -> tuple.get(purchasePlanItem.productName),
+                        (first, ignored) -> first,
+                        LinkedHashMap::new
+                ));
+
+        List<PurchasePlanSearchResponse> content = planIds.stream()
                 .map(purchasePlanById::get)
-                .map(PurchasePlanResponse::from)
+                .map(plan -> PurchasePlanSearchResponse.from(
+                        plan,
+                        formatItemName(firstItemNameByPlanId.get(plan.getId()), plan.getItemCount()),
+                        plan.getRequester().getName()
+                ))
                 .toList();
 
         Long total = queryFactory
@@ -161,6 +180,19 @@ public class PurchasePlanRepositoryImpl implements PurchasePlanRepositoryCustom 
 
     private long toLong(Long value) {
         return value == null ? 0 : value;
+    }
+
+    private String formatItemName(String firstItemName, Integer itemCount) {
+        if (firstItemName == null || firstItemName.isBlank()) {
+            return firstItemName;
+        }
+
+        int count = itemCount == null ? 0 : itemCount;
+        if (count <= 1) {
+            return firstItemName;
+        }
+
+        return firstItemName + " 외 " + (count - 1) + "종";
     }
 
 }
