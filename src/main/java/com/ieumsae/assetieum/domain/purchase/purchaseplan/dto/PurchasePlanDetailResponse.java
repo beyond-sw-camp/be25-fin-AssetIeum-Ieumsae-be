@@ -23,6 +23,8 @@ import java.util.UUID;
 @JsonPropertyOrder({
     "planId",
     "planNo",
+    "requesterId",
+    "requesterName",
     "purchaseRequestStatus",
     "createdAt",
     "updatedAt",
@@ -35,6 +37,10 @@ public class PurchasePlanDetailResponse {
     private UUID planId;
 
     private String planNo;
+
+    private UUID requesterId;
+
+    private String requesterName;
 
     private PurchaseRequestStatus purchaseRequestStatus;
 
@@ -54,6 +60,8 @@ public class PurchasePlanDetailResponse {
         return PurchasePlanDetailResponse.builder()
                 .planId(purchasePlan.getId())
                 .planNo(purchasePlan.getPlanNo())
+                .requesterId(purchasePlan.getRequester().getId())
+                .requesterName(purchasePlan.getRequester().getName())
                 .purchaseRequestStatus(purchasePlan.getPurchaseRequestStatus())
                 .createdAt(purchasePlan.getCreatedAt())
                 .updatedAt(purchasePlan.getUpdatedAt())
