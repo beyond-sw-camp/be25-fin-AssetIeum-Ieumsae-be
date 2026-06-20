@@ -6,21 +6,28 @@ import com.ieumsae.assetieum.domain.department.entity.Department;
 import com.ieumsae.assetieum.domain.department.repository.DepartmentRepository;
 import com.ieumsae.assetieum.domain.inspection.inspection.dto.InspectionCreateRequest;
 import com.ieumsae.assetieum.domain.inspection.inspection.dto.InspectionResponse;
+import com.ieumsae.assetieum.domain.inspection.inspection.dto.InspectionSearchRequest;
+import com.ieumsae.assetieum.domain.inspection.inspection.dto.InspectionSearchResponse;
 import com.ieumsae.assetieum.domain.inspection.inspection.entity.Inspection;
 import com.ieumsae.assetieum.domain.inspection.inspection.repository.InspectionRepository;
 import com.ieumsae.assetieum.domain.inspection.inspection.type.InspectionTargetType;
 import com.ieumsae.assetieum.domain.inspection.inspection.type.InspectionType;
 import com.ieumsae.assetieum.domain.inspection.target.entity.InspectionTarget;
 import com.ieumsae.assetieum.domain.inspection.target.repository.InspectionTargetRepository;
+import com.ieumsae.assetieum.domain.intangibleasset.category.repository.IntangibleAssetCategoryRepository;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
+import com.ieumsae.assetieum.domain.tangibleasset.category.repository.TangibleAssetCategoryRepository;
+import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
-import java.util.List;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -33,6 +40,8 @@ public class InspectionService {
     private final InspectionRepository inspectionRepository;
     private final InspectionTargetResolver inspectionTargetResolver;
     private final InspectionTargetRepository inspectionTargetRepository;
+    private final TangibleAssetCategoryRepository tangibleAssetCategoryRepository;
+    private final IntangibleAssetCategoryRepository intangibleAssetCategoryRepository;
 
     @Transactional
     public InspectionResponse createInspection(
@@ -99,5 +108,68 @@ public class InspectionService {
         }
 
         inspectionTargetResolver.validateCategory(inspectionType, companyId, request.getTargetCategoryId());
+    }
+
+    public PaginationResponse<InspectionSearchResponse> getInspections(
+            InspectionSearchRequest request,
+            InspectionType inspectionType,
+            UUID companyId
+    ) {
+        companyRepository.findByIdAndDeletedAtIsNull(companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
+
+        if (request.getInspectorId() != null) {
+            memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(request.getInspectorId(), companyId)
+                    .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+        }
+
+        Page<InspectionSearchResponse> inspections = inspectionRepository.search(
+                        companyId,
+                        inspectionType,
+                        request.getStatus(),
+                        request.getInspectorId(),
+                        request.toPageable()
+                )
+                .map(inspection -> InspectionSearchResponse.from(
+                        inspection,
+                        resolveTargetName(inspection, inspectionType, companyId)
+                ));
+
+        return PaginationResponse.from(inspections);
+    }
+
+    private String resolveTargetName(
+            Inspection inspection,
+            InspectionType inspectionType,
+            UUID companyId
+    ) {
+        return switch (inspection.getTargetType()) {
+            case ALL -> "전사";
+            case DEPARTMENT -> inspection.getTargetDepartment() != null
+                    ? inspection.getTargetDepartment().getName()
+                    : null;
+            case CATEGORY -> resolveCategoryName(inspection, inspectionType, companyId);
+        };
+    }
+
+    private String resolveCategoryName(
+            Inspection inspection,
+            InspectionType inspectionType,
+            UUID companyId
+    ) {
+        UUID categoryId = inspection.getTargetCategoryId();
+        if (categoryId == null) {
+            return null;
+        }
+
+        if (inspectionType == InspectionType.TANGIBLE_ASSET) {
+            return tangibleAssetCategoryRepository.findByIdAndCompany_Id(categoryId, companyId)
+                    .map(category -> category.getName())
+                    .orElse(null);
+        }
+
+        return intangibleAssetCategoryRepository.findByIdAndCompany_Id(categoryId, companyId)
+                .map(category -> category.getName())
+                .orElse(null);
     }
 }
