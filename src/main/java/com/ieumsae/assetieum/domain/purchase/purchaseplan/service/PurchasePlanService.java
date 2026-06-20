@@ -127,6 +127,7 @@ public class PurchasePlanService {
                 member.companyId()
         );
         purchasePlanItemRepository.saveAll(purchasePlanItems);
+        budgetExecutionService.holdForPurchasePlanCreation(purchasePlanItems, member.companyId());
         // 구매계획에 포함된 티켓은 구매 진행 대상으로 보고 처리중 상태로 전환한다.
         updateLinkedTicketsStatus(purchasePlanItems, member.companyId(), TicketStatus.ASSET_APPROVED, TicketStatus.IN_PROGRESS);
 

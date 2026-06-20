@@ -6,6 +6,9 @@ import com.ieumsae.assetieum.domain.department.repository.DepartmentRepository;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
 import com.ieumsae.assetieum.domain.member.type.MemberRole;
+import com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.PurchasePlanItem;
+import com.ieumsae.assetieum.domain.purchase.purchaseplan.type.PurchasePlanItemStatus;
+import com.ieumsae.assetieum.domain.purchase.purchaseplanitem.repository.PurchasePlanItemRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.entity.TangibleAsset;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.repository.TangibleAssetRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.type.AssetUsageType;
@@ -31,7 +34,10 @@ import com.ieumsae.assetieum.domain.ticket.common.repository.TicketRepository;
 import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
 import com.ieumsae.assetieum.domain.ticket.common.type.TicketType;
 import com.ieumsae.assetieum.domain.ticket.common.type.RequestMethod;
+import com.ieumsae.assetieum.domain.ticket.maintenance.entity.MaintenanceTicket;
+import com.ieumsae.assetieum.domain.ticket.maintenance.repository.MaintenanceTicketRepository;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.entity.PurchaseRequestTicket;
+import com.ieumsae.assetieum.domain.ticket.purchaserequest.repository.DirectPurchaseResultRepository;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.repository.PurchaseRequestTicketRepository;
 import com.ieumsae.assetieum.domain.ticket.rental.entity.RentalTicket;
 import com.ieumsae.assetieum.domain.ticket.rental.repository.RentalTicketRepository;
@@ -63,6 +69,9 @@ public class TicketService {
 	private final TangibleAssetAssignmentRepository tangibleAssetAssignmentRepository;
 	private final AssetRequestTicketRepository assetRequestTicketRepository;
 	private final PurchaseRequestTicketRepository purchaseRequestTicketRepository;
+	private final DirectPurchaseResultRepository directPurchaseResultRepository;
+	private final PurchasePlanItemRepository purchasePlanItemRepository;
+	private final MaintenanceTicketRepository maintenanceTicketRepository;
 	private final TicketApprovalResolver ticketApprovalResolver;
 	private final BudgetExecutionService budgetExecutionService;
 
@@ -99,6 +108,7 @@ public class TicketService {
 		syncCancelledDetailStatusIfNeeded(ticket, companyId);
 		syncCancelledPurchaseRequestStatusIfNeeded(ticket, companyId);
 		syncCancelledRentalStatusIfNeeded(ticket, companyId);
+		syncCancelledMaintenanceStatusIfNeeded(ticket, companyId);
 
 		return TicketCancelResponse.from(ticket);
 	}
@@ -192,8 +202,10 @@ public class TicketService {
 
 		validateProcessingStatusChangeable(ticket, member, request.getTicketStatus());
 		releaseReservedRentalAssetForProcessingCancelIfNeeded(ticket, companyId, request.getTicketStatus());
+		releaseBudgetForProcessingCancelIfNeeded(ticket, companyId, request.getTicketStatus());
 		ticket.changeProcessingStatus(request.getTicketStatus(), LocalDateTime.now());
 		syncAssetRequestStatusIfNeeded(ticket, companyId, request.getTicketStatus());
+		syncPurchaseRequestStatusIfNeeded(ticket, companyId, request.getTicketStatus());
 
 		return TicketProcessingStatusUpdateResponse.from(ticket);
 	}
@@ -447,8 +459,18 @@ public class TicketService {
 	}
 
 	private void validateProcessingStatusChangeable(Ticket ticket, Member member, TicketStatus targetStatus) {
+		if (ticket.getTicketType() == TicketType.RENTAL
+			|| ticket.getTicketType() == TicketType.ASSET_REQUEST
+			|| ticket.getTicketType() == TicketType.PURCHASE_REQUEST) {
+			validateManualProcessingCancelChangeable(ticket, member, targetStatus);
+			return;
+		}
 		if (ticket.getTicketType() == TicketType.RENTAL) {
 			validateRentalProcessingStatusChangeable(ticket, member, targetStatus);
+			return;
+		}
+		if (ticket.getTicketType() == TicketType.PURCHASE_REQUEST) {
+			validatePurchaseRequestProcessingStatusChangeable(ticket, member, targetStatus);
 			return;
 		}
 		if (ticket.getTicketType() != TicketType.ASSET_REQUEST
@@ -475,6 +497,20 @@ public class TicketService {
 		}
 	}
 
+	private void validateManualProcessingCancelChangeable(Ticket ticket, Member member, TicketStatus targetStatus) {
+		if (!isAssetRole(member.getRole())) {
+			throw new BusinessException(ErrorCode.ACCESS_DENIED);
+		}
+		if (ticket.getAssignee() != null && !ticket.getAssignee().getId().equals(member.getId())) {
+			throw new BusinessException(ErrorCode.ACCESS_DENIED);
+		}
+		if ((ticket.getTicketStatus() != TicketStatus.ASSET_APPROVED
+			&& ticket.getTicketStatus() != TicketStatus.IN_PROGRESS)
+			|| targetStatus != TicketStatus.CANCELLED) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "구매자산팀 승인 이후 티켓은 수동으로 취소만 처리할 수 있습니다.");
+		}
+	}
+
 	private void validateRentalProcessingStatusChangeable(Ticket ticket, Member member, TicketStatus targetStatus) {
 		if (!isAssetRole(member.getRole())) {
 			throw new BusinessException(ErrorCode.ACCESS_DENIED);
@@ -486,6 +522,74 @@ public class TicketService {
 			&& ticket.getTicketStatus() != TicketStatus.IN_PROGRESS)
 			|| targetStatus != TicketStatus.CANCELLED) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "대여 티켓은 구매자산팀 승인 이후 취소만 처리상태 변경으로 처리할 수 있습니다.");
+		}
+	}
+
+	private void validatePurchaseRequestProcessingStatusChangeable(
+		Ticket ticket,
+		Member member,
+		TicketStatus targetStatus
+	) {
+		if (!isAssetRole(member.getRole())) {
+			throw new BusinessException(ErrorCode.ACCESS_DENIED);
+		}
+		if (!isProcessingTargetStatus(targetStatus)) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "처리상태는 IN_PROGRESS, COMPLETED, CANCELLED만 변경할 수 있습니다.");
+		}
+		if (!isProcessingChangeableStatus(ticket.getTicketStatus())) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "구매자산팀 승인 이후 구매요청만 처리상태를 변경할 수 있습니다.");
+		}
+		if (isTerminalProcessingStatus(ticket.getTicketStatus())) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "완료 또는 취소된 티켓은 처리상태를 변경할 수 없습니다.");
+		}
+		if (processingStatusOrder(targetStatus) <= processingStatusOrder(ticket.getTicketStatus())) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "현재 처리상태 이후의 상태로만 변경할 수 있습니다.");
+		}
+
+		PurchaseRequestTicket purchaseRequestTicket = purchaseRequestTicketRepository
+			.findByIdAndCompany_Id(ticket.getId(), ticket.getCompany().getId())
+			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+
+		if (targetStatus == TicketStatus.IN_PROGRESS) {
+			validatePurchaseRequestCanStartProcessing(purchaseRequestTicket);
+			return;
+		}
+		if (targetStatus == TicketStatus.COMPLETED) {
+			validatePurchaseRequestCanComplete(purchaseRequestTicket);
+		}
+	}
+
+	private void validatePurchaseRequestCanStartProcessing(PurchaseRequestTicket purchaseRequestTicket) {
+		if (purchaseRequestTicket.getRequestMethod() == RequestMethod.DIRECT_PURCHASE) {
+			return;
+		}
+
+		List<PurchasePlanItem> linkedItems = purchasePlanItemRepository.findAllByTicket_IdAndCompany_Id(
+			purchaseRequestTicket.getId(),
+			purchaseRequestTicket.getCompany().getId()
+		);
+		if (linkedItems.isEmpty()) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "구매계획에 연결된 구매요청만 처리중으로 변경할 수 있습니다.");
+		}
+	}
+
+	private void validatePurchaseRequestCanComplete(PurchaseRequestTicket purchaseRequestTicket) {
+		if (purchaseRequestTicket.getRequestMethod() == RequestMethod.DIRECT_PURCHASE) {
+			if (!directPurchaseResultRepository.existsByPurchaseRequestTicket_Id(purchaseRequestTicket.getId())) {
+				throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "직접구매 결과 등록 후 완료 처리할 수 있습니다.");
+			}
+			return;
+		}
+
+		List<PurchasePlanItem> linkedItems = purchasePlanItemRepository.findAllByTicket_IdAndCompany_Id(
+			purchaseRequestTicket.getId(),
+			purchaseRequestTicket.getCompany().getId()
+		);
+		boolean allRegistered = !linkedItems.isEmpty()
+			&& linkedItems.stream()
+				.allMatch(item -> item.getPurchasePlanItemStatus() == PurchasePlanItemStatus.ASSET_REGISTERED);
+		if (!allRegistered) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "구매계획 품목 자산등록이 완료된 구매요청만 완료 처리할 수 있습니다.");
 		}
 	}
 
@@ -508,6 +612,17 @@ public class TicketService {
 		syncAssetRequestStatus(ticket, companyId, TicketStatus.CANCELLED);
 	}
 
+	private void releaseBudgetForProcessingCancelIfNeeded(
+		Ticket ticket,
+		UUID companyId,
+		TicketStatus targetStatus
+	) {
+		if (targetStatus != TicketStatus.CANCELLED) {
+			return;
+		}
+		budgetExecutionService.releaseHoldForCancellation(ticket, companyId);
+	}
+
 	private void syncCancelledPurchaseRequestStatusIfNeeded(Ticket ticket, UUID companyId) {
 		if (ticket.getTicketType() != TicketType.PURCHASE_REQUEST) {
 			return;
@@ -528,11 +643,44 @@ public class TicketService {
 		rentalTicket.cancelReservation();
 	}
 
+	private void syncCancelledMaintenanceStatusIfNeeded(Ticket ticket, UUID companyId) {
+		if (ticket.getTicketType() != TicketType.MAINTENANCE_REQUEST) {
+			return;
+		}
+		MaintenanceTicket maintenanceTicket = maintenanceTicketRepository
+			.findByIdAndCompany_IdAndDeletedAtIsNull(ticket.getId(), companyId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+		maintenanceTicket.cancel();
+	}
+
 	private void syncAssetRequestStatusIfNeeded(Ticket ticket, UUID companyId, TicketStatus targetStatus) {
 		if (ticket.getTicketType() != TicketType.ASSET_REQUEST) {
 			return;
 		}
 		syncAssetRequestStatus(ticket, companyId, targetStatus);
+	}
+
+	private void syncPurchaseRequestStatusIfNeeded(Ticket ticket, UUID companyId, TicketStatus targetStatus) {
+		if (ticket.getTicketType() != TicketType.PURCHASE_REQUEST) {
+			return;
+		}
+
+		PurchaseRequestTicket purchaseRequestTicket = purchaseRequestTicketRepository
+			.findByIdAndCompany_Id(ticket.getId(), companyId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+
+		if (targetStatus == TicketStatus.CANCELLED) {
+			purchaseRequestTicket.cancel();
+			return;
+		}
+		if (targetStatus == TicketStatus.COMPLETED) {
+			purchaseRequestTicket.complete();
+			return;
+		}
+		if (targetStatus == TicketStatus.IN_PROGRESS
+			&& purchaseRequestTicket.getRequestMethod() == RequestMethod.TEAM_PURCHASE) {
+			purchaseRequestTicket.markOrdered();
+		}
 	}
 
 	private void syncAssetRequestStatus(Ticket ticket, UUID companyId, TicketStatus targetStatus) {

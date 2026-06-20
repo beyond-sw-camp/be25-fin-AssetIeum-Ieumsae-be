@@ -160,6 +160,21 @@ public class BudgetExecutionService {
     }
 
     @Transactional
+    public void holdForPurchasePlanCreation(
+            List<PurchasePlanItem> items,
+            UUID companyId
+    ) {
+        Set<UUID> heldTicketIds = new HashSet<>();
+        for (Ticket ticket : getAssetRequestTickets(items, companyId)) {
+            if (!heldTicketIds.add(ticket.getId()) || getOutstandingHoldAmount(ticket, companyId).signum() > 0) {
+                continue;
+            }
+            holdForAssetRequest(ticket, companyId);
+            holdForPurchaseRequest(ticket, companyId);
+        }
+    }
+
+    @Transactional
     public void executeForPurchasePlanCompletion(
             PurchasePlan purchasePlan,
             List<PurchasePlanItem> items,
@@ -238,6 +253,23 @@ public class BudgetExecutionService {
                 "Release budget hold before direct purchase execution",
                 "Execute budget with direct purchase actual amount"
         );
+    }
+
+    @Transactional
+    public void executeForMaintenanceCompletion(
+            Ticket ticket,
+            UUID companyId,
+            BigDecimal maintenanceCost
+    ) {
+        if (ticket.getTicketType() != TicketType.MAINTENANCE_REQUEST
+                || maintenanceCost == null
+                || maintenanceCost.signum() <= 0) {
+            return;
+        }
+
+        Budget budget = findCompanyCommonBudget(ticket);
+        validateAvailableBudget(budget, maintenanceCost);
+        increaseUsed(budget, ticket, null, maintenanceCost, "Execute company common budget for maintenance completion");
     }
 
     private List<Ticket> getAssetRequestTickets(List<PurchasePlanItem> items, UUID companyId) {
