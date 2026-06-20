@@ -5,5 +5,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.UUID;
 
-public interface InspectionTargetRepository extends JpaRepository<InspectionTarget, UUID> {
+public interface InspectionTargetRepository
+        extends JpaRepository<InspectionTarget, UUID>, InspectionTargetRepositoryCustom {
 }
