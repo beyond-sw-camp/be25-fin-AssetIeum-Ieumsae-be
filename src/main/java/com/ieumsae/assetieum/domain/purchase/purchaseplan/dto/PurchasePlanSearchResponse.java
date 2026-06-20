@@ -3,9 +3,7 @@ package com.ieumsae.assetieum.domain.purchase.purchaseplan.dto;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.PurchasePlan;
-import com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.PurchasePlanItem;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.type.PurchaseRequestStatus;
-import com.ieumsae.assetieum.domain.purchase.purchaseplanitem.dto.PurchasePlanItemDetailResponse;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -13,7 +11,6 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
 @Getter
@@ -21,16 +18,18 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonPropertyOrder({
-    "planId",
-    "planNo",
-    "purchaseRequestStatus",
-    "createdAt",
-    "updatedAt",
-    "estimatedAmount",
-    "actualAmount",
-    "items"
+        "planId",
+        "planNo",
+        "purchaseRequestStatus",
+        "estimatedAmount",
+        "itemCount",
+        "itemName",
+        "requesterName",
+        "createdAt",
+        "updatedAt",
+        "deletedAt"
 })
-public class PurchasePlanDetailResponse {
+public class PurchasePlanSearchResponse {
 
     private UUID planId;
 
@@ -38,30 +37,35 @@ public class PurchasePlanDetailResponse {
 
     private PurchaseRequestStatus purchaseRequestStatus;
 
+    private BigDecimal estimatedAmount;
+
+    private Integer itemCount;
+
+    private String itemName;
+
+    private String requesterName;
+
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime createdAt;
 
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime updatedAt;
 
-    private BigDecimal estimatedAmount;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    private LocalDateTime deletedAt;
 
-    private BigDecimal actualAmount;
-
-    private List<PurchasePlanItemDetailResponse> items;
-
-    public static PurchasePlanDetailResponse from(PurchasePlan purchasePlan, List<PurchasePlanItem> items) {
-        return PurchasePlanDetailResponse.builder()
+    public static PurchasePlanSearchResponse from(PurchasePlan purchasePlan, String itemName, String requesterName) {
+        return PurchasePlanSearchResponse.builder()
                 .planId(purchasePlan.getId())
                 .planNo(purchasePlan.getPlanNo())
                 .purchaseRequestStatus(purchasePlan.getPurchaseRequestStatus())
+                .estimatedAmount(purchasePlan.getEstimatedAmount())
+                .itemCount(purchasePlan.getItemCount())
+                .itemName(itemName)
+                .requesterName(requesterName)
                 .createdAt(purchasePlan.getCreatedAt())
                 .updatedAt(purchasePlan.getUpdatedAt())
-                .estimatedAmount(purchasePlan.getEstimatedAmount())
-                .actualAmount(purchasePlan.getActualAmount())
-                .items(items.stream()
-                        .map(PurchasePlanItemDetailResponse::from)
-                        .toList())
+                .deletedAt(purchasePlan.getDeletedAt())
                 .build();
     }
 }

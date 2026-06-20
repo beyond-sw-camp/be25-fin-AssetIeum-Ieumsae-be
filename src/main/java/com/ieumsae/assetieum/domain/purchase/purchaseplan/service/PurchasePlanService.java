@@ -24,6 +24,7 @@ import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanItemCr
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanItemCreateTangibleAssetRequest;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanResponse;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanSearchRequest;
+import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanSearchResponse;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanStatisticResponse;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanUpdateStatusRequest;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.PurchasePlan;
@@ -153,7 +154,7 @@ public class PurchasePlanService {
             purchasePlanItems.add(PurchasePlanItem.builder()
                     .company(company)
                     .purchasePlan(purchasePlan)
-                    .purchaseRequestTicket(findPurchaseRequestTicket(request.getTicketId(), companyId))
+                    .ticket(findPurchaseRequestTicket(request.getTicketId(), companyId))
                     .assetType(request.getAssetType())
                     .tangibleAssetItem(tangibleAssetItem)
                     .intangibleAssetItem(intangibleAssetItem)
@@ -178,7 +179,7 @@ public class PurchasePlanService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.DEPARTMENT_NOT_FOUND));
     }
 
-    private PurchaseRequestTicket findPurchaseRequestTicket(UUID ticketId, UUID companyId) {
+    private Ticket findPurchaseRequestTicket(UUID ticketId, UUID companyId) {
         if (ticketId == null) {
             return null;
         }
@@ -195,7 +196,7 @@ public class PurchasePlanService {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "구매자산팀 구매 티켓만 구매 계획에 추가할 수 있습니다.");
         }
 
-        return purchaseRequestTicket;
+        return ticket;
     }
 
     private TangibleAssetItem findTangibleAssetItem(UUID itemId, UUID companyId) {
@@ -240,7 +241,7 @@ public class PurchasePlanService {
 
     }
 
-    public PaginationResponse<PurchasePlanResponse> getPurchasePlans(
+    public PaginationResponse<PurchasePlanSearchResponse> getPurchasePlans(
             PurchasePlanSearchRequest request,
             UUID companyId
     ) {
@@ -254,7 +255,7 @@ public class PurchasePlanService {
         }
 
         // 2. 페이징 처리 및 필터링 후 구매 계획 목록 반환
-        Page<PurchasePlanResponse> purchasePlanPage = purchasePlanRepository.search(
+        Page<PurchasePlanSearchResponse> purchasePlanPage = purchasePlanRepository.search(
                 companyId,
                 request.getStatus(),
                 request.getRequesterId(),
@@ -321,12 +322,12 @@ public class PurchasePlanService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.PURCHASE_PLAN_ITEM_NOT_FOUND));
 
         for (PurchasePlanItem item : items) {
-            PurchaseRequestTicket purchaseRequestTicket = item.getPurchaseRequestTicket();
-            if (purchaseRequestTicket == null) {
+            Ticket linkedTicket = item.getTicket();
+            if (linkedTicket == null) {
                 continue;
             }
             Ticket ticket = ticketRepository.findWithLockByIdAndCompany_IdAndDeletedAtIsNull(
-                    purchaseRequestTicket.getId(),
+                    linkedTicket.getId(),
                     companyId
             ).orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
             if (ticket.getTicketStatus() == TicketStatus.ASSET_APPROVED) {
