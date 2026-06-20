@@ -38,7 +38,7 @@ public class InspectionTargetRepositoryImpl implements InspectionTargetRepositor
             Boolean isResponded,
             Pageable pageable
     ) {
-        BooleanBuilder condition = buildCondition(companyId, memberId, inspectionType, status, isResponded);
+        BooleanBuilder condition = buildMyTargetCondition(companyId, memberId, inspectionType, status, isResponded);
 
         List<InspectionTarget> content = baseTargetQuery(inspectionType)
                 .where(condition)
@@ -54,7 +54,32 @@ public class InspectionTargetRepositoryImpl implements InspectionTargetRepositor
         return new PageImpl<>(content, pageable, total == null ? 0 : total);
     }
 
-    private BooleanBuilder buildCondition(
+    @Override
+    public Page<InspectionTarget> searchInspectorTargets(
+            UUID companyId,
+            UUID inspectorId,
+            InspectionType inspectionType,
+            InspectionStatus status,
+            Boolean isResponded,
+            Pageable pageable
+    ) {
+        BooleanBuilder condition = buildInspectorTargetCondition(companyId, inspectorId, inspectionType, status, isResponded);
+
+        List<InspectionTarget> content = baseTargetQuery(inspectionType)
+                .where(condition)
+                .orderBy(inspection.startDate.desc(), inspectionTarget.createdAt.desc())
+                .offset(pageable.getOffset())
+                .limit(pageable.getPageSize())
+                .fetch();
+
+        Long total = countTargetQuery(inspectionType)
+                .where(condition)
+                .fetchOne();
+
+        return new PageImpl<>(content, pageable, total == null ? 0 : total);
+    }
+
+    private BooleanBuilder buildMyTargetCondition(
             UUID companyId,
             UUID memberId,
             InspectionType inspectionType,
@@ -71,6 +96,30 @@ public class InspectionTargetRepositoryImpl implements InspectionTargetRepositor
         } else {
             condition.and(intangibleAsset.member.id.eq(memberId));
         }
+
+        if (status != null) {
+            condition.and(inspection.inspectionStatus.eq(status));
+        }
+
+        if (isResponded != null) {
+            condition.and(inspectionTarget.isResponded.eq(isResponded));
+        }
+
+        return condition;
+    }
+
+    private BooleanBuilder buildInspectorTargetCondition(
+            UUID companyId,
+            UUID inspectorId,
+            InspectionType inspectionType,
+            InspectionStatus status,
+            Boolean isResponded
+    ) {
+        BooleanBuilder condition = new BooleanBuilder();
+        condition.and(inspectionTarget.company.id.eq(companyId));
+        condition.and(inspection.inspectionType.eq(inspectionType));
+        condition.and(inspection.inspectorType.eq(InspectorType.ASSET_TEAM));
+        condition.and(inspection.inspector.id.eq(inspectorId));
 
         if (status != null) {
             condition.and(inspection.inspectionStatus.eq(status));

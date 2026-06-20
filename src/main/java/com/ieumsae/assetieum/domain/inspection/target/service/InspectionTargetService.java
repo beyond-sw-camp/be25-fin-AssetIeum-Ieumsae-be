@@ -48,4 +48,29 @@ public class InspectionTargetService {
 
         return PaginationResponse.from(targets);
     }
+
+    public PaginationResponse<InspectionTargetResponse> getInspectionTargets(
+            InspectionTargetSearchRequest request,
+            InspectionType inspectionType,
+            UUID companyId,
+            UUID memberId
+    ) {
+        companyRepository.findByIdAndDeletedAtIsNull(companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
+
+        memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(memberId, companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+
+        Page<InspectionTargetResponse> targets = inspectionTargetRepository.searchInspectorTargets(
+                        companyId,
+                        memberId,
+                        inspectionType,
+                        request.getStatus(),
+                        request.getIsResponded(),
+                        request.toPageable()
+                )
+                .map(InspectionTargetResponse::from);
+
+        return PaginationResponse.from(targets);
+    }
 }

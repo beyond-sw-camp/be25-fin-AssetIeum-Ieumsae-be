@@ -9,6 +9,7 @@ import com.ieumsae.assetieum.global.response.ApiResponse;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -36,5 +37,22 @@ public class IntangibleAssetInspectionTargetController {
                 );
 
         return ApiResponse.ok("무형자산 전수조사 대상 자산 조회에 성공했습니다.", response);
+    }
+
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
+    @GetMapping("/targets")
+    public ApiResponse<PaginationResponse<InspectionTargetResponse>> getInspectionTargets(
+            @AuthenticationPrincipal AuthenticatedMember member,
+            @Valid @ModelAttribute InspectionTargetSearchRequest request
+    ) {
+        PaginationResponse<InspectionTargetResponse> response =
+                inspectionTargetService.getInspectionTargets(
+                        request,
+                        InspectionType.INTANGIBLE_ASSET,
+                        member.companyId(),
+                        member.id()
+                );
+
+        return ApiResponse.ok("자산팀의 무형자산 전수조사 대상 자산 조회에 성공했습니다.", response);
     }
 }

@@ -17,4 +17,13 @@ public interface InspectionTargetRepositoryCustom {
             Boolean isResponded,
             Pageable pageable
     );
+
+    Page<InspectionTarget> searchInspectorTargets(
+            UUID companyId,
+            UUID inspectorId,
+            InspectionType inspectionType,
+            InspectionStatus status,
+            Boolean isResponded,
+            Pageable pageable
+    );
 }
