@@ -135,6 +135,15 @@ public class BudgetExecutionService {
         }
     }
 
+    @Transactional
+    public void executeForPurchasePlanItemRegistration(
+            PurchasePlan purchasePlan,
+            PurchasePlanItem item,
+            UUID companyId
+    ) {
+        executeForPurchasePlanCompletion(purchasePlan, List.of(item), companyId);
+    }
+
     private List<Ticket> getAssetRequestTickets(List<PurchasePlanItem> items, UUID companyId) {
         Set<UUID> ticketIds = new HashSet<>();
         return items.stream()
