@@ -1,6 +1,7 @@
 package com.ieumsae.assetieum.domain.inspection.inspection.controller;
 
 import com.ieumsae.assetieum.domain.inspection.inspection.dto.InspectionCreateRequest;
+import com.ieumsae.assetieum.domain.inspection.inspection.dto.InspectionDetailResponse;
 import com.ieumsae.assetieum.domain.inspection.inspection.dto.InspectionResponse;
 import com.ieumsae.assetieum.domain.inspection.inspection.dto.InspectionSearchRequest;
 import com.ieumsae.assetieum.domain.inspection.inspection.dto.InspectionSearchResponse;
@@ -15,10 +16,13 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
@@ -48,7 +52,18 @@ public class IntangibleAssetInspectionController {
         PaginationResponse<InspectionSearchResponse> response =
                 inspectionService.getInspections(request, InspectionType.INTANGIBLE_ASSET, member.companyId());
 
-        return ApiResponse.ok("무형자산 전수조사 목록이 조회되었습니다.", response);
+        return ApiResponse.ok("무형자산 전수조사 목록 조회에 성공했습니다.", response);
     }
 
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
+    @GetMapping("/{inspectionId}")
+    public ApiResponse<InspectionDetailResponse> getInspectionDetail(
+            @AuthenticationPrincipal AuthenticatedMember member,
+            @PathVariable UUID inspectionId
+    ) {
+        InspectionDetailResponse response =
+                inspectionService.getInspectionDetail(inspectionId, InspectionType.INTANGIBLE_ASSET, member.companyId());
+
+        return ApiResponse.ok("무형자산 전수조사 상세 조회에 성공했습니다.", response);
+    }
 }
