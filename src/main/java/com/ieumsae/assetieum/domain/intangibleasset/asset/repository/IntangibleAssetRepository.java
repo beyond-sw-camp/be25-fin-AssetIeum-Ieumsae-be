@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -53,6 +54,16 @@ public interface IntangibleAssetRepository extends JpaRepository<IntangibleAsset
             List<IntangibleAssetStatus> statuses,
             Pageable pageable
     );
+
+    @Query("""
+            select asset.purchasePrice
+            from IntangibleAsset asset
+            where asset.company.id = :companyId
+              and asset.intangibleAssetItem.id = :itemId
+              and asset.purchasePrice is not null
+            order by asset.purchaseDate desc, asset.createdAt desc
+            """)
+    List<BigDecimal> findRecentPurchasePrices(UUID companyId, UUID itemId, Pageable pageable);
 
     List<IntangibleAsset> findAllByCompany_IdAndIntangibleAssetStatus(UUID companyId, IntangibleAssetStatus status);
 

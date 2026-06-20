@@ -141,6 +141,6 @@ public class IntangibleAsset extends BaseEntity {
 
     public void cancel() {
         clearAssignee();
-        this.intangibleAssetStatus = IntangibleAssetStatus.CANCELED;
+        this.intangibleAssetStatus = IntangibleAssetStatus.CANCELLED;
     }
 }

@@ -3,6 +3,7 @@ package com.ieumsae.assetieum.domain.tangibleasset.asset.repository;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.entity.TangibleAsset;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.type.TangibleAssetStatus;
 import jakarta.persistence.LockModeType;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -50,6 +51,18 @@ public interface TangibleAssetRepository extends JpaRepository<TangibleAsset, UU
             """)
     List<TangibleAsset> findAvailableAssetsWithLock(UUID companyId, UUID itemId, TangibleAssetStatus status, Pageable pageable);
 
+    // 구매계획 후보 조회에서 예상단가가 없을 때 최근 구매금액을 사용한다.
+    @Query("""
+            select asset.purchasePrice
+            from TangibleAsset asset
+            where asset.company.id = :companyId
+              and asset.tangibleAssetItem.id = :itemId
+              and asset.purchasePrice is not null
+            order by asset.purchaseDate desc, asset.createdAt desc
+            """)
+    List<BigDecimal> findRecentPurchasePrices(UUID companyId, UUID itemId, Pageable pageable);
+
+    // 대여 티켓에서 할당 가능한 유형자산 목록을 조회한다.
     @Query("""
             select asset
             from TangibleAsset asset

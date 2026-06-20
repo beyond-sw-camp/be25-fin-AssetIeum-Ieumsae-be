@@ -16,6 +16,8 @@ import java.util.UUID;
 import static com.ieumsae.assetieum.domain.budget.budget.entity.QBudget.budget;
 import static com.ieumsae.assetieum.domain.budget.history.entity.QBudgetHistory.budgetHistory;
 import static com.ieumsae.assetieum.domain.department.entity.QDepartment.department;
+import static com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.QPurchasePlan.purchasePlan;
+import static com.ieumsae.assetieum.domain.ticket.common.entity.QTicket.ticket;
 
 
 /**
@@ -59,6 +61,10 @@ public class BudgetHistoryRepositoryImpl implements BudgetHistoryRepositoryCusto
                         department.name,
                         budgetHistory.budget.id,
                         budget.budgetYear,
+                        budgetHistory.ticket.id,
+                        ticket.ticketNo,
+                        budgetHistory.purchasePlan.id,
+                        purchasePlan.planNo,
                         budgetHistory.historyType,
                         budgetHistory.amount,
                         budgetHistory.usedAmountBefore,
@@ -72,6 +78,8 @@ public class BudgetHistoryRepositoryImpl implements BudgetHistoryRepositoryCusto
                 .from(budgetHistory)
                 .join(budgetHistory.budget, budget)
                 .leftJoin(budgetHistory.department, department)
+                .leftJoin(budgetHistory.ticket, ticket)
+                .leftJoin(budgetHistory.purchasePlan, purchasePlan)
                 .where(condition)
                 .orderBy(budgetHistory.createdAt.desc())
                 .offset(pageable.getOffset())
