@@ -1,5 +1,6 @@
 package com.ieumsae.assetieum.domain.purchase.purchaseplan.service;
 
+import com.ieumsae.assetieum.domain.budget.budget.service.BudgetExecutionService;
 import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.company.repository.CompanyRepository;
 import com.ieumsae.assetieum.domain.department.entity.Department;
@@ -94,6 +95,7 @@ public class PurchasePlanService {
     private final TangibleAssetService tangibleAssetService;
     private final IntangibleAssetService intangibleAssetService;
     private final IntangibleAssetAssignmentService intangibleAssetAssignmentService;
+    private final BudgetExecutionService budgetExecutionService;
 
     @Transactional
     public PurchasePlanResponse createPurchasePlan(
@@ -123,6 +125,8 @@ public class PurchasePlanService {
                 member.companyId()
         );
         purchasePlanItemRepository.saveAll(purchasePlanItems);
+        // 구매계획에 포함된 티켓은 구매 진행 대상으로 보고 처리중 상태로 전환한다.
+        updateLinkedTicketsStatus(purchasePlanItems, member.companyId(), TicketStatus.ASSET_APPROVED, TicketStatus.IN_PROGRESS);
 
         return PurchasePlanResponse.from(purchasePlan);
     }
@@ -153,7 +157,7 @@ public class PurchasePlanService {
                 throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
             }
 
-            // Validate and link the common ticket; both asset request and team purchase request are allowed.
+            // 구매계획에는 승인된 자산요청 또는 구매자산팀 구매요청 티켓만 연결한다.
             Ticket linkedTicket = findLinkedPurchasePlanTicket(request.getTicketId(), companyId);
             purchasePlanItems.add(PurchasePlanItem.builder()
                     .company(company)
@@ -193,7 +197,7 @@ public class PurchasePlanService {
         if (ticket.getTicketStatus() != TicketStatus.ASSET_APPROVED) {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "구매자산팀 승인 상태의 티켓만 구매 계획에 추가할 수 있습니다.");
         }
-        // Asset request tickets are valid purchase plan sources after asset-team approval.
+        // 자산요청 티켓은 구매자산팀 승인 이후 구매계획에 포함할 수 있다.
         if (ticket.getTicketType() == TicketType.ASSET_REQUEST) {
             assetRequestTicketRepository.findByIdAndCompany_IdAndDeletedAtIsNull(ticketId, companyId)
                     .orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
@@ -203,7 +207,7 @@ public class PurchasePlanService {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "자산요청 또는 구매요청 티켓만 구매 계획에 추가할 수 있습니다.");
         }
 
-        // Purchase request tickets must be team-purchase requests to be grouped into a purchase plan.
+        // 구매요청 티켓은 구매자산팀 구매 요청만 구매계획에 포함한다.
         PurchaseRequestTicket purchaseRequestTicket = purchaseRequestTicketRepository.findByIdAndCompany_Id(ticketId, companyId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
         if (purchaseRequestTicket.getRequestMethod() != RequestMethod.TEAM_PURCHASE) {
@@ -250,6 +254,10 @@ public class PurchasePlanService {
 
         // 2. 구매 계획 삭제 (soft delete)
         purchasePlan.delete();
+        List<PurchasePlanItem> purchasePlanItems = findPurchasePlanItems(purchasePlan.getId(), companyId);
+        budgetExecutionService.releaseHoldForPurchasePlanCancellation(purchasePlan, purchasePlanItems, companyId);
+        // 구매계획이 취소되면 연결 티켓을 구매계획 전 단계로 되돌린다.
+        revertLinkedTicketsToAssetApproved(purchasePlan, companyId);
 
         return PurchasePlanResponse.from(purchasePlan);
 
@@ -314,27 +322,71 @@ public class PurchasePlanService {
         // 2. 상태 변경
         validateStatusTransition(purchasePlan.getPurchaseRequestStatus(), request.getStatus());
         purchasePlan.updateStatus(request.getStatus());
-        startLinkedTicketsIfApproved(purchasePlan, request.getStatus(), companyId);
+        syncBudgetByPurchasePlanStatus(purchasePlan, request.getStatus(), companyId);
+        syncLinkedTicketStatusByPurchasePlanStatus(purchasePlan, request.getStatus(), companyId);
 
         return PurchasePlanResponse.from(purchasePlan);
 
     }
 
-    private void startLinkedTicketsIfApproved(
+    private void syncBudgetByPurchasePlanStatus(
             PurchasePlan purchasePlan,
             PurchaseRequestStatus status,
             UUID companyId
     ) {
-        if (status != PurchaseRequestStatus.APPROVED) {
+        if (status != PurchaseRequestStatus.REJECTED && status != PurchaseRequestStatus.COMPLETED) {
             return;
         }
 
-        List<PurchasePlanItem> items = purchasePlanItemRepository.findAllByPurchasePlan_IdAndCompany_Id(
-                purchasePlan.getId(),
+        List<PurchasePlanItem> items = findPurchasePlanItems(purchasePlan.getId(), companyId);
+        if (status == PurchaseRequestStatus.REJECTED) {
+            budgetExecutionService.releaseHoldForPurchasePlanCancellation(purchasePlan, items, companyId);
+        }
+        if (status == PurchaseRequestStatus.COMPLETED) {
+            budgetExecutionService.executeForPurchasePlanCompletion(purchasePlan, items, companyId);
+        }
+    }
+
+    private void syncLinkedTicketStatusByPurchasePlanStatus(
+            PurchasePlan purchasePlan,
+            PurchaseRequestStatus status,
+            UUID companyId
+    ) {
+        // 구매계획 승인/반려 결과에 맞춰 연결된 티켓의 처리 상태를 동기화한다.
+        if (status == PurchaseRequestStatus.APPROVED) {
+            startLinkedTicketsIfNeeded(purchasePlan, companyId);
+        }
+        if (status == PurchaseRequestStatus.REJECTED) {
+            revertLinkedTicketsToAssetApproved(purchasePlan, companyId);
+        }
+    }
+
+    private void startLinkedTicketsIfNeeded(PurchasePlan purchasePlan, UUID companyId) {
+        List<PurchasePlanItem> items = findPurchasePlanItems(purchasePlan.getId(), companyId);
+
+        updateLinkedTicketsStatus(items, companyId, TicketStatus.ASSET_APPROVED, TicketStatus.IN_PROGRESS);
+    }
+
+    private void revertLinkedTicketsToAssetApproved(PurchasePlan purchasePlan, UUID companyId) {
+        List<PurchasePlanItem> items = findPurchasePlanItems(purchasePlan.getId(), companyId);
+
+        updateLinkedTicketsStatus(items, companyId, TicketStatus.IN_PROGRESS, TicketStatus.ASSET_APPROVED);
+    }
+
+    private List<PurchasePlanItem> findPurchasePlanItems(UUID purchasePlanId, UUID companyId) {
+        return purchasePlanItemRepository.findAllByPurchasePlan_IdAndCompany_Id(
+                purchasePlanId,
                 companyId
         )
                 .orElseThrow(() -> new BusinessException(ErrorCode.PURCHASE_PLAN_ITEM_NOT_FOUND));
+    }
 
+    private void updateLinkedTicketsStatus(
+            List<PurchasePlanItem> items,
+            UUID companyId,
+            TicketStatus currentStatus,
+            TicketStatus nextStatus
+    ) {
         for (PurchasePlanItem item : items) {
             Ticket linkedTicket = item.getTicket();
             if (linkedTicket == null) {
@@ -344,8 +396,9 @@ public class PurchasePlanService {
                     linkedTicket.getId(),
                     companyId
             ).orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
-            if (ticket.getTicketStatus() == TicketStatus.ASSET_APPROVED) {
-                ticket.changeProcessingStatus(TicketStatus.IN_PROGRESS, java.time.LocalDateTime.now());
+            // 현재 상태가 변경 대상 상태와 일치하는 티켓만 다음 상태로 변경한다.
+            if (ticket.getTicketStatus() == currentStatus) {
+                ticket.changeProcessingStatus(nextStatus, java.time.LocalDateTime.now());
             }
         }
     }

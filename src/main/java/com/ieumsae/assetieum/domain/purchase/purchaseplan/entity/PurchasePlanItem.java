@@ -48,12 +48,12 @@ public class PurchasePlanItem extends BaseEntity {
     @JoinColumn(name = "plan_id", nullable = false)
     private PurchasePlan purchasePlan;
 
-    // Link to common ticket so asset request and purchase request tickets can share purchase plans.
+    // 자산요청과 구매요청을 모두 연결할 수 있도록 공통 티켓을 참조한다.
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ticket_id")
     private Ticket ticket;
 
-    // Keep the requested asset type for item creation and asset registration after purchase.
+    // 구매 후 품목 생성과 자산 등록에 사용할 자산 유형이다.
     @Enumerated(jakarta.persistence.EnumType.STRING)
     @Column(name = "asset_type", nullable = false, length = 20)
     private AssetType assetType;

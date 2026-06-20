@@ -51,7 +51,7 @@ public interface TangibleAssetRepository extends JpaRepository<TangibleAsset, UU
             """)
     List<TangibleAsset> findAvailableAssetsWithLock(UUID companyId, UUID itemId, TangibleAssetStatus status, Pageable pageable);
 
-    // Used as the fallback estimated unit price for purchase plan candidate tickets.
+    // 구매계획 후보 조회에서 예상단가가 없을 때 최근 구매금액을 사용한다.
     @Query("""
             select asset.purchasePrice
             from TangibleAsset asset
@@ -62,7 +62,7 @@ public interface TangibleAssetRepository extends JpaRepository<TangibleAsset, UU
             """)
     List<BigDecimal> findRecentPurchasePrices(UUID companyId, UUID itemId, Pageable pageable);
 
-    // Used by rental tickets to show assignable tangible assets after asset-team approval.
+    // 대여 티켓에서 할당 가능한 유형자산 목록을 조회한다.
     @Query("""
             select asset
             from TangibleAsset asset

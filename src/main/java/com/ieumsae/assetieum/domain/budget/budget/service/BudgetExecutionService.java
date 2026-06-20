@@ -7,6 +7,7 @@ import com.ieumsae.assetieum.domain.budget.history.repository.BudgetHistoryRepos
 import com.ieumsae.assetieum.domain.budget.history.type.BudgetHistoryType;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.repository.IntangibleAssetRepository;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.PurchasePlan;
+import com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.PurchasePlanItem;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.repository.TangibleAssetRepository;
 import com.ieumsae.assetieum.domain.ticket.assetrequest.entity.AssetRequestTicket;
 import com.ieumsae.assetieum.domain.ticket.assetrequest.repository.AssetRequestTicketRepository;
@@ -16,6 +17,9 @@ import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -89,6 +93,50 @@ public class BudgetExecutionService {
 
         Budget budget = findDepartmentBudget(ticket);
         decreaseHold(budget, ticket, null, amount, "Release budget hold after asset request cancellation");
+    }
+
+    @Transactional
+    public void releaseHoldForPurchasePlanCancellation(
+            PurchasePlan purchasePlan,
+            List<PurchasePlanItem> items,
+            UUID companyId
+    ) {
+        for (Ticket ticket : getAssetRequestTickets(items, companyId)) {
+            BigDecimal amount = getOutstandingHoldAmount(ticket, companyId);
+            if (amount.signum() <= 0) {
+                continue;
+            }
+
+            Budget budget = findDepartmentBudget(ticket);
+            decreaseHold(budget, ticket, purchasePlan, amount, "Release budget hold after purchase plan cancellation");
+        }
+    }
+
+    @Transactional
+    public void executeForPurchasePlanCompletion(
+            PurchasePlan purchasePlan,
+            List<PurchasePlanItem> items,
+            UUID companyId
+    ) {
+        for (Ticket ticket : getAssetRequestTickets(items, companyId)) {
+            BigDecimal amount = getOutstandingHoldAmount(ticket, companyId);
+            if (amount.signum() <= 0) {
+                continue;
+            }
+
+            Budget budget = findDepartmentBudget(ticket);
+            decreaseHold(budget, ticket, purchasePlan, amount, "Release budget hold before purchase plan execution");
+            increaseUsed(budget, ticket, purchasePlan, amount, "Execute budget after purchase plan completion");
+        }
+    }
+
+    private List<Ticket> getAssetRequestTickets(List<PurchasePlanItem> items, UUID companyId) {
+        Set<UUID> ticketIds = new HashSet<>();
+        return items.stream()
+                .map(PurchasePlanItem::getTicket)
+                .filter(ticket -> ticket != null && ticket.getTicketType() == TicketType.ASSET_REQUEST)
+                .filter(ticket -> ticketIds.add(ticket.getId()))
+                .toList();
     }
 
     private Budget findDepartmentBudget(Ticket ticket) {
@@ -167,6 +215,31 @@ public class BudgetExecutionService {
                 ticket,
                 purchasePlan,
                 BudgetHistoryType.HOLD_DECREASE,
+                amount,
+                usedBefore,
+                budget.getUsedAmount(),
+                holdBefore,
+                budget.getHeldAmount(),
+                description
+        );
+    }
+
+    private void increaseUsed(
+            Budget budget,
+            Ticket ticket,
+            PurchasePlan purchasePlan,
+            BigDecimal amount,
+            String description
+    ) {
+        BigDecimal holdBefore = budget.getHeldAmount();
+        BigDecimal usedBefore = budget.getUsedAmount();
+        budget.increaseUsed(amount);
+
+        saveHistory(
+                budget,
+                ticket,
+                purchasePlan,
+                BudgetHistoryType.USE_INCREASE,
                 amount,
                 usedBefore,
                 budget.getUsedAmount(),
