@@ -478,7 +478,9 @@ public class TicketService {
 		if (ticket.getAssignee() == null || !ticket.getAssignee().getId().equals(member.getId())) {
 			throw new BusinessException(ErrorCode.ACCESS_DENIED);
 		}
-		if (ticket.getTicketStatus() != TicketStatus.ASSET_APPROVED || targetStatus != TicketStatus.CANCELLED) {
+		if ((ticket.getTicketStatus() != TicketStatus.ASSET_APPROVED
+			&& ticket.getTicketStatus() != TicketStatus.IN_PROGRESS)
+			|| targetStatus != TicketStatus.CANCELLED) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "대여 티켓은 구매자산팀 승인 이후 취소만 처리상태 변경으로 처리할 수 있습니다.");
 		}
 	}
@@ -524,7 +526,6 @@ public class TicketService {
 			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
 
 		if (targetStatus == TicketStatus.IN_PROGRESS) {
-			assetRequestTicket.markAssigned();
 			return;
 		}
 		if (targetStatus == TicketStatus.COMPLETED) {

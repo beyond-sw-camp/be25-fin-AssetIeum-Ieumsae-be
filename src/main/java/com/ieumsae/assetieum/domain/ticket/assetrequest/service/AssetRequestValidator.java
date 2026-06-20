@@ -22,7 +22,8 @@ public class AssetRequestValidator {
 		if (!actionResolver.isAssetRole(member.getRole())) {
 			throw new BusinessException(ErrorCode.ACCESS_DENIED);
 		}
-		if (ticket.getTicketStatus() != TicketStatus.ASSET_APPROVED) {
+		if (ticket.getTicketStatus() != TicketStatus.ASSET_APPROVED
+			&& ticket.getTicketStatus() != TicketStatus.IN_PROGRESS) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "자산 승인 상태의 자산 요청만 할당할 수 있습니다.");
 		}
 		if (ticket.getRequester().getId().equals(member.getId())) {

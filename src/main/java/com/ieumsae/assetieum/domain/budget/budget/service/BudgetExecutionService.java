@@ -42,6 +42,7 @@ public class BudgetExecutionService {
             return;
         }
 
+        // 부서 승인 시점에는 아직 구매 여부가 확정되지 않았으므로 예상 금액만 선점한다.
         AssetRequestTicket assetRequestTicket = findAssetRequestTicket(ticket.getId(), companyId);
         BigDecimal amount = resolveEstimatedAmount(assetRequestTicket, companyId);
         Budget budget = findDepartmentBudget(ticket);
@@ -71,6 +72,7 @@ public class BudgetExecutionService {
             return;
         }
 
+        // 보유 재고를 바로 할당한 경우 실제 지출이 없으므로 선점 예산만 해제한다.
         BigDecimal amount = getOutstandingHoldAmount(ticket, companyId);
         if (amount.signum() <= 0) {
             return;
@@ -86,6 +88,7 @@ public class BudgetExecutionService {
             return;
         }
 
+        // 취소/반려된 자산요청은 더 이상 예산을 잡아둘 필요가 없으므로 남은 선점액을 해제한다.
         BigDecimal amount = getOutstandingHoldAmount(ticket, companyId);
         if (amount.signum() <= 0) {
             return;
@@ -101,6 +104,7 @@ public class BudgetExecutionService {
             List<PurchasePlanItem> items,
             UUID companyId
     ) {
+        // 구매계획 반려/취소 시 연결된 자산요청별 남은 선점액만 해제한다.
         for (Ticket ticket : getAssetRequestTickets(items, companyId)) {
             BigDecimal amount = getOutstandingHoldAmount(ticket, companyId);
             if (amount.signum() <= 0) {
@@ -118,6 +122,7 @@ public class BudgetExecutionService {
             List<PurchasePlanItem> items,
             UUID companyId
     ) {
+        // 현재 구매계획에는 실제 결제 금액이 없으므로 자산요청의 남은 선점액을 기준으로 집행 처리한다.
         for (Ticket ticket : getAssetRequestTickets(items, companyId)) {
             BigDecimal amount = getOutstandingHoldAmount(ticket, companyId);
             if (amount.signum() <= 0) {
@@ -179,6 +184,7 @@ public class BudgetExecutionService {
     }
 
     private BigDecimal getOutstandingHoldAmount(Ticket ticket, UUID companyId) {
+        // 같은 티켓으로 여러 번 해제/집행되지 않도록 이력 기준 남은 선점액만 계산한다.
         BigDecimal holdIncrease = budgetHistoryRepository.sumAmountByTicketAndHistoryType(
                 companyId,
                 ticket.getId(),
