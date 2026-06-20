@@ -5,15 +5,16 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.PurchasePlan;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.PurchasePlanItem;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.type.PurchaseRequestStatus;
-import com.ieumsae.assetieum.domain.purchase.purchaseplanitem.dto.PurchasePlanItemResponse;
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.UUID;
+import com.ieumsae.assetieum.domain.purchase.purchaseplanitem.dto.PurchasePlanItemDetailResponse;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
 
 @Getter
 @Builder
@@ -47,7 +48,7 @@ public class PurchasePlanDetailResponse {
 
     private BigDecimal actualAmount;
 
-    private List<PurchasePlanItemResponse> items;
+    private List<PurchasePlanItemDetailResponse> items;
 
     public static PurchasePlanDetailResponse from(PurchasePlan purchasePlan, List<PurchasePlanItem> items) {
         return PurchasePlanDetailResponse.builder()
@@ -59,7 +60,7 @@ public class PurchasePlanDetailResponse {
                 .estimatedAmount(purchasePlan.getEstimatedAmount())
                 .actualAmount(purchasePlan.getActualAmount())
                 .items(items.stream()
-                        .map(PurchasePlanItemResponse::from)
+                        .map(PurchasePlanItemDetailResponse::from)
                         .toList())
                 .build();
     }

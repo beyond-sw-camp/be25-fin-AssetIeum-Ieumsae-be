@@ -10,7 +10,6 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.validator.constraints.URL;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -45,7 +44,6 @@ public class PurchasePlanItemCreateRequest {
     @DecimalMin(value = "0.00", message = "예정 단가는 0 이상이어야 합니다.")
     private BigDecimal estimatedUnitPrice;
 
-    @URL(message = "유효한 URL 형식이 아닙니다.")
     @Size(max = 500, message = "외부 URL은 500자 이하여야 합니다.")
     private String externalUrl;
 
