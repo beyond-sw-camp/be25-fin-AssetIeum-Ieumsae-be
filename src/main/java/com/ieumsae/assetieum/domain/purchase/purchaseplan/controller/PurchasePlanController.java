@@ -2,11 +2,15 @@ package com.ieumsae.assetieum.domain.purchase.purchaseplan.controller;
 
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanCreateRequest;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanDetailResponse;
+import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanItemCreateIntangibleAssetRequest;
+import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanItemCreateItemRequest;
+import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanItemCreateTangibleAssetRequest;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanResponse;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanSearchRequest;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanStatisticResponse;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanUpdateStatusRequest;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.service.PurchasePlanService;
+import com.ieumsae.assetieum.domain.purchase.purchaseplanitem.dto.PurchasePlanItemResponse;
 import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.response.ApiResponse;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
@@ -103,6 +107,58 @@ public class PurchasePlanController {
                 purchasePlanService.updatePurchasePlanStatus(planId, request, member.companyId());
 
         return ApiResponse.ok("구매 계획의 상태가 변경되었습니다.", response);
+    }
+
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
+    @PatchMapping("/{planId}/items/{itemId}/confirm")
+    public ApiResponse<PurchasePlanItemResponse> updatePurchasePlanItemStatus(
+            @AuthenticationPrincipal AuthenticatedMember member,
+            @PathVariable UUID planId,
+            @PathVariable Long itemId
+    ) {
+        PurchasePlanItemResponse response =
+                purchasePlanService.updatePurchasePlanItemStatus(planId, itemId, member.companyId());
+
+        return ApiResponse.ok("구매 계획 품목이 납품 확인이 되었습니다.", response);
+    }
+
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
+    @PostMapping("/{planId}/items/{itemId}")
+    public ApiResponse<Void> createItemFromPurchasePlan(
+            @AuthenticationPrincipal AuthenticatedMember member,
+            @PathVariable UUID planId,
+            @PathVariable Long itemId,
+            @Valid @RequestBody PurchasePlanItemCreateItemRequest request
+    ) {
+        purchasePlanService.createItemFromPurchasePlan(planId, itemId, member.companyId(), request);
+
+        return ApiResponse.ok("구매 계획의 품목이 등록되었습니다.", null);
+    }
+
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
+    @PostMapping("/{planId}/items/{itemId}/tangible-assets")
+    public ApiResponse<Void> createTangibleAssetFromPurchasePlan(
+            @AuthenticationPrincipal AuthenticatedMember member,
+            @PathVariable UUID planId,
+            @PathVariable Long itemId,
+            @Valid @RequestBody PurchasePlanItemCreateTangibleAssetRequest request
+    ) {
+        purchasePlanService.createTangibleAssetFromPurchasePlan(planId, itemId, member.companyId(), request);
+
+        return ApiResponse.ok("구매 계획의 자산이 등록되었습니다.", null);
+    }
+
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
+    @PostMapping("/{planId}/items/{itemId}/intangible-assets")
+    public ApiResponse<Void> createIntangibleAssetFromPurchasePlan(
+            @AuthenticationPrincipal AuthenticatedMember member,
+            @PathVariable UUID planId,
+            @PathVariable Long itemId,
+            @Valid @RequestBody PurchasePlanItemCreateIntangibleAssetRequest request
+    ) {
+        purchasePlanService.createIntangibleAssetFromPurchasePlan(planId, itemId, member.companyId(), request);
+
+        return ApiResponse.ok("구매 계획의 자산이 등록되었습니다.", null);
     }
 
 }

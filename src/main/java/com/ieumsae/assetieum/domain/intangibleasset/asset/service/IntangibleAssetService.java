@@ -80,7 +80,11 @@ public class IntangibleAssetService {
 
         String licenseCode = normalizeNullableString(request.getLicenseCode());
 
-        if(licenseCode != null && intangibleAssetRepository.existsByCompany_IdAndLicenseCode(companyId, licenseCode)) {
+        if(licenseCode != null && intangibleAssetRepository.existsByCompany_IdAndLicenseCodeAndIntangibleAssetItem_Id(
+                companyId,
+                licenseCode,
+                request.getIntangibleItemId()
+        )) {
             throw new BusinessException(ErrorCode.INTANGIBLE_ASSET_ITEM_DUPLICATED_LICENSE_CODE);
         }
 
@@ -385,7 +389,7 @@ public class IntangibleAssetService {
             UUID companyId
     ) {
         List<IntangibleAssetResponse> responses = new ArrayList<>();
-        Set<String> licenseCodes = new HashSet<>();
+        Set<String> licenseCodeKeys = new HashSet<>();
 
         for(String[] columns : csvFileReader.readRows(file)) {
             if(columns.length != 8) {
@@ -399,7 +403,7 @@ public class IntangibleAssetService {
                     .orElseThrow(() -> new BusinessException(ErrorCode.INTANGIBLE_ASSET_ITEM_NOT_FOUND));
 
             String licenseCode = CsvValueParser.parseNullableString(columns[1]);
-            validateImportLicenseCode(companyId, licenseCode, licenseCodes);
+            validateImportLicenseCode(companyId, item.getId(), licenseCode, licenseCodeKeys);
 
             IntangibleAssetCreateRequest request = IntangibleAssetCreateRequest.builder()
                     .intangibleItemId(item.getId())
@@ -418,13 +422,23 @@ public class IntangibleAssetService {
         return responses;
     }
 
-    private void validateImportLicenseCode(UUID companyId, String licenseCode, Set<String> licenseCodes) {
+    private void validateImportLicenseCode(
+            UUID companyId,
+            UUID itemId,
+            String licenseCode,
+            Set<String> licenseCodeKeys
+    ) {
         if (licenseCode == null) {
             return;
         }
 
-        if (!licenseCodes.add(licenseCode)
-                || intangibleAssetRepository.existsByCompany_IdAndLicenseCode(companyId, licenseCode)) {
+        String licenseCodeKey = itemId + ":" + licenseCode;
+        if (!licenseCodeKeys.add(licenseCodeKey)
+                || intangibleAssetRepository.existsByCompany_IdAndLicenseCodeAndIntangibleAssetItem_Id(
+                        companyId,
+                        licenseCode,
+                        itemId
+                )) {
             throw new BusinessException(ErrorCode.INTANGIBLE_ASSET_ITEM_DUPLICATED_LICENSE_CODE);
         }
     }

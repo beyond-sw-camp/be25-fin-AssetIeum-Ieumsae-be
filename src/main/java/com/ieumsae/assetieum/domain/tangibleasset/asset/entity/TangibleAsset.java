@@ -181,4 +181,8 @@ public class TangibleAsset extends BaseEntity {
         this.member = newMember;
         this.usedStartedAt = reassignedAt;
     }
+
+    public void updateReturnDueDate(LocalDateTime returnDueDate) {
+        this.returnDueDate = returnDueDate;
+    }
 }

@@ -96,6 +96,7 @@ public class TangibleAssetService {
         TangibleAssetStatus status = member != null ? TangibleAssetStatus.IN_USE : resolveCreateStatus(request);
 
         validateMemberDepartment(member, department);
+        validateUsageInfoForAssignedMember(member, request);
         validateRequiredUsageInfo(status, member, department, usedStartedAt);
         validateReturnDueDate(request.getReturnDueDate(), request.getUsageType(), usedStartedAt);
 
@@ -343,6 +344,19 @@ public class TangibleAssetService {
     /**
      * AVAILABLE, DISPOSED를 제외한 상태에서는 사용자, 부서, 사용 시작일이 모두 존재하는지 검증한다.
      */
+    private void validateUsageInfoForAssignedMember(Member member, TangibleAssetCreateRequest request) {
+        if (member == null) {
+            return;
+        }
+
+        if (request.getUsageType() == null || request.getAssetUsageType() == null) {
+            throw new BusinessException(
+                    ErrorCode.TANGIBLE_ASSET_INVALID_REQUEST,
+                    "사용자에게 할당되는 자산은 사용 유형과 자산 사용 유형이 필수입니다."
+            );
+        }
+    }
+
     private void validateRequiredUsageInfo(
             TangibleAssetStatus status,
             Member member,

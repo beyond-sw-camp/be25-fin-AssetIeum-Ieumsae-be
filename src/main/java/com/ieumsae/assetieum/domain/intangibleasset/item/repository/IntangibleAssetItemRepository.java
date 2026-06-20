@@ -33,4 +33,6 @@ public interface IntangibleAssetItemRepository extends JpaRepository<IntangibleA
               )
             """)
     Page<IntangibleAssetItem> searchAssignableItems(UUID companyId, UUID categoryId, String keyword, Pageable pageable);
+
+    Optional<IntangibleAssetItem> findByProductNameAndCompany_IdAndDeletedAtIsNull(String productName, UUID companyId);
 }

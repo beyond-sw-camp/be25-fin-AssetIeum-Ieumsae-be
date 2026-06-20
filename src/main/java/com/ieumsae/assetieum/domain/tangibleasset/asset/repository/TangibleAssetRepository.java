@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -50,6 +51,7 @@ public interface TangibleAssetRepository extends JpaRepository<TangibleAsset, UU
             """)
     List<TangibleAsset> findAvailableAssetsWithLock(UUID companyId, UUID itemId, TangibleAssetStatus status, Pageable pageable);
 
+    // Used as the fallback estimated unit price for purchase plan candidate tickets.
     @Query("""
             select asset.purchasePrice
             from TangibleAsset asset
@@ -59,6 +61,29 @@ public interface TangibleAssetRepository extends JpaRepository<TangibleAsset, UU
             order by asset.purchaseDate desc, asset.createdAt desc
             """)
     List<BigDecimal> findRecentPurchasePrices(UUID companyId, UUID itemId, Pageable pageable);
+
+    // Used by rental tickets to show assignable tangible assets after asset-team approval.
+    @Query("""
+            select asset
+            from TangibleAsset asset
+            where asset.company.id = :companyId
+              and asset.tangibleAssetItem.id = :itemId
+              and asset.tangibleAssetStatus = :status
+              and (
+                    :keyword is null
+                    or lower(asset.assetCode) like lower(concat('%', :keyword, '%'))
+                    or lower(asset.serialNumber) like lower(concat('%', :keyword, '%'))
+                    or lower(asset.location) like lower(concat('%', :keyword, '%'))
+                  )
+            order by asset.createdAt asc
+            """)
+    Page<TangibleAsset> searchRentalAssignableAssets(
+            UUID companyId,
+            UUID itemId,
+            TangibleAssetStatus status,
+            String keyword,
+            Pageable pageable
+    );
 
     List<TangibleAsset> findAllByCompany_IdAndTangibleAssetStatus(UUID companyId, TangibleAssetStatus status);
 
