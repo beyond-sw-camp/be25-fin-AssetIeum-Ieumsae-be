@@ -4,6 +4,7 @@ import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.type.BillingCycle;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.global.common.BaseEntity;
+import com.ieumsae.assetieum.domain.ticket.purchaserequest.type.ConfirmationStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -89,6 +90,16 @@ public class DirectPurchaseResult extends BaseEntity {
 	@Column(name = "billing_cycle", length = 30)
 	private BillingCycle billingCycle;
 
+	@Column(name = "proof_file_url", length = 500)
+	private String proofFileUrl;
+
+	@Column(name = "proof_file_uploaded_at")
+	private LocalDateTime proofFileUploadedAt;
+
+	@Enumerated(EnumType.STRING)
+	@Column(name = "confirmation_status", nullable = false, length = 30)
+	private ConfirmationStatus confirmationStatus;
+
 	public static DirectPurchaseResult create(
 		PurchaseRequestTicket purchaseRequestTicket,
 		Member submitter,
@@ -121,7 +132,17 @@ public class DirectPurchaseResult extends BaseEntity {
 			.startedAt(startedAt)
 			.expiredAt(expiredAt)
 			.billingCycle(billingCycle)
+			.confirmationStatus(ConfirmationStatus.PENDING)
 			.build();
+	}
+
+	public void confirm() {
+		this.confirmationStatus = ConfirmationStatus.CONFIRMED;
+	}
+
+	public void updateProofFile(String proofFileUrl, LocalDateTime uploadedAt) {
+		this.proofFileUrl = proofFileUrl;
+		this.proofFileUploadedAt = uploadedAt;
 	}
 
 	public void update(

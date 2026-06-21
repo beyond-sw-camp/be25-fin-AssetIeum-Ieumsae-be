@@ -143,4 +143,24 @@ public class PurchaseRequestTicket {
 			.expectedPrice(expectedPrice)
 			.build();
 	}
+
+	public void markOrdered() {
+		this.status = PurchaseRequestTicketStatus.ORDERED;
+	}
+
+	public void markRequested() {
+		this.status = PurchaseRequestTicketStatus.REQUESTED;
+	}
+
+	public void markReceived() {
+		this.status = PurchaseRequestTicketStatus.RECEIVED;
+	}
+
+	public void complete() {
+		this.status = PurchaseRequestTicketStatus.COMPLETED;
+	}
+
+	public void cancel() {
+		this.status = PurchaseRequestTicketStatus.CANCELLED;
+	}
 }

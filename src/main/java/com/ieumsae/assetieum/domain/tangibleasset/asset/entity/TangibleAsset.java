@@ -177,6 +177,46 @@ public class TangibleAsset extends BaseEntity {
         this.tangibleAssetStatus = TangibleAssetStatus.RETURN_REQUESTED;
     }
 
+    public void requestReturn() {
+        this.tangibleAssetStatus = TangibleAssetStatus.RETURN_REQUESTED;
+    }
+
+    public void collectReturn() {
+        this.member = null;
+        this.department = null;
+        this.usageType = null;
+        this.assetUsageType = null;
+        this.usedStartedAt = null;
+        this.returnDueDate = null;
+        this.tangibleAssetStatus = TangibleAssetStatus.RETURN_REQUESTED;
+    }
+
+    public void completeReturn() {
+        this.member = null;
+        this.department = null;
+        this.usageType = null;
+        this.assetUsageType = null;
+        this.usedStartedAt = null;
+        this.returnDueDate = null;
+        this.tangibleAssetStatus = TangibleAssetStatus.AVAILABLE;
+    }
+
+    public void restoreInUseAfterTicketCancel() {
+        this.tangibleAssetStatus = TangibleAssetStatus.IN_USE;
+    }
+
+    public void requestRepair() {
+        this.tangibleAssetStatus = TangibleAssetStatus.REPAIR_REQUESTED;
+    }
+
+    public void startRepair() {
+        this.tangibleAssetStatus = TangibleAssetStatus.REPAIRING;
+    }
+
+    public void completeRepair() {
+        this.tangibleAssetStatus = TangibleAssetStatus.IN_USE;
+    }
+
     public void reassign(Member newMember, LocalDateTime reassignedAt) {
         this.member = newMember;
         this.usedStartedAt = reassignedAt;
@@ -184,5 +224,15 @@ public class TangibleAsset extends BaseEntity {
 
     public void updateReturnDueDate(LocalDateTime returnDueDate) {
         this.returnDueDate = returnDueDate;
+    }
+
+    public void dispose() {
+        this.member = null;
+        this.department = null;
+        this.usageType = null;
+        this.assetUsageType = null;
+        this.usedStartedAt = null;
+        this.returnDueDate = null;
+        this.tangibleAssetStatus = TangibleAssetStatus.DISPOSED;
     }
 }

@@ -43,7 +43,7 @@ public class IntangibleAssetTicketConflictValidator {
 			);
 
 		if (existsAssetReturn || existsPurchaseReturn) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "이미 진행 중인 무형자산 반납/반품 요청이 있습니다.");
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "이미 진행 중인 무형자산 해지/환불 요청이 있습니다.");
 		}
 	}
 }

@@ -3,6 +3,7 @@ package com.ieumsae.assetieum.domain.ticket.assetreturn.repository;
 import com.ieumsae.assetieum.domain.ticket.assetreturn.entity.AssetReturnTicket;
 import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
 import java.util.Collection;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -19,4 +20,6 @@ public interface AssetReturnTicketRepository extends JpaRepository<AssetReturnTi
 		UUID intangibleAssetId,
 		Collection<TicketStatus> ticketStatuses
 	);
+
+	Optional<AssetReturnTicket> findByIdAndCompany_IdAndDeletedAtIsNull(UUID ticketId, UUID companyId);
 }
