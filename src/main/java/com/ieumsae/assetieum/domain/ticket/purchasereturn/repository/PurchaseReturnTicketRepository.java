@@ -3,6 +3,7 @@ package com.ieumsae.assetieum.domain.ticket.purchasereturn.repository;
 import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
 import com.ieumsae.assetieum.domain.ticket.purchasereturn.entity.PurchaseReturnTicket;
 import java.util.Collection;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -19,4 +20,6 @@ public interface PurchaseReturnTicketRepository extends JpaRepository<PurchaseRe
 		UUID intangibleAssetId,
 		Collection<TicketStatus> ticketStatuses
 	);
+
+	Optional<PurchaseReturnTicket> findByIdAndCompany_IdAndDeletedAtIsNull(UUID ticketId, UUID companyId);
 }

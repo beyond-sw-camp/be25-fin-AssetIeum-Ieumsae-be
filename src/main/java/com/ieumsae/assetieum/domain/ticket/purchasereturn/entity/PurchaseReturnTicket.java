@@ -93,4 +93,18 @@ public class PurchaseReturnTicket {
 			.intangibleAsset(intangibleAsset)
 			.build();
 	}
+
+	public void collect(LocalDateTime collectedAt) {
+		this.status = PurchaseReturnTicketStatus.COLLECTED;
+		this.collectedAt = collectedAt;
+	}
+
+	public void complete(LocalDateTime processedAt) {
+		this.status = PurchaseReturnTicketStatus.COMPLETED;
+		this.shippedAt = processedAt;
+	}
+
+	public void cancel() {
+		this.status = PurchaseReturnTicketStatus.CANCELLED;
+	}
 }

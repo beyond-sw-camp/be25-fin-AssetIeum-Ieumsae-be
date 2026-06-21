@@ -1,8 +1,15 @@
 package com.ieumsae.assetieum.domain.ticket.assetrequest.service;
 
+import com.ieumsae.assetieum.domain.intangibleasset.asset.entity.IntangibleAsset;
+import com.ieumsae.assetieum.domain.intangibleasset.asset.repository.IntangibleAssetRepository;
+import com.ieumsae.assetieum.domain.intangibleasset.asset.type.IntangibleAssetStatus;
+import com.ieumsae.assetieum.domain.intangibleasset.assignment.repository.IntangibleAssetAssignmentRepository;
+import com.ieumsae.assetieum.domain.intangibleasset.assignment.type.AssignmentStatus;
 import com.ieumsae.assetieum.domain.intangibleasset.item.entity.IntangibleAssetItem;
 import com.ieumsae.assetieum.domain.intangibleasset.item.repository.IntangibleAssetItemRepository;
 import com.ieumsae.assetieum.domain.member.entity.Member;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.repository.TangibleAssetRepository;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.type.TangibleAssetStatus;
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
 import com.ieumsae.assetieum.domain.tangibleasset.item.repository.TangibleAssetItemRepository;
 import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.AssetRequestAssignableItemSearchRequest;
@@ -23,6 +30,7 @@ import com.ieumsae.assetieum.domain.ticket.common.type.AssetType;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -38,6 +46,9 @@ public class AssetRequestTicketService {
 	private final AssetRequestTicketRepository assetRequestTicketRepository;
 	private final TangibleAssetItemRepository tangibleAssetItemRepository;
 	private final IntangibleAssetItemRepository intangibleAssetItemRepository;
+	private final TangibleAssetRepository tangibleAssetRepository;
+	private final IntangibleAssetRepository intangibleAssetRepository;
+	private final IntangibleAssetAssignmentRepository intangibleAssetAssignmentRepository;
 	private final TicketNoGenerator ticketNoGenerator;
 	private final TicketApprovalResolver ticketApprovalResolver;
 	private final TicketRequesterResolver ticketRequesterResolver;
@@ -58,11 +69,13 @@ public class AssetRequestTicketService {
 
 		if (request.getAssetType() == AssetType.TANGIBLE) {
 			tangibleAssetItem = findTangibleAssetItem(request.getAssetItemId(), companyId);
+			validateNonStandardTangibleInventory(tangibleAssetItem, request.getQuantity(), companyId);
 		} else {
 			intangibleAssetItem = findIntangibleAssetItem(
 				request.getAssetItemId(),
 				companyId
 			);
+			validateNonStandardIntangibleInventory(intangibleAssetItem, request.getQuantity(), companyId);
 		}
 
 		Ticket ticket = ticketRepository.save(Ticket.createAssetRequest(
@@ -164,6 +177,51 @@ public class AssetRequestTicketService {
 	private AssetRequestTicket findAssetRequestTicket(UUID ticketId, UUID companyId) {
 		return assetRequestTicketRepository.findByIdAndCompany_IdAndDeletedAtIsNull(ticketId, companyId)
 			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+	}
+
+	private void validateNonStandardTangibleInventory(TangibleAssetItem item, int quantity, UUID companyId) {
+		if (Boolean.TRUE.equals(item.getIsStandard())) {
+			return;
+		}
+
+		long availableCount = tangibleAssetRepository.countByCompany_IdAndTangibleAssetItem_IdAndTangibleAssetStatus(
+			companyId,
+			item.getId(),
+			TangibleAssetStatus.AVAILABLE
+		);
+		if (availableCount < quantity) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "비표준 유형자산 요청은 재고가 충분한 품목만 요청할 수 있습니다.");
+		}
+	}
+
+	private void validateNonStandardIntangibleInventory(IntangibleAssetItem item, int quantity, UUID companyId) {
+		if (Boolean.TRUE.equals(item.getIsStandard())) {
+			return;
+		}
+
+		if (getAvailableIntangibleSeatCount(companyId, item.getId()) < quantity) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "비표준 무형자산 요청은 재고 좌석이 충분한 품목만 요청할 수 있습니다.");
+		}
+	}
+
+	private int getAvailableIntangibleSeatCount(UUID companyId, UUID itemId) {
+		List<IntangibleAsset> assets = intangibleAssetRepository.findAllByCompany_IdAndIntangibleAssetItem_IdAndIntangibleAssetStatusIn(
+			companyId,
+			itemId,
+			List.of(IntangibleAssetStatus.AVAILABLE, IntangibleAssetStatus.IN_USE)
+		);
+
+		int availableSeatCount = 0;
+		for (IntangibleAsset asset : assets) {
+			long activeAssignmentCount = intangibleAssetAssignmentRepository
+				.countByCompany_IdAndIntangibleAsset_IdAndAssignmentStatus(
+					companyId,
+					asset.getId(),
+					AssignmentStatus.ACTIVE
+				);
+			availableSeatCount += Math.max(asset.getSeatCount() - Math.toIntExact(activeAssignmentCount), 0);
+		}
+		return availableSeatCount;
 	}
 
 	private String normalize(String value) {

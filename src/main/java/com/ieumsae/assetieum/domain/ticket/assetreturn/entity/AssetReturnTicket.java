@@ -66,6 +66,9 @@ public class AssetReturnTicket {
 	@Column(name = "collected_at")
 	private LocalDateTime collectedAt;
 
+	@Column(name = "processed_at")
+	private LocalDateTime processedAt;
+
 	public static AssetReturnTicket createTangibleReturn(
 		Ticket ticket,
 		Company company,
@@ -90,5 +93,19 @@ public class AssetReturnTicket {
 			.status(AssetReturnTicketStatus.REQUESTED)
 			.intangibleAsset(intangibleAsset)
 			.build();
+	}
+
+	public void collect(LocalDateTime collectedAt) {
+		this.status = AssetReturnTicketStatus.COLLECTED;
+		this.collectedAt = collectedAt;
+	}
+
+	public void complete(LocalDateTime processedAt) {
+		this.status = AssetReturnTicketStatus.COMPLETED;
+		this.processedAt = processedAt;
+	}
+
+	public void cancel() {
+		this.status = AssetReturnTicketStatus.CANCELLED;
 	}
 }

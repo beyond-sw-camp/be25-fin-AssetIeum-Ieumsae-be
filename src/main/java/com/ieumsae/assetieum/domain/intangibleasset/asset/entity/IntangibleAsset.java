@@ -143,4 +143,8 @@ public class IntangibleAsset extends BaseEntity {
         clearAssignee();
         this.intangibleAssetStatus = IntangibleAssetStatus.CANCELLED;
     }
+
+    public void restoreInUseAfterTicketCancel() {
+        this.intangibleAssetStatus = IntangibleAssetStatus.IN_USE;
+    }
 }
