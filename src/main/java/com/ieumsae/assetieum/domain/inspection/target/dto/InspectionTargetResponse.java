@@ -4,10 +4,11 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import com.ieumsae.assetieum.domain.inspection.inspection.type.InspectionStatus;
 import com.ieumsae.assetieum.domain.inspection.inspection.type.InspectionType;
 import com.ieumsae.assetieum.domain.inspection.target.entity.InspectionTarget;
-import java.time.LocalDateTime;
-import java.util.UUID;
 import lombok.Builder;
 import lombok.Getter;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Getter
 @Builder
@@ -16,6 +17,10 @@ public class InspectionTargetResponse {
     private UUID inspectionTargetId;
 
     private UUID inspectionId;
+
+    private UUID memberId;
+
+    private String memberName;
 
     private InspectionType inspectionType;
 
@@ -39,6 +44,8 @@ public class InspectionTargetResponse {
         return InspectionTargetResponse.builder()
                 .inspectionTargetId(target.getId())
                 .inspectionId(target.getInspection().getId())
+                .memberId(target.getMember() == null ? null : target.getMember().getId())
+                .memberName(target.getMember() == null ? null : target.getMember().getName())
                 .inspectionType(target.getInspection().getInspectionType())
                 .inspectionStatus(target.getInspection().getInspectionStatus())
                 .productName(resolveProductName(target))

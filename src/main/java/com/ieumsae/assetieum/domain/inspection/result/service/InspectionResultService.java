@@ -5,7 +5,6 @@ import com.ieumsae.assetieum.domain.inspection.followup.repository.InspectionFol
 import com.ieumsae.assetieum.domain.inspection.followup.type.InspectionFollowUpStatus;
 import com.ieumsae.assetieum.domain.inspection.inspection.entity.Inspection;
 import com.ieumsae.assetieum.domain.inspection.inspection.type.InspectionStatus;
-import com.ieumsae.assetieum.domain.inspection.inspection.type.InspectionType;
 import com.ieumsae.assetieum.domain.inspection.inspection.type.InspectorType;
 import com.ieumsae.assetieum.domain.inspection.result.dto.InspectionResultCreateRequest;
 import com.ieumsae.assetieum.domain.inspection.result.dto.InspectionResultResponse;
@@ -158,11 +157,7 @@ public class InspectionResultService {
     }
 
     private Member resolveAssignedMember(Inspection inspection, InspectionTarget target) {
-        if (inspection.getInspectionType() == InspectionType.TANGIBLE_ASSET) {
-            return target.getTangibleAsset() == null ? null : target.getTangibleAsset().getMember();
-        }
-
-        return target.getIntangibleAsset() == null ? null : target.getIntangibleAsset().getMember();
+        return target.getMember();
     }
 
     private void validateAssignedMember(Member assignedMember, Member member) {

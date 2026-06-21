@@ -49,4 +49,10 @@ public interface IntangibleAssetAssignmentRepository extends JpaRepository<Intan
             AssignmentStatus assignmentStatus
     );
 
+    List<IntangibleAssetAssignment> findAllByCompany_IdAndIntangibleAsset_IdInAndAssignmentStatus(
+            UUID companyId,
+            List<UUID> assetIds,
+            AssignmentStatus assignmentStatus
+    );
+
 }
