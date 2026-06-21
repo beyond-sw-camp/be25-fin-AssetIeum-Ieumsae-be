@@ -79,6 +79,7 @@ public enum ErrorCode {
 	INSPECTION_NOT_FOUND(HttpStatus.NOT_FOUND, "inspection-001", "해당 전수조사가 존재하지 않습니다."),
 	INSPECTION_TARGET_NOT_FOUND(HttpStatus.NOT_FOUND, "inspection-002", "해당 전수조사 대상 자산이 존재하지 않습니다."),
 	INSPECTION_RESULT_NOT_FOUND(HttpStatus.NOT_FOUND, "inspection-003", "해당 전수조사 응답이 존재하지 않습니다."),
+	INSPECTION_FOLLOW_UP_NOT_FOUND(HttpStatus.NOT_FOUND, "inspection-004", "해당 전수조사 후속처리가 존재하지 않습니다."),
 
 
 	// 티켓
