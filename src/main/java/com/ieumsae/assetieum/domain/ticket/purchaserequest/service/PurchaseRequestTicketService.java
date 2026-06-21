@@ -151,6 +151,7 @@ public class PurchaseRequestTicketService {
 			request.getBillingCycle()
 		));
 		budgetExecutionService.executeForDirectPurchaseResult(ticket, companyId, request.getActualPrice());
+		// [수정] 자산팀 확인 전까지 IN_PROGRESS 상태 유지
 
 		return DirectPurchaseResultCreateResponse.from(ticket, result, assetType);
 	}
@@ -171,6 +172,7 @@ public class PurchaseRequestTicketService {
 		AssetType assetType = resolveAssetType(purchaseRequestTicket);
 
 		validateDirectPurchaseResultUpdatable(purchaseRequestTicket, ticket, submitter);
+		// [수정] 이미 확인(CONFIRMED)된 영수증은 수정 불가
 		if (result.getConfirmationStatus() == ConfirmationStatus.CONFIRMED) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "이미 확인 완료된 직접구매 정보는 수정할 수 없습니다.");
 		}

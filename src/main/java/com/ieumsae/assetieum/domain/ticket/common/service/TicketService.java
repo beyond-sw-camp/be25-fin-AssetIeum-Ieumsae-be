@@ -628,6 +628,7 @@ public class TicketService {
 			DirectPurchaseResult result = directPurchaseResultRepository.findByIdAndCompany_Id(
 					purchaseRequestTicket.getId(), purchaseRequestTicket.getCompany().getId())
 				.orElseThrow(() -> new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "직접구매 결과 등록 후 완료 처리할 수 있습니다."));
+			// [수정] 자산팀이 증빙을 확인(CONFIRMED)해야 최종 완료 가능
 			if (result.getConfirmationStatus() != ConfirmationStatus.CONFIRMED) {
 				throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "직접구매 결과 확인(CONFIRMED) 후 완료 처리할 수 있습니다.");
 			}
