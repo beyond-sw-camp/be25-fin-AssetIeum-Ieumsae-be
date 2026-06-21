@@ -14,8 +14,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
-import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -24,6 +22,9 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UuidGenerator;
 import org.hibernate.type.SqlTypes;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Getter
 @Entity
@@ -60,4 +61,12 @@ public class InspectionFollowUp extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "inspection_follow_up_status", length = 50)
     private InspectionFollowUpStatus inspectionFollowUpStatus;
+
+    public void updateStatus(InspectionFollowUpStatus status, String actionDetail, LocalDateTime processedAt) {
+        this.inspectionFollowUpStatus = status;
+        this.actionDetail = actionDetail;
+        if (processedAt != null) {
+            this.processedAt = processedAt;
+        }
+    }
 }
