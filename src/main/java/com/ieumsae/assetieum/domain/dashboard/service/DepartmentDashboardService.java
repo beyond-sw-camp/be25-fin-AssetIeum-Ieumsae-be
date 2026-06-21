@@ -151,7 +151,7 @@ public class DepartmentDashboardService {
 					.departmentName(departmentName)
 					.eventDate(eventDate)
 					.dDay(dDay)
-					.status(toHrEventStatusLabel(status))
+					.status(toHrEventStatusLabel(type, status))
 					.build();
 			})
 			.collect(Collectors.toList());
@@ -221,7 +221,16 @@ public class DepartmentDashboardService {
 		};
 	}
 
-	private String toHrEventStatusLabel(HrEventStatus status) {
+	private String toHrEventStatusLabel(HrEventType type, HrEventStatus status) {
+		if (type == HrEventType.ONBOARDING && status == HrEventStatus.COMPLETED) {
+			return "지급완료";
+		}
+		if (type == HrEventType.OFFBOARDING && status == HrEventStatus.IN_PROGRESS) {
+			return "회수중";
+		}
+		if (type == HrEventType.OFFBOARDING && status == HrEventStatus.COMPLETED) {
+			return "반납";
+		}
 		return switch (status) {
 			case PENDING -> "대기중";
 			case IN_PROGRESS -> "진행중";
