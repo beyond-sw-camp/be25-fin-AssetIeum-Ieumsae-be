@@ -6,13 +6,14 @@ import com.ieumsae.assetieum.domain.inspection.inspection.type.InspectorType;
 import com.ieumsae.assetieum.domain.inspection.target.entity.InspectionTarget;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.jpa.impl.JPAQueryFactory;
-import java.util.List;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.UUID;
 
 import static com.ieumsae.assetieum.domain.inspection.inspection.entity.QInspection.inspection;
 import static com.ieumsae.assetieum.domain.inspection.target.entity.QInspectionTarget.inspectionTarget;
@@ -89,13 +90,7 @@ public class InspectionTargetRepositoryImpl implements InspectionTargetRepositor
         BooleanBuilder condition = new BooleanBuilder();
         condition.and(inspectionTarget.company.id.eq(companyId));
         condition.and(inspection.inspectionType.eq(inspectionType));
-        condition.and(inspection.inspectorType.eq(InspectorType.EMPLOYEE));
-
-        if (inspectionType == InspectionType.TANGIBLE_ASSET) {
-            condition.and(tangibleAsset.member.id.eq(memberId));
-        } else {
-            condition.and(intangibleAsset.member.id.eq(memberId));
-        }
+        condition.and(inspectionTarget.member.id.eq(memberId));
 
         if (status != null) {
             condition.and(inspection.inspectionStatus.eq(status));
@@ -135,7 +130,8 @@ public class InspectionTargetRepositoryImpl implements InspectionTargetRepositor
     private com.querydsl.jpa.impl.JPAQuery<InspectionTarget> baseTargetQuery(InspectionType inspectionType) {
         com.querydsl.jpa.impl.JPAQuery<InspectionTarget> query = queryFactory
                 .selectFrom(inspectionTarget)
-                .join(inspectionTarget.inspection, inspection).fetchJoin();
+                .join(inspectionTarget.inspection, inspection).fetchJoin()
+                .leftJoin(inspectionTarget.member).fetchJoin();
 
         if (inspectionType == InspectionType.TANGIBLE_ASSET) {
             return query

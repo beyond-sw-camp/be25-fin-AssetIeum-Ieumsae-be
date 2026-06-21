@@ -10,6 +10,9 @@ import com.ieumsae.assetieum.domain.inspection.target.entity.InspectionTarget;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.entity.IntangibleAsset;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.repository.IntangibleAssetRepository;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.type.IntangibleAssetStatus;
+import com.ieumsae.assetieum.domain.intangibleasset.assignment.entity.IntangibleAssetAssignment;
+import com.ieumsae.assetieum.domain.intangibleasset.assignment.repository.IntangibleAssetAssignmentRepository;
+import com.ieumsae.assetieum.domain.intangibleasset.assignment.type.AssignmentStatus;
 import com.ieumsae.assetieum.domain.intangibleasset.category.repository.IntangibleAssetCategoryRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.entity.TangibleAsset;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.repository.TangibleAssetRepository;
@@ -17,13 +20,17 @@ import com.ieumsae.assetieum.domain.tangibleasset.asset.type.TangibleAssetStatus
 import com.ieumsae.assetieum.domain.tangibleasset.category.repository.TangibleAssetCategoryRepository;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -34,6 +41,7 @@ public class InspectionTargetResolver {
     private final DepartmentRepository departmentRepository;
     private final TangibleAssetRepository tangibleAssetRepository;
     private final IntangibleAssetRepository intangibleAssetRepository;
+    private final IntangibleAssetAssignmentRepository intangibleAssetAssignmentRepository;
 
     public void validateCategory(InspectionType inspectionType, UUID companyId, UUID categoryId) {
         if (categoryId == null) {
@@ -86,6 +94,7 @@ public class InspectionTargetResolver {
                 .company(company)
                 .inspection(inspection)
                 .tangibleAsset(asset)
+                .member(asset.getMember())
                 .build();
     }
 
@@ -97,6 +106,7 @@ public class InspectionTargetResolver {
                 .company(company)
                 .inspection(inspection)
                 .intangibleAsset(asset)
+                .member(asset.getMember())
                 .build();
     }
 
@@ -129,6 +139,7 @@ public class InspectionTargetResolver {
                         .company(company)
                         .inspection(inspection)
                         .tangibleAsset(asset)
+                        .member(asset.getMember())
                         .build())
                 .toList();
     }
@@ -157,13 +168,64 @@ public class InspectionTargetResolver {
             );
         };
 
-        return assets.stream()
+        return createIntangibleTargetsBySeat(company, inspection, assets);
+    }
+
+    private List<InspectionTarget> createIntangibleTargetsBySeat(
+            Company company,
+            Inspection inspection,
+            List<IntangibleAsset> assets
+    ) {
+        Map<UUID, IntangibleAsset> multiSeatAssets = assets.stream()
+                .filter(asset -> asset.getSeatCount() != null && asset.getSeatCount() >= 2)
+                .collect(Collectors.toMap(IntangibleAsset::getId, Function.identity()));
+
+        List<InspectionTarget> targets = new ArrayList<>();
+
+        assets.stream()
+                .filter(asset -> asset.getSeatCount() == null || asset.getSeatCount() < 2)
                 .map(asset -> InspectionTarget.builder()
                         .company(company)
                         .inspection(inspection)
                         .intangibleAsset(asset)
+                        .member(asset.getMember())
                         .build())
-                .toList();
+                .forEach(targets::add);
+
+        if (multiSeatAssets.isEmpty()) {
+            return targets;
+        }
+
+        intangibleAssetAssignmentRepository
+                .findAllByCompany_IdAndIntangibleAsset_IdInAndAssignmentStatus(
+                        company.getId(),
+                        new ArrayList<>(multiSeatAssets.keySet()),
+                        AssignmentStatus.ACTIVE
+                )
+                .stream()
+                .map(assignment -> createIntangibleAssignmentTarget(
+                        company,
+                        inspection,
+                        multiSeatAssets.get(assignment.getIntangibleAsset().getId()),
+                        assignment
+                ))
+                .forEach(targets::add);
+
+        return targets;
+    }
+
+    private InspectionTarget createIntangibleAssignmentTarget(
+            Company company,
+            Inspection inspection,
+            IntangibleAsset asset,
+            IntangibleAssetAssignment assignment
+    ) {
+        return InspectionTarget.builder()
+                .company(company)
+                .inspection(inspection)
+                .intangibleAsset(asset)
+                .member(assignment.getMember())
+                .build();
     }
 
     private List<UUID> resolveTangibleCategoryIds(UUID categoryId, UUID companyId) {

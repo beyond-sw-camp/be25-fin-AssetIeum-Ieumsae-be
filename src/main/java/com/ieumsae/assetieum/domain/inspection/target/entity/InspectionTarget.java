@@ -3,6 +3,7 @@ package com.ieumsae.assetieum.domain.inspection.target.entity;
 import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.inspection.inspection.entity.Inspection;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.entity.IntangibleAsset;
+import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.entity.TangibleAsset;
 import com.ieumsae.assetieum.global.common.BaseEntity;
 import jakarta.persistence.Column;
@@ -52,6 +53,10 @@ public class InspectionTarget extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "intangible_asset_id")
     private IntangibleAsset intangibleAsset;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "member_id")
+    private Member member;
 
     @Builder.Default
     @Column(name = "is_responded", nullable = false)
