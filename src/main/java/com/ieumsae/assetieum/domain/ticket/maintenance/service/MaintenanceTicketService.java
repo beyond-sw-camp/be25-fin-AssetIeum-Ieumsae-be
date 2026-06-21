@@ -103,6 +103,7 @@ public class MaintenanceTicketService {
 			requester.getCompany(),
 			asset
 		));
+		asset.requestRepair();
 
 		return MaintenanceTicketCreateResponse.from(ticket, maintenanceTicket, assignment);
 	}
@@ -139,6 +140,7 @@ public class MaintenanceTicketService {
 		MaintenanceTicket maintenanceTicket = findMaintenanceTicket(ticketId, companyId);
 
 		validateCollectable(ticket, maintenanceTicket, collector);
+		maintenanceTicket.getTangibleAsset().startRepair();
 		maintenanceTicket.collect(LocalDateTime.now());
 
 		return MaintenanceAssetCollectResponse.from(ticket, maintenanceTicket);
@@ -161,6 +163,7 @@ public class MaintenanceTicketService {
 		BigDecimal maintenanceCost = normalizeMaintenanceCost(request.getMaintenanceCost());
 		LocalDateTime completedAt = LocalDateTime.now();
 		budgetExecutionService.executeForMaintenanceCompletion(ticket, companyId, maintenanceCost);
+		maintenanceTicket.getTangibleAsset().completeRepair();
 		maintenanceTicket.complete(normalizeMaintenanceResult(request.getMaintenanceResult()), maintenanceCost, completedAt);
 		ticket.changeProcessingStatus(TicketStatus.COMPLETED, completedAt);
 
