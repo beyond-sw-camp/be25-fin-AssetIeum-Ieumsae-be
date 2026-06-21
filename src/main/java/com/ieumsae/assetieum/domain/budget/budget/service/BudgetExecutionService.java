@@ -20,6 +20,7 @@ import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
 import com.ieumsae.assetieum.domain.ticket.common.type.TicketType;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.entity.PurchaseRequestTicket;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.repository.PurchaseRequestTicketRepository;
+import com.ieumsae.assetieum.domain.ticket.purchasereturn.entity.PurchaseReturnTicket;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import java.math.BigDecimal;
@@ -272,6 +273,28 @@ public class BudgetExecutionService {
         increaseUsed(budget, ticket, null, maintenanceCost, "Execute company common budget for maintenance completion");
     }
 
+    @Transactional
+    public void recoverForPurchaseReturn(
+            Ticket ticket,
+            PurchaseReturnTicket purchaseReturnTicket
+    ) {
+        if (ticket.getTicketType() != TicketType.PURCHASE_RETURN) {
+            return;
+        }
+
+        BigDecimal amount = resolvePurchaseReturnRecoveryAmount(purchaseReturnTicket);
+        if (amount.signum() <= 0) {
+            return;
+        }
+
+        Budget budget = findBudgetForPurchaseReturn(ticket, purchaseReturnTicket);
+        BigDecimal recoveryAmount = amount.min(budget.getUsedAmount());
+        if (recoveryAmount.signum() <= 0) {
+            return;
+        }
+        decreaseUsed(budget, ticket, null, recoveryAmount, "Recover used budget after purchase return completion");
+    }
+
     private List<Ticket> getAssetRequestTickets(List<PurchasePlanItem> items, UUID companyId) {
         Set<UUID> ticketIds = new HashSet<>();
         return items.stream()
@@ -317,6 +340,14 @@ public class BudgetExecutionService {
         return findDepartmentBudget(ticket);
     }
 
+    private Budget findBudgetForPurchaseReturn(Ticket ticket, PurchaseReturnTicket purchaseReturnTicket) {
+        if (isStandardPurchaseReturn(purchaseReturnTicket)) {
+            return findCompanyCommonBudget(ticket);
+        }
+
+        return findDepartmentBudget(ticket);
+    }
+
     private Budget findCompanyCommonBudget(Ticket ticket) {
         return budgetRepository.findByCompany_IdAndDepartmentIsNullAndBudgetYear(
                         ticket.getCompany().getId(),
@@ -340,6 +371,14 @@ public class BudgetExecutionService {
         }
 
         return Boolean.TRUE.equals(ticket.getIntangibleAssetItem().getIsStandard());
+    }
+
+    private boolean isStandardPurchaseReturn(PurchaseReturnTicket ticket) {
+        if (ticket.getTangibleAsset() != null) {
+            return Boolean.TRUE.equals(ticket.getTangibleAsset().getTangibleAssetItem().getIsStandard());
+        }
+
+        return Boolean.TRUE.equals(ticket.getIntangibleAsset().getIntangibleAssetItem().getIsStandard());
     }
 
     private boolean hasEnoughInventory(AssetRequestTicket ticket, UUID companyId) {
@@ -412,6 +451,17 @@ public class BudgetExecutionService {
         }
 
         return unitPrice.multiply(BigDecimal.valueOf(ticket.getQuantity()));
+    }
+
+    private BigDecimal resolvePurchaseReturnRecoveryAmount(PurchaseReturnTicket ticket) {
+        BigDecimal purchasePrice = ticket.getTangibleAsset() != null
+                ? ticket.getTangibleAsset().getPurchasePrice()
+                : ticket.getIntangibleAsset().getPurchasePrice();
+
+        if (purchasePrice == null) {
+            return BigDecimal.ZERO;
+        }
+        return purchasePrice.max(BigDecimal.ZERO);
     }
 
     private BigDecimal getOutstandingHoldAmount(Ticket ticket, UUID companyId) {
@@ -498,6 +548,31 @@ public class BudgetExecutionService {
                 ticket,
                 purchasePlan,
                 BudgetHistoryType.USE_INCREASE,
+                amount,
+                usedBefore,
+                budget.getUsedAmount(),
+                holdBefore,
+                budget.getHeldAmount(),
+                description
+        );
+    }
+
+    private void decreaseUsed(
+            Budget budget,
+            Ticket ticket,
+            PurchasePlan purchasePlan,
+            BigDecimal amount,
+            String description
+    ) {
+        BigDecimal holdBefore = budget.getHeldAmount();
+        BigDecimal usedBefore = budget.getUsedAmount();
+        budget.decreaseUsed(amount);
+
+        saveHistory(
+                budget,
+                ticket,
+                purchasePlan,
+                BudgetHistoryType.RECOVERY,
                 amount,
                 usedBefore,
                 budget.getUsedAmount(),
