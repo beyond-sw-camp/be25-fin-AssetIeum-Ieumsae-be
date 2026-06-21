@@ -39,7 +39,7 @@ public class TangibleAssetTicketConflictValidator {
 			|| hasOngoingMaintenance(companyId, tangibleAssetId)
 			|| hasOngoingAssetReturn(companyId, tangibleAssetId)
 			|| hasOngoingPurchaseReturn(companyId, tangibleAssetId)) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "이미 진행 중인 자산 요청 티켓이 있습니다.");
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "이미 진행 중인 유지보수/반납/반품/대여연장 요청이 있습니다.");
 		}
 	}
 

@@ -45,6 +45,7 @@ import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
 import com.ieumsae.assetieum.domain.tangibleasset.item.repository.TangibleAssetItemRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.item.service.TangibleAssetItemService;
 import com.ieumsae.assetieum.domain.ticket.assetrequest.repository.AssetRequestTicketRepository;
+import com.ieumsae.assetieum.domain.ticket.assetrequest.entity.AssetRequestTicket;
 import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
 import com.ieumsae.assetieum.domain.ticket.common.repository.TicketRepository;
 import com.ieumsae.assetieum.domain.ticket.common.type.AssetType;
@@ -126,6 +127,7 @@ public class PurchasePlanService {
                 member.companyId()
         );
         purchasePlanItemRepository.saveAll(purchasePlanItems);
+        budgetExecutionService.holdForPurchasePlanCreation(purchasePlanItems, member.companyId());
         // 구매계획에 포함된 티켓은 구매 진행 대상으로 보고 처리중 상태로 전환한다.
         updateLinkedTicketsStatus(purchasePlanItems, member.companyId(), TicketStatus.ASSET_APPROVED, TicketStatus.IN_PROGRESS);
 
@@ -400,7 +402,27 @@ public class PurchasePlanService {
             // 현재 상태가 변경 대상 상태와 일치하는 티켓만 다음 상태로 변경한다.
             if (ticket.getTicketStatus() == currentStatus) {
                 ticket.changeProcessingStatus(nextStatus, java.time.LocalDateTime.now());
+                syncPurchaseRequestDetailStatus(ticket, companyId, nextStatus);
             }
+        }
+    }
+
+    private void syncPurchaseRequestDetailStatus(Ticket ticket, UUID companyId, TicketStatus nextStatus) {
+        if (ticket.getTicketType() != TicketType.PURCHASE_REQUEST) {
+            return;
+        }
+
+        PurchaseRequestTicket purchaseRequestTicket = purchaseRequestTicketRepository.findByIdAndCompany_Id(
+                        ticket.getId(),
+                        companyId
+                )
+                .orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+        if (nextStatus == TicketStatus.IN_PROGRESS) {
+            purchaseRequestTicket.markOrdered();
+            return;
+        }
+        if (nextStatus == TicketStatus.ASSET_APPROVED) {
+            purchaseRequestTicket.markRequested();
         }
     }
 
@@ -465,6 +487,7 @@ public class PurchasePlanService {
         }
 
         purchasePlanItem.updateStatus();
+        markLinkedPurchaseRequestReceivedIfNeeded(purchasePlanItem, companyId);
 
         for (PurchasePlanItem item : purchasePlanItems) {
             if (item.getPurchasePlanItemStatus() == PurchasePlanItemStatus.PENDING) {
@@ -480,6 +503,20 @@ public class PurchasePlanService {
     /**
      * 구매 계획에서 품목 등록
      */
+    private void markLinkedPurchaseRequestReceivedIfNeeded(PurchasePlanItem purchasePlanItem, UUID companyId) {
+        Ticket linkedTicket = purchasePlanItem.getTicket();
+        if (linkedTicket == null || linkedTicket.getTicketType() != TicketType.PURCHASE_REQUEST) {
+            return;
+        }
+
+        PurchaseRequestTicket purchaseRequestTicket = purchaseRequestTicketRepository.findByIdAndCompany_Id(
+                        linkedTicket.getId(),
+                        companyId
+                )
+                .orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+        purchaseRequestTicket.markReceived();
+    }
+
     @Transactional
     public void createItemFromPurchasePlan(
             UUID planId,
@@ -631,7 +668,8 @@ public class PurchasePlanService {
         validateTangibleAssetCreationRequest(purchasePlanItem, request);
 
         TangibleAssetItem item = resolveTangibleItemForAssetCreation(purchasePlanItem);
-        List<UUID> memberIds = normalizeMemberIds(request.getMemberIds(), purchasePlanItem.getQuantity());
+        List<UUID> memberIds = resolveTangibleAssetMemberIds(purchasePlanItem, request);
+        UUID departmentId = resolveAssetDepartmentId(purchasePlanItem, request.getDepartmentId());
 
         for (int i = 0; i < purchasePlanItem.getQuantity(); i++) {
             tangibleAssetService.createAsset(TangibleAssetCreateRequest.builder()
@@ -640,7 +678,7 @@ public class PurchasePlanService {
                     .usageType(request.getUsageType())
                     .assetUsageType(request.getAssetUsageType())
                     .memberId(memberIds.get(i))
-                    .departmentId(request.getDepartmentId())
+                    .departmentId(departmentId)
                     .location(request.getLocation())
                     .usedStartedAt(request.getUsedStartedAt())
                     .returnDueDate(request.getReturnDueDate())
@@ -651,7 +689,11 @@ public class PurchasePlanService {
                     .build(), companyId);
         }
 
-        purchasePlanItem.markAssetRegistered();
+        purchasePlanItem.markAssetRegistered(request.getPurchasePrice());
+        completeLinkedAssetRequestTicketIfReady(
+                purchasePlanItem,
+                companyId
+        );
     }
 
     @Transactional
@@ -668,11 +710,8 @@ public class PurchasePlanService {
         IntangibleAssetItem item = resolveIntangibleItemForAssetCreation(purchasePlanItem);
 
         List<String> licenseCodes = normalizeLicenseCodes(request, purchasePlanItem.getQuantity());
-        List<List<UUID>> memberIdsByAsset = normalizeIntangibleMemberIds(
-                request.getMemberIds(),
-                purchasePlanItem.getQuantity(),
-                request.getSeatCount()
-        );
+        List<List<UUID>> memberIdsByAsset = resolveIntangibleAssetMemberIds(purchasePlanItem, request);
+        UUID departmentId = resolveAssetDepartmentId(purchasePlanItem, request.getDepartmentId());
         for (int i = 0; i < purchasePlanItem.getQuantity(); i++) {
             IntangibleAssetResponse asset = intangibleAssetService.createAsset(IntangibleAssetCreateRequest.builder()
                     .intangibleItemId(item.getId())
@@ -682,16 +721,21 @@ public class PurchasePlanService {
                     .purchaseDate(request.getPurchaseDate())
                     .purchasePrice(request.getPurchasePrice())
                     .purchaseVendor(request.getPurchaseVendor())
-                    .departmentId(request.getDepartmentId())
+                    .memberId(resolvePrimaryMemberId(memberIdsByAsset.get(i)))
+                    .departmentId(departmentId)
                     .startedAt(request.getStartedAt())
                     .expiredAt(request.getExpiredAt())
                     .billingCycle(request.getBillingCycle())
                     .build(), companyId);
 
-            assignIntangibleAssetMembers(asset.getIntangibleAssetId(), memberIdsByAsset.get(i), request, companyId);
+            assignAdditionalIntangibleAssetMembers(asset.getIntangibleAssetId(), memberIdsByAsset.get(i), request, companyId);
         }
 
-        purchasePlanItem.markAssetRegistered();
+        purchasePlanItem.markAssetRegistered(request.getPurchasePrice());
+        completeLinkedAssetRequestTicketIfReady(
+                purchasePlanItem,
+                companyId
+        );
     }
 
     private PurchasePlanItem findPurchasePlanItemForAssetCreation(UUID planId, Long itemId, UUID companyId) {
@@ -806,6 +850,63 @@ public class PurchasePlanService {
         return memberIds;
     }
 
+    private List<UUID> resolveTangibleAssetMemberIds(
+            PurchasePlanItem purchasePlanItem,
+            PurchasePlanItemCreateTangibleAssetRequest request
+    ) {
+        Ticket linkedTicket = purchasePlanItem.getTicket();
+        if (linkedTicket == null || linkedTicket.getTicketType() != TicketType.ASSET_REQUEST) {
+            return normalizeMemberIds(request.getMemberIds(), purchasePlanItem.getQuantity());
+        }
+
+        List<UUID> ticketRequesterIds = new ArrayList<>();
+        for (int i = 0; i < purchasePlanItem.getQuantity(); i++) {
+            ticketRequesterIds.add(linkedTicket.getRequester().getId());
+        }
+        return ticketRequesterIds;
+    }
+
+    private List<List<UUID>> resolveIntangibleAssetMemberIds(
+            PurchasePlanItem purchasePlanItem,
+            PurchasePlanItemCreateIntangibleAssetRequest request
+    ) {
+        Ticket linkedTicket = purchasePlanItem.getTicket();
+        if (linkedTicket == null || linkedTicket.getTicketType() != TicketType.ASSET_REQUEST) {
+            return normalizeIntangibleMemberIds(
+                    request.getMemberIds(),
+                    purchasePlanItem.getQuantity(),
+                    request.getSeatCount()
+            );
+        }
+
+        List<List<UUID>> ticketRequesterIds = new ArrayList<>();
+        for (int i = 0; i < purchasePlanItem.getQuantity(); i++) {
+            ticketRequesterIds.add(List.of(linkedTicket.getRequester().getId()));
+        }
+        return ticketRequesterIds;
+    }
+
+    private UUID resolveAssetDepartmentId(PurchasePlanItem purchasePlanItem, UUID requestedDepartmentId) {
+        Ticket linkedTicket = purchasePlanItem.getTicket();
+        if (linkedTicket != null && linkedTicket.getTicketType() == TicketType.ASSET_REQUEST) {
+            return linkedTicket.getDepartment().getId();
+        }
+
+        return requestedDepartmentId;
+    }
+
+    private BigDecimal calculateActualAmount(BigDecimal purchasePrice, Integer quantity) {
+        return purchasePrice.multiply(BigDecimal.valueOf(quantity));
+    }
+
+    private UUID resolvePrimaryMemberId(List<UUID> memberIds) {
+        if (memberIds == null || memberIds.isEmpty()) {
+            return null;
+        }
+
+        return memberIds.get(0);
+    }
+
     private List<List<UUID>> normalizeIntangibleMemberIds(
             List<List<UUID>> memberIds,
             Integer quantity,
@@ -845,18 +946,84 @@ public class PurchasePlanService {
         return normalizedMemberIds;
     }
 
-    private void assignIntangibleAssetMembers(
+    private void assignAdditionalIntangibleAssetMembers(
             UUID assetId,
             List<UUID> memberIds,
             PurchasePlanItemCreateIntangibleAssetRequest request,
             UUID companyId
     ) {
-        for (UUID memberId : memberIds) {
+        if (memberIds == null || memberIds.size() <= 1) {
+            return;
+        }
+
+        for (int i = 1; i < memberIds.size(); i++) {
+            UUID memberId = memberIds.get(i);
             intangibleAssetAssignmentService.assignAsset(
                     assetId,
                     IntangibleAssetAssignmentRequest.of(memberId, request.getExpiredAt()),
                     companyId
             );
         }
+    }
+
+    private void completeLinkedAssetRequestTicketIfReady(
+            PurchasePlanItem purchasePlanItem,
+            UUID companyId
+    ) {
+        Ticket linkedTicket = purchasePlanItem.getTicket();
+        if (linkedTicket == null
+                || (linkedTicket.getTicketType() != TicketType.ASSET_REQUEST
+                && linkedTicket.getTicketType() != TicketType.PURCHASE_REQUEST)) {
+            return;
+        }
+
+        List<PurchasePlanItem> items = findPurchasePlanItems(purchasePlanItem.getPurchasePlan().getId(), companyId);
+        boolean hasPendingLinkedItem = items.stream()
+                .filter(item -> item.getTicket() != null)
+                .filter(item -> item.getTicket().getId().equals(linkedTicket.getId()))
+                .anyMatch(item -> item.getPurchasePlanItemStatus() != PurchasePlanItemStatus.ASSET_REGISTERED);
+        if (hasPendingLinkedItem) {
+            return;
+        }
+
+        Ticket ticket = ticketRepository.findWithLockByIdAndCompany_IdAndDeletedAtIsNull(linkedTicket.getId(), companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+        if (ticket.getTicketStatus() != TicketStatus.IN_PROGRESS) {
+            return;
+        }
+
+        completeLinkedTicketDetail(ticket, companyId);
+        ticket.changeProcessingStatus(TicketStatus.COMPLETED, java.time.LocalDateTime.now());
+        budgetExecutionService.executeForPurchasePlanItemRegistration(
+                purchasePlanItem.getPurchasePlan(),
+                purchasePlanItem,
+                companyId,
+                calculateLinkedTicketActualAmount(items, linkedTicket)
+        );
+    }
+
+    private BigDecimal calculateLinkedTicketActualAmount(List<PurchasePlanItem> items, Ticket linkedTicket) {
+        return items.stream()
+                .filter(item -> item.getTicket() != null)
+                .filter(item -> item.getTicket().getId().equals(linkedTicket.getId()))
+                .map(item -> calculateActualAmount(item.getActualUnitPrice(), item.getQuantity()))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private void completeLinkedTicketDetail(Ticket ticket, UUID companyId) {
+        if (ticket.getTicketType() == TicketType.ASSET_REQUEST) {
+            AssetRequestTicket assetRequestTicket = assetRequestTicketRepository
+                    .findByIdAndCompany_IdAndDeletedAtIsNull(ticket.getId(), companyId)
+                    .orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+            assetRequestTicket.complete();
+            return;
+        }
+
+        PurchaseRequestTicket purchaseRequestTicket = purchaseRequestTicketRepository.findByIdAndCompany_Id(
+                        ticket.getId(),
+                        companyId
+                )
+                .orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+        purchaseRequestTicket.complete();
     }
 }

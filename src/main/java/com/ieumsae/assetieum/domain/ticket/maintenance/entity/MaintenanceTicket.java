@@ -83,4 +83,20 @@ public class MaintenanceTicket {
 			.tangibleAsset(tangibleAsset)
 			.build();
 	}
+
+	public void collect(LocalDateTime collectedAt) {
+		this.status = MaintenanceTicketStatus.COLLECTED;
+		this.collectedAt = collectedAt;
+	}
+
+	public void complete(String maintenanceResult, BigDecimal maintenanceCost, LocalDateTime completedAt) {
+		this.status = MaintenanceTicketStatus.COMPLETED;
+		this.maintenanceResult = maintenanceResult;
+		this.maintenanceCost = maintenanceCost;
+		this.maintenanceCompletedAt = completedAt;
+	}
+
+	public void cancel() {
+		this.status = MaintenanceTicketStatus.CANCELLED;
+	}
 }

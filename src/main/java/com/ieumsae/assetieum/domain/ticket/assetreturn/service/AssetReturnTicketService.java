@@ -3,16 +3,22 @@ package com.ieumsae.assetieum.domain.ticket.assetreturn.service;
 import com.ieumsae.assetieum.domain.intangibleasset.assignment.entity.IntangibleAssetAssignment;
 import com.ieumsae.assetieum.domain.intangibleasset.assignment.repository.IntangibleAssetAssignmentRepository;
 import com.ieumsae.assetieum.domain.member.entity.Member;
+import com.ieumsae.assetieum.domain.member.type.MemberRole;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.entity.TangibleAsset;
 import com.ieumsae.assetieum.domain.tangibleasset.assignment.entity.TangibleAssetAssignment;
 import com.ieumsae.assetieum.domain.tangibleasset.assignment.repository.TangibleAssetAssignmentRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.assignment.type.AssignmentStatus;
 import com.ieumsae.assetieum.domain.ticket.assetreturn.dto.AssetReturnAvailableAssetResponse;
 import com.ieumsae.assetieum.domain.ticket.assetreturn.dto.AssetReturnAvailableAssetSearchRequest;
+import com.ieumsae.assetieum.domain.ticket.assetreturn.dto.AssetReturnCollectResponse;
+import com.ieumsae.assetieum.domain.ticket.assetreturn.dto.AssetReturnCompleteResponse;
 import com.ieumsae.assetieum.domain.ticket.assetreturn.dto.AssetReturnTicketCreateRequest;
 import com.ieumsae.assetieum.domain.ticket.assetreturn.dto.AssetReturnTicketCreateResponse;
+import com.ieumsae.assetieum.domain.ticket.assetreturn.dto.AssetReturnTicketDetailResponse;
 import com.ieumsae.assetieum.domain.ticket.assetreturn.entity.AssetReturnTicket;
 import com.ieumsae.assetieum.domain.ticket.assetreturn.repository.AssetReturnTicketRepository;
 import com.ieumsae.assetieum.domain.ticket.assetreturn.type.AssetReturnTargetType;
+import com.ieumsae.assetieum.domain.ticket.assetreturn.type.AssetReturnTicketStatus;
 import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
 import com.ieumsae.assetieum.domain.ticket.common.repository.TicketRepository;
 import com.ieumsae.assetieum.domain.ticket.common.service.AssignedAssetValidator;
@@ -21,9 +27,11 @@ import com.ieumsae.assetieum.domain.ticket.common.service.TicketApprovalResolver
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketNoGenerator;
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketRequesterResolver;
 import com.ieumsae.assetieum.domain.ticket.common.service.TangibleAssetTicketConflictValidator;
+import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -76,6 +84,26 @@ public class AssetReturnTicketService {
 			.toList();
 	}
 
+	public AssetReturnTicketDetailResponse getAssetReturnTicket(
+		AuthenticatedMember authenticatedMember,
+		UUID ticketId
+	) {
+		UUID companyId = authenticatedMember.companyId();
+		Member viewer = ticketRequesterResolver.resolveActiveRequester(authenticatedMember.id(), companyId);
+		AssetReturnTicket assetReturnTicket = findAssetReturnTicket(ticketId, companyId);
+		Ticket ticket = assetReturnTicket.getTicket();
+
+		validateReadable(ticket, viewer);
+
+		return AssetReturnTicketDetailResponse.from(
+			ticket,
+			assetReturnTicket,
+			viewer.getRole(),
+			isRequester(ticket, viewer),
+			createActions(ticket, assetReturnTicket, viewer)
+		);
+	}
+
 	@Transactional
 	public AssetReturnTicketCreateResponse createAssetReturnTicket(
 		AuthenticatedMember authenticatedMember,
@@ -89,6 +117,50 @@ public class AssetReturnTicketService {
 		}
 
 		return createIntangibleReturnTicket(companyId, requester, request);
+	}
+
+	@Transactional
+	public AssetReturnCollectResponse collectAssetReturn(
+		AuthenticatedMember authenticatedMember,
+		UUID ticketId
+	) {
+		UUID companyId = authenticatedMember.companyId();
+		Member collector = ticketRequesterResolver.resolveActiveRequester(authenticatedMember.id(), companyId);
+		Ticket ticket = ticketRepository.findWithLockByIdAndCompany_IdAndDeletedAtIsNull(ticketId, companyId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+		AssetReturnTicket assetReturnTicket = findAssetReturnTicket(ticketId, companyId);
+
+		validateCollectable(ticket, assetReturnTicket, collector);
+
+		LocalDateTime collectedAt = LocalDateTime.now();
+		// 회수 시점에 배정 이력을 종료하고, 자산을 실제 회수 완료 상태로 전환한다.
+		endActiveAssignment(assetReturnTicket, companyId, collectedAt);
+		markAssetCollected(assetReturnTicket);
+		assetReturnTicket.collect(collectedAt);
+
+		return AssetReturnCollectResponse.from(ticket, assetReturnTicket);
+	}
+
+	@Transactional
+	public AssetReturnCompleteResponse completeAssetReturn(
+		AuthenticatedMember authenticatedMember,
+		UUID ticketId
+	) {
+		UUID companyId = authenticatedMember.companyId();
+		Member processor = ticketRequesterResolver.resolveActiveRequester(authenticatedMember.id(), companyId);
+		Ticket ticket = ticketRepository.findWithLockByIdAndCompany_IdAndDeletedAtIsNull(ticketId, companyId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+		AssetReturnTicket assetReturnTicket = findAssetReturnTicket(ticketId, companyId);
+
+		validateCompletable(ticket, assetReturnTicket, processor);
+
+		LocalDateTime processedAt = LocalDateTime.now();
+		// 완료 처리는 상세 티켓과 공통 티켓을 함께 종료한다.
+		completeAssetStatus(assetReturnTicket);
+		assetReturnTicket.complete(processedAt);
+		ticket.changeProcessingStatus(TicketStatus.COMPLETED, processedAt);
+
+		return AssetReturnCompleteResponse.from(ticket, assetReturnTicket);
 	}
 
 	private AssetReturnTicketCreateResponse createTangibleReturnTicket(
@@ -115,6 +187,8 @@ public class AssetReturnTicketService {
 		AssetReturnTicket assetReturnTicket = assetReturnTicketRepository.save(
 			AssetReturnTicket.createTangibleReturn(ticket, requester.getCompany(), assignment.getTangibleAsset())
 		);
+		// 유형자산은 요청 생성 시 반납 요청 상태로 표시하되, 실제 배정 종료는 회수 시점에 처리한다.
+		assignment.getTangibleAsset().requestReturn();
 
 		return AssetReturnTicketCreateResponse.from(ticket, assetReturnTicket);
 	}
@@ -174,5 +248,145 @@ public class AssetReturnTicketService {
 		}
 
 		assignedAssetValidator.validateIntangibleRequester(assignment, requester);
+	}
+
+	private AssetReturnTicket findAssetReturnTicket(UUID ticketId, UUID companyId) {
+		return assetReturnTicketRepository.findByIdAndCompany_IdAndDeletedAtIsNull(ticketId, companyId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+	}
+
+	private void validateReadable(Ticket ticket, Member viewer) {
+		if (ticket.getRequester().getId().equals(viewer.getId())
+			|| ticket.getApprover().getId().equals(viewer.getId())
+			|| isAssetRole(viewer.getRole())) {
+			return;
+		}
+		throw new BusinessException(ErrorCode.ACCESS_DENIED);
+	}
+
+	private AssetReturnTicketDetailResponse.Actions createActions(
+		Ticket ticket,
+		AssetReturnTicket assetReturnTicket,
+		Member viewer
+	) {
+		if (isRequester(ticket, viewer)) {
+			return noActions();
+		}
+
+		boolean departmentApprover = ticket.getApprover().getId().equals(viewer.getId());
+		boolean requested = ticket.getTicketStatus() == TicketStatus.REQUESTED;
+		boolean departmentApproved = ticket.getTicketStatus() == TicketStatus.DEPARTMENT_APPROVED;
+		boolean assetAssignable = isAssetAssignable(ticket, viewer);
+		boolean assignee = ticket.getAssignee() != null && ticket.getAssignee().getId().equals(viewer.getId());
+
+		return AssetReturnTicketDetailResponse.Actions.builder()
+			.canApproveDepartment(departmentApprover && requested)
+			.canRejectDepartment(departmentApprover && requested)
+			.canAssignAsset(assetAssignable && ticket.getAssignee() == null && (requested || departmentApproved))
+			.canApproveAsset(assetAssignable && departmentApproved && assignee)
+			.canRejectAsset(assetAssignable && departmentApproved && assignee)
+			.canCollectAsset(canCollectAsset(ticket, assetReturnTicket, viewer))
+			.canCompleteReturn(canCompleteReturn(ticket, assetReturnTicket, viewer))
+			.build();
+	}
+
+	private AssetReturnTicketDetailResponse.Actions noActions() {
+		return AssetReturnTicketDetailResponse.Actions.builder()
+			.canApproveDepartment(false)
+			.canRejectDepartment(false)
+			.canAssignAsset(false)
+			.canApproveAsset(false)
+			.canRejectAsset(false)
+			.canCollectAsset(false)
+			.canCompleteReturn(false)
+			.build();
+	}
+
+	private boolean canCollectAsset(Ticket ticket, AssetReturnTicket assetReturnTicket, Member viewer) {
+		return isAssetRole(viewer.getRole())
+			&& ticket.getTicketStatus() == TicketStatus.IN_PROGRESS
+			&& assetReturnTicket.getStatus() == AssetReturnTicketStatus.REQUESTED
+			&& ticket.getAssignee() != null
+			&& ticket.getAssignee().getId().equals(viewer.getId());
+	}
+
+	private boolean canCompleteReturn(Ticket ticket, AssetReturnTicket assetReturnTicket, Member viewer) {
+		return isAssetRole(viewer.getRole())
+			&& ticket.getTicketStatus() == TicketStatus.IN_PROGRESS
+			&& assetReturnTicket.getStatus() == AssetReturnTicketStatus.COLLECTED
+			&& ticket.getAssignee() != null
+			&& ticket.getAssignee().getId().equals(viewer.getId());
+	}
+
+	private void validateCollectable(Ticket ticket, AssetReturnTicket assetReturnTicket, Member collector) {
+		if (!canCollectAsset(ticket, assetReturnTicket, collector)) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "회수 가능한 반납/해지 티켓이 아닙니다.");
+		}
+	}
+
+	private void validateCompletable(Ticket ticket, AssetReturnTicket assetReturnTicket, Member processor) {
+		if (!canCompleteReturn(ticket, assetReturnTicket, processor)) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "완료 처리 가능한 반납/해지 티켓이 아닙니다.");
+		}
+	}
+
+	private void endActiveAssignment(AssetReturnTicket assetReturnTicket, UUID companyId, LocalDateTime endedAt) {
+		if (assetReturnTicket.getTangibleAsset() != null) {
+			tangibleAssetAssignmentRepository.findByCompany_IdAndTangibleAsset_IdAndAssignmentStatus(
+					companyId,
+					assetReturnTicket.getTangibleAsset().getId(),
+					AssignmentStatus.ACTIVE
+				)
+				.ifPresent(assignment -> assignment.end(endedAt));
+			return;
+		}
+
+		intangibleAssetAssignmentRepository.findAllByCompany_IdAndIntangibleAsset_IdAndAssignmentStatus(
+				companyId,
+				assetReturnTicket.getIntangibleAsset().getId(),
+				com.ieumsae.assetieum.domain.intangibleasset.assignment.type.AssignmentStatus.ACTIVE
+			)
+			.forEach(assignment -> assignment.end(endedAt));
+	}
+
+	private void markAssetCollected(AssetReturnTicket assetReturnTicket) {
+		TangibleAsset tangibleAsset = assetReturnTicket.getTangibleAsset();
+		if (tangibleAsset != null) {
+			// 유형자산 반납은 재사용 가능한 재고로 돌아간다.
+			tangibleAsset.collectReturn();
+			return;
+		}
+
+		// 무형자산 해지는 라이선스 사용 종료로 보고 취소 상태로 전환한다.
+		assetReturnTicket.getIntangibleAsset().cancel();
+	}
+
+	private void completeAssetStatus(AssetReturnTicket assetReturnTicket) {
+		TangibleAsset tangibleAsset = assetReturnTicket.getTangibleAsset();
+		if (tangibleAsset != null) {
+			tangibleAsset.completeReturn();
+			return;
+		}
+
+		assetReturnTicket.getIntangibleAsset().cancel();
+	}
+
+	private boolean isRequester(Ticket ticket, Member viewer) {
+		return ticket.getRequester().getId().equals(viewer.getId());
+	}
+
+	private boolean isAssetAssignable(Ticket ticket, Member member) {
+		MemberRole role = member.getRole();
+		if (ticketApprovalResolver.requiresAdminAssetApproval(ticket)) {
+			return role == MemberRole.ADMIN;
+		}
+		if (ticketApprovalResolver.requiresAssetManagerApproval(ticket)) {
+			return role == MemberRole.ASSET_MANAGER;
+		}
+		return role == MemberRole.ASSET_MANAGER || role == MemberRole.ASSET_TEAM;
+	}
+
+	private boolean isAssetRole(MemberRole role) {
+		return role == MemberRole.ADMIN || role == MemberRole.ASSET_MANAGER || role == MemberRole.ASSET_TEAM;
 	}
 }

@@ -21,4 +21,10 @@ public interface BudgetRepository extends JpaRepository<Budget, UUID> {
             UUID departmentId,
             Integer budgetYear
     );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<Budget> findByCompany_IdAndDepartmentIsNullAndBudgetYear(
+            UUID companyId,
+            Integer budgetYear
+    );
 }

@@ -111,7 +111,8 @@ public class PurchasePlanItem extends BaseEntity {
         this.purchasePlanItemStatus = PurchasePlanItemStatus.RECEIVED;
     }
 
-    public void markAssetRegistered() {
+    public void markAssetRegistered(BigDecimal actualUnitPrice) {
+        this.actualUnitPrice = actualUnitPrice;
         this.purchasePlanItemStatus = PurchasePlanItemStatus.ASSET_REGISTERED;
     }
 }
