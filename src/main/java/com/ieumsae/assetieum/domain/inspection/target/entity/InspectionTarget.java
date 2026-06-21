@@ -12,7 +12,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -21,6 +20,8 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UuidGenerator;
 import org.hibernate.type.SqlTypes;
+
+import java.util.UUID;
 
 @Getter
 @Entity
@@ -55,4 +56,8 @@ public class InspectionTarget extends BaseEntity {
     @Builder.Default
     @Column(name = "is_responded", nullable = false)
     private Boolean isResponded = false;
+
+    public void markResponded() {
+        this.isResponded = true;
+    }
 }
