@@ -112,6 +112,7 @@ public class TicketService {
 		Member member = findActiveMember(authenticatedMember.id(), companyId);
 		Ticket ticket = findActiveTicket(ticketId, companyId);
 		validateCancellable(ticket, member);
+		validateDirectPurchaseResultNotRegisteredForCancel(ticket, companyId);
 
 		releaseReservedRentalAssetIfNeeded(ticket, companyId);
 		budgetExecutionService.releaseHoldForCancellation(ticket, companyId);
@@ -225,6 +226,9 @@ public class TicketService {
 		Ticket ticket = findActiveTicket(ticketId, companyId);
 
 		validateProcessingStatusChangeable(ticket, member, request.getTicketStatus());
+		if (request.getTicketStatus() == TicketStatus.CANCELLED) {
+			validateDirectPurchaseResultNotRegisteredForCancel(ticket, companyId);
+		}
 		releaseReservedRentalAssetForProcessingCancelIfNeeded(ticket, companyId, request.getTicketStatus());
 		releaseBudgetForProcessingCancelIfNeeded(ticket, companyId, request.getTicketStatus());
 		ticket.changeProcessingStatus(request.getTicketStatus(), LocalDateTime.now());
@@ -463,6 +467,22 @@ public class TicketService {
 		throw new BusinessException(ErrorCode.ACCESS_DENIED);
 	}
 
+	private void validateDirectPurchaseResultNotRegisteredForCancel(Ticket ticket, UUID companyId) {
+		if (ticket.getTicketType() != TicketType.PURCHASE_REQUEST) {
+			return;
+		}
+
+		PurchaseRequestTicket purchaseRequestTicket = purchaseRequestTicketRepository
+			.findByIdAndCompany_Id(ticket.getId(), companyId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+		if (purchaseRequestTicket.getRequestMethod() != RequestMethod.DIRECT_PURCHASE) {
+			return;
+		}
+		if (directPurchaseResultRepository.existsByPurchaseRequestTicket_Id(ticket.getId())) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "직접구매 결과가 등록된 티켓은 취소할 수 없습니다.");
+		}
+	}
+
 	private void validateUnassigned(Ticket ticket) {
 		if (ticket.getAssignee() != null) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "이미 담당자가 지정된 티켓입니다.");
@@ -624,6 +644,9 @@ public class TicketService {
 	}
 
 	private void validatePurchaseRequestCanComplete(PurchaseRequestTicket purchaseRequestTicket) {
+		if (purchaseRequestTicket.getRequestMethod() == RequestMethod.DIRECT_PURCHASE) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "직접구매 요청은 자산 등록 및 할당 API를 통해서만 완료할 수 있습니다.");
+		}
 		if (purchaseRequestTicket.getRequestMethod() == RequestMethod.DIRECT_PURCHASE) {
 			DirectPurchaseResult result = directPurchaseResultRepository.findByIdAndCompany_Id(
 					purchaseRequestTicket.getId(), purchaseRequestTicket.getCompany().getId())

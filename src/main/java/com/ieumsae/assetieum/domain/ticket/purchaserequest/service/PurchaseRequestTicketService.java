@@ -201,6 +201,7 @@ public class PurchaseRequestTicketService {
 		}
 		validateDirectPurchaseResultRequest(companyId, assetType, request, result);
 
+		BigDecimal previousActualPrice = result.getActualPrice();
 		result.update(
 			request.getActualPrice(),
 			request.getPurchaseDate(),
@@ -214,6 +215,12 @@ public class PurchaseRequestTicketService {
 			request.getStartedAt(),
 			request.getExpiredAt(),
 			request.getBillingCycle()
+		);
+		budgetExecutionService.adjustForDirectPurchaseResultUpdate(
+			ticket,
+			companyId,
+			previousActualPrice,
+			request.getActualPrice()
 		);
 
 		return DirectPurchaseResultCreateResponse.from(ticket, result, assetType);
@@ -253,6 +260,7 @@ public class PurchaseRequestTicketService {
 		PurchaseRequestTicket purchaseRequestTicket = result.getPurchaseRequestTicket();
 
 		validateDirectPurchaseResultReadable(ticket, member);
+		validateDirectPurchaseAssetAssignee(ticket, member);
 
 		if (result.getConfirmationStatus() == ConfirmationStatus.CONFIRMED) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "이미 확인완료 처리된 직접구매 결과입니다.");
@@ -270,6 +278,7 @@ public class PurchaseRequestTicketService {
 		DirectPurchaseAssetAssignRequest request
 	) {
 		UUID companyId = authenticatedMember.companyId();
+		Member assignee = ticketRequesterResolver.resolveActiveRequester(authenticatedMember.id(), companyId);
 		Ticket ticket = ticketRepository.findWithLockByIdAndCompany_IdAndDeletedAtIsNull(ticketId, companyId)
 			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
 		PurchaseRequestTicket purchaseRequestTicket = purchaseRequestTicketRepository.findByIdAndCompany_Id(
@@ -281,6 +290,7 @@ public class PurchaseRequestTicketService {
 			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
 		AssetType assetType = resolveAssetType(purchaseRequestTicket);
 
+		validateDirectPurchaseAssetAssignee(ticket, assignee);
 		validateDirectPurchaseAssetAssignable(purchaseRequestTicket, ticket, result);
 		if (assetType == AssetType.TANGIBLE) {
 			return assignDirectPurchaseTangibleAsset(companyId, ticket, purchaseRequestTicket, result, request);
@@ -844,6 +854,12 @@ public class PurchaseRequestTicketService {
 		}
 
 		throw new BusinessException(ErrorCode.ACCESS_DENIED);
+	}
+
+	private void validateDirectPurchaseAssetAssignee(Ticket ticket, Member member) {
+		if (ticket.getAssignee() == null || !ticket.getAssignee().getId().equals(member.getId())) {
+			throw new BusinessException(ErrorCode.ACCESS_DENIED);
+		}
 	}
 
 	private void validateDirectPurchaseAssetAssignable(

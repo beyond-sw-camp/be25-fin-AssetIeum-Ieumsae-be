@@ -692,8 +692,7 @@ public class PurchasePlanService {
         purchasePlanItem.markAssetRegistered(request.getPurchasePrice());
         completeLinkedAssetRequestTicketIfReady(
                 purchasePlanItem,
-                companyId,
-                calculateActualAmount(request.getPurchasePrice(), purchasePlanItem.getQuantity())
+                companyId
         );
     }
 
@@ -735,8 +734,7 @@ public class PurchasePlanService {
         purchasePlanItem.markAssetRegistered(request.getPurchasePrice());
         completeLinkedAssetRequestTicketIfReady(
                 purchasePlanItem,
-                companyId,
-                calculateActualAmount(request.getPurchasePrice(), purchasePlanItem.getQuantity())
+                companyId
         );
     }
 
@@ -970,8 +968,7 @@ public class PurchasePlanService {
 
     private void completeLinkedAssetRequestTicketIfReady(
             PurchasePlanItem purchasePlanItem,
-            UUID companyId,
-            BigDecimal actualAmount
+            UUID companyId
     ) {
         Ticket linkedTicket = purchasePlanItem.getTicket();
         if (linkedTicket == null
@@ -1001,8 +998,16 @@ public class PurchasePlanService {
                 purchasePlanItem.getPurchasePlan(),
                 purchasePlanItem,
                 companyId,
-                actualAmount
+                calculateLinkedTicketActualAmount(items, linkedTicket)
         );
+    }
+
+    private BigDecimal calculateLinkedTicketActualAmount(List<PurchasePlanItem> items, Ticket linkedTicket) {
+        return items.stream()
+                .filter(item -> item.getTicket() != null)
+                .filter(item -> item.getTicket().getId().equals(linkedTicket.getId()))
+                .map(item -> calculateActualAmount(item.getActualUnitPrice(), item.getQuantity()))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     private void completeLinkedTicketDetail(Ticket ticket, UUID companyId) {

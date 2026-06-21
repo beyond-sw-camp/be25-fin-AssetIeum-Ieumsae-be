@@ -260,6 +260,37 @@ public class BudgetExecutionService {
     }
 
     @Transactional
+    public void adjustForDirectPurchaseResultUpdate(
+            Ticket ticket,
+            UUID companyId,
+            BigDecimal previousActualAmount,
+            BigDecimal updatedActualAmount
+    ) {
+        if (ticket.getTicketType() != TicketType.PURCHASE_REQUEST) {
+            return;
+        }
+
+        BigDecimal previousAmount = previousActualAmount == null ? BigDecimal.ZERO : previousActualAmount.max(BigDecimal.ZERO);
+        BigDecimal updatedAmount = updatedActualAmount == null ? BigDecimal.ZERO : updatedActualAmount.max(BigDecimal.ZERO);
+        BigDecimal difference = updatedAmount.subtract(previousAmount);
+        if (difference.signum() == 0) {
+            return;
+        }
+
+        Budget budget = findBudgetForTicket(ticket, companyId);
+        if (difference.signum() > 0) {
+            validateAvailableBudget(budget, difference);
+            increaseUsed(budget, ticket, null, difference, "Adjust direct purchase used budget after actual amount increase");
+            return;
+        }
+
+        BigDecimal recoveryAmount = difference.abs().min(budget.getUsedAmount());
+        if (recoveryAmount.signum() > 0) {
+            decreaseUsed(budget, ticket, null, recoveryAmount, "Adjust direct purchase used budget after actual amount decrease");
+        }
+    }
+
+    @Transactional
     public void executeForMaintenanceCompletion(
             Ticket ticket,
             UUID companyId,
