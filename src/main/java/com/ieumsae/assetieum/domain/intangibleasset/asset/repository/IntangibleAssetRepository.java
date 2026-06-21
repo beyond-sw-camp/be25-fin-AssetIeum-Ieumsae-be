@@ -67,9 +67,9 @@ public interface IntangibleAssetRepository extends JpaRepository<IntangibleAsset
 
     List<IntangibleAsset> findAllByCompany_IdAndIntangibleAssetStatus(UUID companyId, IntangibleAssetStatus status);
 
-    List<IntangibleAsset> findAllByCompany_IdAndDepartment_IdAndIntangibleAssetStatus(
+    List<IntangibleAsset> findAllByCompany_IdAndDepartment_IdInAndIntangibleAssetStatus(
             UUID companyId,
-            UUID departmentId,
+            List<UUID> departmentIds,
             IntangibleAssetStatus status
     );
 

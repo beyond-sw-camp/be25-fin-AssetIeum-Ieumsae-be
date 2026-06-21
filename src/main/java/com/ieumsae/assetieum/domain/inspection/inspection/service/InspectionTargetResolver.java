@@ -2,6 +2,7 @@ package com.ieumsae.assetieum.domain.inspection.inspection.service;
 
 import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.department.entity.Department;
+import com.ieumsae.assetieum.domain.department.repository.DepartmentRepository;
 import com.ieumsae.assetieum.domain.inspection.inspection.entity.Inspection;
 import com.ieumsae.assetieum.domain.inspection.inspection.type.InspectionTargetType;
 import com.ieumsae.assetieum.domain.inspection.inspection.type.InspectionType;
@@ -17,7 +18,9 @@ import com.ieumsae.assetieum.domain.tangibleasset.category.repository.TangibleAs
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -28,6 +31,7 @@ public class InspectionTargetResolver {
 
     private final TangibleAssetCategoryRepository tangibleAssetCategoryRepository;
     private final IntangibleAssetCategoryRepository intangibleAssetCategoryRepository;
+    private final DepartmentRepository departmentRepository;
     private final TangibleAssetRepository tangibleAssetRepository;
     private final IntangibleAssetRepository intangibleAssetRepository;
 
@@ -108,9 +112,9 @@ public class InspectionTargetResolver {
                     company.getId(),
                     TangibleAssetStatus.IN_USE
             );
-            case DEPARTMENT -> tangibleAssetRepository.findAllByCompany_IdAndDepartment_IdAndTangibleAssetStatus(
+            case DEPARTMENT -> tangibleAssetRepository.findAllByCompany_IdAndDepartment_IdInAndTangibleAssetStatus(
                     company.getId(),
-                    department.getId(),
+                    resolveDepartmentAndDescendantIds(department.getId(), company.getId()),
                     TangibleAssetStatus.IN_USE
             );
             case CATEGORY -> tangibleAssetRepository.findAllByCompany_IdAndTangibleAssetItem_TangibleAssetCategory_IdInAndTangibleAssetStatus(
@@ -141,9 +145,9 @@ public class InspectionTargetResolver {
                     company.getId(),
                     IntangibleAssetStatus.IN_USE
             );
-            case DEPARTMENT -> intangibleAssetRepository.findAllByCompany_IdAndDepartment_IdAndIntangibleAssetStatus(
+            case DEPARTMENT -> intangibleAssetRepository.findAllByCompany_IdAndDepartment_IdInAndIntangibleAssetStatus(
                     company.getId(),
-                    department.getId(),
+                    resolveDepartmentAndDescendantIds(department.getId(), company.getId()),
                     IntangibleAssetStatus.IN_USE
             );
             case CATEGORY -> intangibleAssetRepository.findAllByCompany_IdAndIntangibleAssetItem_IntangibleAssetCategory_IdInAndIntangibleAssetStatus(
@@ -176,5 +180,28 @@ public class InspectionTargetResolver {
         );
         categoryIds.add(categoryId);
         return categoryIds;
+    }
+
+    private List<UUID> resolveDepartmentAndDescendantIds(UUID departmentId, UUID companyId) {
+        List<Department> departments = departmentRepository.findAllByCompany_IdAndDeletedAtIsNullOrderByCreatedAtAsc(
+                companyId
+        );
+        Set<UUID> departmentIds = new LinkedHashSet<>();
+        departmentIds.add(departmentId);
+
+        boolean added;
+        do {
+            added = false;
+            for (Department department : departments) {
+                Department parentDepartment = department.getParentDepartment();
+                if (parentDepartment != null
+                        && departmentIds.contains(parentDepartment.getId())
+                        && departmentIds.add(department.getId())) {
+                    added = true;
+                }
+            }
+        } while (added);
+
+        return new ArrayList<>(departmentIds);
     }
 }
