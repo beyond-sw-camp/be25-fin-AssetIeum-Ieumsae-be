@@ -49,6 +49,8 @@ public class MaintenanceTicketDetailResponse {
 	private final CategorySummary assetCategory;
 	private final ItemSummary assetItem;
 	private final UUID assetId;
+	private final String assetStatus;
+	private final boolean collected;
 	private final String requestDetail;
 	@JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
 	private final LocalDateTime processedAt;
@@ -87,6 +89,8 @@ public class MaintenanceTicketDetailResponse {
 			.assetCategory(CategorySummary.from(asset))
 			.assetItem(ItemSummary.from(asset))
 			.assetId(asset.getId())
+			.assetStatus(asset.getTangibleAssetStatus().name())
+			.collected(maintenanceTicket.getCollectedAt() != null)
 			.requestDetail(ticket.getRequestReason())
 			.processedAt(resolveProcessedAt(ticket, maintenanceTicket))
 			.processingStatus(ticket.getTicketStatus())

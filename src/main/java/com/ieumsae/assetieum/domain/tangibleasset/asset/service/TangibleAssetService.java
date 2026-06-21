@@ -51,7 +51,8 @@ public class TangibleAssetService {
     private static final Set<TangibleAssetStatus> TICKET_ONLY_UPDATE_STATUSES = EnumSet.of(
             TangibleAssetStatus.IN_USE,
             TangibleAssetStatus.RETURN_REQUESTED,
-            TangibleAssetStatus.REPAIR_REQUESTED
+            TangibleAssetStatus.REPAIR_REQUESTED,
+            TangibleAssetStatus.REPAIRING
     );
 
     private final TangibleAssetRepository tangibleAssetRepository;

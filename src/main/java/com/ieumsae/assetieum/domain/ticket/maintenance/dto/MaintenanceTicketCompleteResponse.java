@@ -19,6 +19,7 @@ public class MaintenanceTicketCompleteResponse {
 	private final String ticketNo;
 	private final TicketStatus currentStatus;
 	private final MaintenanceTicketStatus detailStatus;
+	private final String assetStatus;
 	private final String maintenanceResult;
 	private final BigDecimal maintenanceCost;
 	private final boolean budgetExecuted;
@@ -37,6 +38,7 @@ public class MaintenanceTicketCompleteResponse {
 			.ticketNo(ticket.getTicketNo())
 			.currentStatus(ticket.getTicketStatus())
 			.detailStatus(maintenanceTicket.getStatus())
+			.assetStatus(maintenanceTicket.getTangibleAsset().getTangibleAssetStatus().name())
 			.maintenanceResult(maintenanceTicket.getMaintenanceResult())
 			.maintenanceCost(maintenanceTicket.getMaintenanceCost())
 			.budgetExecuted(budgetExecuted)
