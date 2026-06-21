@@ -140,6 +140,7 @@ public class MaintenanceTicketService {
 		MaintenanceTicket maintenanceTicket = findMaintenanceTicket(ticketId, companyId);
 
 		validateCollectable(ticket, maintenanceTicket, collector);
+		// 회수 버튼을 누르면 실제 자산 상태를 수리중으로 전환한다.
 		maintenanceTicket.getTangibleAsset().startRepair();
 		maintenanceTicket.collect(LocalDateTime.now());
 
@@ -162,7 +163,9 @@ public class MaintenanceTicketService {
 
 		BigDecimal maintenanceCost = normalizeMaintenanceCost(request.getMaintenanceCost());
 		LocalDateTime completedAt = LocalDateTime.now();
+		// 유지보수 비용이 있으면 완료 시점에 공통 예산을 사용 처리한다.
 		budgetExecutionService.executeForMaintenanceCompletion(ticket, companyId, maintenanceCost);
+		// 수리 완료 후 자산은 기존 사용자에게 다시 사용중 상태로 복구된다.
 		maintenanceTicket.getTangibleAsset().completeRepair();
 		maintenanceTicket.complete(normalizeMaintenanceResult(request.getMaintenanceResult()), maintenanceCost, completedAt);
 		ticket.changeProcessingStatus(TicketStatus.COMPLETED, completedAt);

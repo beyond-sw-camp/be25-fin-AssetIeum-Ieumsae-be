@@ -133,6 +133,7 @@ public class AssetReturnTicketService {
 		validateCollectable(ticket, assetReturnTicket, collector);
 
 		LocalDateTime collectedAt = LocalDateTime.now();
+		// 회수 시점에 배정 이력을 종료하고, 자산을 실제 회수 완료 상태로 전환한다.
 		endActiveAssignment(assetReturnTicket, companyId, collectedAt);
 		markAssetCollected(assetReturnTicket);
 		assetReturnTicket.collect(collectedAt);
@@ -154,6 +155,7 @@ public class AssetReturnTicketService {
 		validateCompletable(ticket, assetReturnTicket, processor);
 
 		LocalDateTime processedAt = LocalDateTime.now();
+		// 완료 처리는 상세 티켓과 공통 티켓을 함께 종료한다.
 		completeAssetStatus(assetReturnTicket);
 		assetReturnTicket.complete(processedAt);
 		ticket.changeProcessingStatus(TicketStatus.COMPLETED, processedAt);
@@ -185,6 +187,7 @@ public class AssetReturnTicketService {
 		AssetReturnTicket assetReturnTicket = assetReturnTicketRepository.save(
 			AssetReturnTicket.createTangibleReturn(ticket, requester.getCompany(), assignment.getTangibleAsset())
 		);
+		// 유형자산은 요청 생성 시 반납 요청 상태로 표시하되, 실제 배정 종료는 회수 시점에 처리한다.
 		assignment.getTangibleAsset().requestReturn();
 
 		return AssetReturnTicketCreateResponse.from(ticket, assetReturnTicket);
@@ -349,10 +352,12 @@ public class AssetReturnTicketService {
 	private void markAssetCollected(AssetReturnTicket assetReturnTicket) {
 		TangibleAsset tangibleAsset = assetReturnTicket.getTangibleAsset();
 		if (tangibleAsset != null) {
+			// 유형자산 반납은 재사용 가능한 재고로 돌아간다.
 			tangibleAsset.collectReturn();
 			return;
 		}
 
+		// 무형자산 해지는 라이선스 사용 종료로 보고 취소 상태로 전환한다.
 		assetReturnTicket.getIntangibleAsset().cancel();
 	}
 

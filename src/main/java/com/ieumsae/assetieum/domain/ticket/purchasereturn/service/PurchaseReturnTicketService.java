@@ -134,6 +134,7 @@ public class PurchaseReturnTicketService {
 		validateCollectable(ticket, purchaseReturnTicket, collector);
 
 		LocalDateTime collectedAt = LocalDateTime.now();
+		// 반품 회수 시 배정 이력을 종료하고 자산을 회수 완료 상태로 전환한다.
 		endActiveAssignment(purchaseReturnTicket, companyId, collectedAt);
 		markAssetCollected(purchaseReturnTicket);
 		purchaseReturnTicket.collect(collectedAt);
@@ -155,6 +156,7 @@ public class PurchaseReturnTicketService {
 		validateCompletable(ticket, purchaseReturnTicket, processor);
 
 		LocalDateTime processedAt = LocalDateTime.now();
+		// 반품 완료 시 별도 환불금액 입력 없이 자산 구매가 기준으로 사용 예산을 회복한다.
 		budgetExecutionService.recoverForPurchaseReturn(ticket, purchaseReturnTicket);
 		purchaseReturnTicket.complete(processedAt);
 		ticket.changeProcessingStatus(TicketStatus.COMPLETED, processedAt);
@@ -186,6 +188,7 @@ public class PurchaseReturnTicketService {
 		PurchaseReturnTicket purchaseReturnTicket = purchaseReturnTicketRepository.save(
 			PurchaseReturnTicket.createTangibleReturn(ticket, requester.getCompany(), assignment.getTangibleAsset())
 		);
+		// 유형자산은 반품 요청 중임을 자산 상태에도 표시한다.
 		assignment.getTangibleAsset().requestReturn();
 
 		return PurchaseReturnTicketCreateResponse.from(ticket, purchaseReturnTicket);
@@ -350,10 +353,12 @@ public class PurchaseReturnTicketService {
 	private void markAssetCollected(PurchaseReturnTicket purchaseReturnTicket) {
 		TangibleAsset tangibleAsset = purchaseReturnTicket.getTangibleAsset();
 		if (tangibleAsset != null) {
+			// 반품 회수된 유형자산은 사내 배정에서 빠지고 사용 가능 상태가 된다.
 			tangibleAsset.collectReturn();
 			return;
 		}
 
+		// 무형자산 반품은 라이선스 자체 반환으로 보고 취소 상태로 전환한다.
 		purchaseReturnTicket.getIntangibleAsset().cancel();
 	}
 

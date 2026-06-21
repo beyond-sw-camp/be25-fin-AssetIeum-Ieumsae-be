@@ -479,6 +479,7 @@ public class TicketService {
 	}
 
 	private void validateProcessingStatusChangeable(Ticket ticket, Member member, TicketStatus targetStatus) {
+		// 실제 처리 API가 있는 티켓은 수동 상태 변경으로는 취소만 허용한다.
 		if (ticket.getTicketType() == TicketType.MAINTENANCE_REQUEST
 			|| ticket.getTicketType() == TicketType.ASSET_RETURN
 			|| ticket.getTicketType() == TicketType.PURCHASE_RETURN) {
@@ -749,6 +750,7 @@ public class TicketService {
 			return;
 		}
 
+		// 회수 전 취소는 기존 사용 상태로 복구하고, 회수 후 취소는 회수 결과를 유지한다.
 		if (assetReturnTicket.getTangibleAsset() != null) {
 			if (assetReturnTicket.getStatus() == AssetReturnTicketStatus.COLLECTED) {
 				assetReturnTicket.getTangibleAsset().completeReturn();
@@ -771,6 +773,7 @@ public class TicketService {
 			return;
 		}
 
+		// 반품도 회수 전 취소는 사용 상태 복구, 회수 후 취소는 회수된 자산 상태를 유지한다.
 		if (purchaseReturnTicket.getTangibleAsset() != null) {
 			if (purchaseReturnTicket.getStatus() == PurchaseReturnTicketStatus.COLLECTED
 				|| purchaseReturnTicket.getStatus() == PurchaseReturnTicketStatus.SHIPPED) {
