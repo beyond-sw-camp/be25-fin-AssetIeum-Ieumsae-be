@@ -7,6 +7,9 @@ import com.ieumsae.assetieum.domain.auth.dto.ChangePasswordResponse;
 import com.ieumsae.assetieum.domain.auth.dto.LoginRequest;
 import com.ieumsae.assetieum.domain.auth.dto.LoginResponse;
 import com.ieumsae.assetieum.domain.auth.dto.TokenReissueResponse;
+import com.ieumsae.assetieum.domain.log.service.LogService;
+import com.ieumsae.assetieum.domain.log.type.ActivityLogAction;
+import com.ieumsae.assetieum.domain.log.type.LogSubjectType;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
 import com.ieumsae.assetieum.global.exception.BusinessException;
@@ -32,6 +35,7 @@ public class AuthService {
 	private final JwtProvider jwtProvider;
 	private final JwtProperties jwtProperties;
 	private final TokenRedisService tokenRedisService;
+	private final LogService logService;
 
 	@Transactional
 	public LoginResult login(LoginRequest request) {
@@ -68,6 +72,13 @@ public class AuthService {
 			.tokenType("Bearer")
 			.expiresIn(jwtProvider.getAccessTokenExpiresInSeconds())
 			.build();
+		logService.recordActivityLog(
+			member,
+			ActivityLogAction.LOGIN,
+			LogSubjectType.MEMBER,
+			member.getId(),
+			member.getName() + " logged in."
+		);
 
 		return new LoginResult(response, refreshToken);
 	}
