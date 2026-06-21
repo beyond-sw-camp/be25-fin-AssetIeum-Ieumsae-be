@@ -1,11 +1,16 @@
 package com.ieumsae.assetieum.domain.ticket.common.repository;
 
 import static com.ieumsae.assetieum.domain.ticket.assetrequest.entity.QAssetRequestTicket.assetRequestTicket;
+import static com.ieumsae.assetieum.domain.ticket.assetreturn.entity.QAssetReturnTicket.assetReturnTicket;
 import static com.ieumsae.assetieum.domain.ticket.common.entity.QTicket.ticket;
+import static com.ieumsae.assetieum.domain.ticket.maintenance.entity.QMaintenanceTicket.maintenanceTicket;
 import static com.ieumsae.assetieum.domain.ticket.purchaserequest.entity.QPurchaseRequestTicket.purchaseRequestTicket;
+import static com.ieumsae.assetieum.domain.ticket.purchasereturn.entity.QPurchaseReturnTicket.purchaseReturnTicket;
 import static com.ieumsae.assetieum.domain.ticket.rental.entity.QRentalTicket.rentalTicket;
 
+import com.ieumsae.assetieum.domain.intangibleasset.asset.entity.QIntangibleAsset;
 import com.ieumsae.assetieum.domain.intangibleasset.item.entity.QIntangibleAssetItem;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.entity.QTangibleAsset;
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.QTangibleAssetItem;
 import com.ieumsae.assetieum.domain.ticket.common.dto.TicketListItemResponse;
 import com.ieumsae.assetieum.domain.ticket.common.dto.TicketSearchRequest;
@@ -39,6 +44,16 @@ public class TicketRepositoryImpl implements TicketRepositoryCustom {
 		QTangibleAssetItem assetRequestTangibleItem = new QTangibleAssetItem("assetRequestTangibleItem");
 		QIntangibleAssetItem assetRequestIntangibleItem = new QIntangibleAssetItem("assetRequestIntangibleItem");
 		QTangibleAssetItem rentalTangibleItem = new QTangibleAssetItem("rentalTangibleItem");
+		QTangibleAsset maintenanceTangibleAsset = new QTangibleAsset("maintenanceTangibleAsset");
+		QTangibleAssetItem maintenanceTangibleItem = new QTangibleAssetItem("maintenanceTangibleItem");
+		QTangibleAsset assetReturnTangibleAsset = new QTangibleAsset("assetReturnTangibleAsset");
+		QTangibleAssetItem assetReturnTangibleItem = new QTangibleAssetItem("assetReturnTangibleItem");
+		QIntangibleAsset assetReturnIntangibleAsset = new QIntangibleAsset("assetReturnIntangibleAsset");
+		QIntangibleAssetItem assetReturnIntangibleItem = new QIntangibleAssetItem("assetReturnIntangibleItem");
+		QTangibleAsset purchaseReturnTangibleAsset = new QTangibleAsset("purchaseReturnTangibleAsset");
+		QTangibleAssetItem purchaseReturnTangibleItem = new QTangibleAssetItem("purchaseReturnTangibleItem");
+		QIntangibleAsset purchaseReturnIntangibleAsset = new QIntangibleAsset("purchaseReturnIntangibleAsset");
+		QIntangibleAssetItem purchaseReturnIntangibleItem = new QIntangibleAssetItem("purchaseReturnIntangibleItem");
 
 		BooleanBuilder condition = new BooleanBuilder();
 		condition.and(ticket.company.id.eq(companyId));
@@ -77,16 +92,26 @@ public class TicketRepositoryImpl implements TicketRepositoryCustom {
 					.or(assetRequestIntangibleItem.productName.containsIgnoreCase(keyword))
 					.or(purchaseRequestTicket.requestedItemDetail.containsIgnoreCase(keyword))
 					.or(rentalTangibleItem.productName.containsIgnoreCase(keyword))
+					.or(maintenanceTangibleItem.productName.containsIgnoreCase(keyword))
+					.or(assetReturnTangibleItem.productName.containsIgnoreCase(keyword))
+					.or(assetReturnIntangibleItem.productName.containsIgnoreCase(keyword))
+					.or(purchaseReturnTangibleItem.productName.containsIgnoreCase(keyword))
+					.or(purchaseReturnIntangibleItem.productName.containsIgnoreCase(keyword))
 			);
 		}
 
 		Pageable pageable = request.toPageable();
 		Expression<String> requestedItemName = Expressions.stringTemplate(
-			"coalesce({0}, {1}, {2}, {3})",
+			"coalesce({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8})",
 			assetRequestTangibleItem.productName,
 			assetRequestIntangibleItem.productName,
 			purchaseRequestTicket.requestedItemDetail,
-			rentalTangibleItem.productName
+			rentalTangibleItem.productName,
+			maintenanceTangibleItem.productName,
+			assetReturnTangibleItem.productName,
+			assetReturnIntangibleItem.productName,
+			purchaseReturnTangibleItem.productName,
+			purchaseReturnIntangibleItem.productName
 		);
 
 		List<TicketListItemResponse> content = queryFactory
@@ -116,6 +141,28 @@ public class TicketRepositoryImpl implements TicketRepositoryCustom {
 					.and(rentalTicket.deletedAt.isNull())
 			)
 			.leftJoin(rentalTicket.tangibleAssetItem, rentalTangibleItem)
+			.leftJoin(maintenanceTicket).on(
+				maintenanceTicket.ticket.eq(ticket)
+					.and(maintenanceTicket.deletedAt.isNull())
+			)
+			.leftJoin(maintenanceTicket.tangibleAsset, maintenanceTangibleAsset)
+			.leftJoin(maintenanceTangibleAsset.tangibleAssetItem, maintenanceTangibleItem)
+			.leftJoin(assetReturnTicket).on(
+				assetReturnTicket.ticket.eq(ticket)
+					.and(assetReturnTicket.deletedAt.isNull())
+			)
+			.leftJoin(assetReturnTicket.tangibleAsset, assetReturnTangibleAsset)
+			.leftJoin(assetReturnTangibleAsset.tangibleAssetItem, assetReturnTangibleItem)
+			.leftJoin(assetReturnTicket.intangibleAsset, assetReturnIntangibleAsset)
+			.leftJoin(assetReturnIntangibleAsset.intangibleAssetItem, assetReturnIntangibleItem)
+			.leftJoin(purchaseReturnTicket).on(
+				purchaseReturnTicket.ticket.eq(ticket)
+					.and(purchaseReturnTicket.deletedAt.isNull())
+			)
+			.leftJoin(purchaseReturnTicket.tangibleAsset, purchaseReturnTangibleAsset)
+			.leftJoin(purchaseReturnTangibleAsset.tangibleAssetItem, purchaseReturnTangibleItem)
+			.leftJoin(purchaseReturnTicket.intangibleAsset, purchaseReturnIntangibleAsset)
+			.leftJoin(purchaseReturnIntangibleAsset.intangibleAssetItem, purchaseReturnIntangibleItem)
 			.where(condition)
 			.orderBy(ticket.createdAt.desc())
 			.offset(pageable.getOffset())
@@ -140,6 +187,28 @@ public class TicketRepositoryImpl implements TicketRepositoryCustom {
 					.and(rentalTicket.deletedAt.isNull())
 			)
 			.leftJoin(rentalTicket.tangibleAssetItem, rentalTangibleItem)
+			.leftJoin(maintenanceTicket).on(
+				maintenanceTicket.ticket.eq(ticket)
+					.and(maintenanceTicket.deletedAt.isNull())
+			)
+			.leftJoin(maintenanceTicket.tangibleAsset, maintenanceTangibleAsset)
+			.leftJoin(maintenanceTangibleAsset.tangibleAssetItem, maintenanceTangibleItem)
+			.leftJoin(assetReturnTicket).on(
+				assetReturnTicket.ticket.eq(ticket)
+					.and(assetReturnTicket.deletedAt.isNull())
+			)
+			.leftJoin(assetReturnTicket.tangibleAsset, assetReturnTangibleAsset)
+			.leftJoin(assetReturnTangibleAsset.tangibleAssetItem, assetReturnTangibleItem)
+			.leftJoin(assetReturnTicket.intangibleAsset, assetReturnIntangibleAsset)
+			.leftJoin(assetReturnIntangibleAsset.intangibleAssetItem, assetReturnIntangibleItem)
+			.leftJoin(purchaseReturnTicket).on(
+				purchaseReturnTicket.ticket.eq(ticket)
+					.and(purchaseReturnTicket.deletedAt.isNull())
+			)
+			.leftJoin(purchaseReturnTicket.tangibleAsset, purchaseReturnTangibleAsset)
+			.leftJoin(purchaseReturnTangibleAsset.tangibleAssetItem, purchaseReturnTangibleItem)
+			.leftJoin(purchaseReturnTicket.intangibleAsset, purchaseReturnIntangibleAsset)
+			.leftJoin(purchaseReturnIntangibleAsset.intangibleAssetItem, purchaseReturnIntangibleItem)
 			.where(condition)
 			.fetchOne();
 

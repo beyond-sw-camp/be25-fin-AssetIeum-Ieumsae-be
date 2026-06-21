@@ -19,6 +19,9 @@ import com.ieumsae.assetieum.domain.tangibleasset.assignment.repository.Tangible
 import com.ieumsae.assetieum.domain.tangibleasset.assignment.type.AssignmentStatus;
 import com.ieumsae.assetieum.domain.ticket.assetrequest.entity.AssetRequestTicket;
 import com.ieumsae.assetieum.domain.ticket.assetrequest.repository.AssetRequestTicketRepository;
+import com.ieumsae.assetieum.domain.ticket.assetreturn.entity.AssetReturnTicket;
+import com.ieumsae.assetieum.domain.ticket.assetreturn.repository.AssetReturnTicketRepository;
+import com.ieumsae.assetieum.domain.ticket.assetreturn.type.AssetReturnTicketStatus;
 import com.ieumsae.assetieum.domain.ticket.common.dto.AssetApprovalResponse;
 import com.ieumsae.assetieum.domain.ticket.common.dto.DepartmentApprovalResponse;
 import com.ieumsae.assetieum.domain.ticket.common.dto.TicketAssigneeResponse;
@@ -36,9 +39,13 @@ import com.ieumsae.assetieum.domain.ticket.common.type.TicketType;
 import com.ieumsae.assetieum.domain.ticket.common.type.RequestMethod;
 import com.ieumsae.assetieum.domain.ticket.maintenance.entity.MaintenanceTicket;
 import com.ieumsae.assetieum.domain.ticket.maintenance.repository.MaintenanceTicketRepository;
+import com.ieumsae.assetieum.domain.ticket.maintenance.type.MaintenanceTicketStatus;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.entity.PurchaseRequestTicket;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.repository.DirectPurchaseResultRepository;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.repository.PurchaseRequestTicketRepository;
+import com.ieumsae.assetieum.domain.ticket.purchasereturn.entity.PurchaseReturnTicket;
+import com.ieumsae.assetieum.domain.ticket.purchasereturn.repository.PurchaseReturnTicketRepository;
+import com.ieumsae.assetieum.domain.ticket.purchasereturn.type.PurchaseReturnTicketStatus;
 import com.ieumsae.assetieum.domain.ticket.rental.entity.RentalTicket;
 import com.ieumsae.assetieum.domain.ticket.rental.repository.RentalTicketRepository;
 import com.ieumsae.assetieum.global.common.page.PaginationResponse;
@@ -69,9 +76,11 @@ public class TicketService {
 	private final TangibleAssetAssignmentRepository tangibleAssetAssignmentRepository;
 	private final AssetRequestTicketRepository assetRequestTicketRepository;
 	private final PurchaseRequestTicketRepository purchaseRequestTicketRepository;
+	private final PurchaseReturnTicketRepository purchaseReturnTicketRepository;
 	private final DirectPurchaseResultRepository directPurchaseResultRepository;
 	private final PurchasePlanItemRepository purchasePlanItemRepository;
 	private final MaintenanceTicketRepository maintenanceTicketRepository;
+	private final AssetReturnTicketRepository assetReturnTicketRepository;
 	private final TicketApprovalResolver ticketApprovalResolver;
 	private final BudgetExecutionService budgetExecutionService;
 
@@ -109,6 +118,8 @@ public class TicketService {
 		syncCancelledPurchaseRequestStatusIfNeeded(ticket, companyId);
 		syncCancelledRentalStatusIfNeeded(ticket, companyId);
 		syncCancelledMaintenanceStatusIfNeeded(ticket, companyId);
+		syncCancelledAssetReturnStatusIfNeeded(ticket, companyId);
+		syncCancelledPurchaseReturnStatusIfNeeded(ticket, companyId);
 
 		return TicketCancelResponse.from(ticket);
 	}
@@ -146,6 +157,9 @@ public class TicketService {
 		validateTicketStatus(ticket, TicketStatus.REQUESTED, "요청 상태의 티켓만 부서장 반려 처리할 수 있습니다.");
 
 		ticket.rejectDepartment(request.getRejectionReason().trim(), LocalDateTime.now());
+		syncRejectedMaintenanceStatusIfNeeded(ticket, companyId);
+		syncRejectedAssetReturnStatusIfNeeded(ticket, companyId);
+		syncRejectedPurchaseReturnStatusIfNeeded(ticket, companyId);
 
 		return DepartmentApprovalResponse.from(ticket);
 	}
@@ -186,6 +200,9 @@ public class TicketService {
 		budgetExecutionService.releaseHoldForCancellation(ticket, companyId);
 		ticket.rejectAsset(assignee, request.getRejectionReason().trim(), LocalDateTime.now());
 		syncCancelledPurchaseRequestStatusIfNeeded(ticket, companyId);
+		syncRejectedMaintenanceStatusIfNeeded(ticket, companyId);
+		syncCancelledAssetReturnStatusIfNeeded(ticket, companyId);
+		syncCancelledPurchaseReturnStatusIfNeeded(ticket, companyId);
 
 		return AssetApprovalResponse.from(ticket);
 	}
@@ -206,6 +223,9 @@ public class TicketService {
 		ticket.changeProcessingStatus(request.getTicketStatus(), LocalDateTime.now());
 		syncAssetRequestStatusIfNeeded(ticket, companyId, request.getTicketStatus());
 		syncPurchaseRequestStatusIfNeeded(ticket, companyId, request.getTicketStatus());
+		syncMaintenanceStatusIfNeeded(ticket, companyId, request.getTicketStatus());
+		syncAssetReturnStatusIfNeeded(ticket, companyId, request.getTicketStatus());
+		syncPurchaseReturnStatusIfNeeded(ticket, companyId, request.getTicketStatus());
 
 		return TicketProcessingStatusUpdateResponse.from(ticket);
 	}
@@ -459,9 +479,9 @@ public class TicketService {
 	}
 
 	private void validateProcessingStatusChangeable(Ticket ticket, Member member, TicketStatus targetStatus) {
-		if (ticket.getTicketType() == TicketType.RENTAL
-			|| ticket.getTicketType() == TicketType.ASSET_REQUEST
-			|| ticket.getTicketType() == TicketType.PURCHASE_REQUEST) {
+		if (ticket.getTicketType() == TicketType.MAINTENANCE_REQUEST
+			|| ticket.getTicketType() == TicketType.ASSET_RETURN
+			|| ticket.getTicketType() == TicketType.PURCHASE_RETURN) {
 			validateManualProcessingCancelChangeable(ticket, member, targetStatus);
 			return;
 		}
@@ -650,7 +670,123 @@ public class TicketService {
 		MaintenanceTicket maintenanceTicket = maintenanceTicketRepository
 			.findByIdAndCompany_IdAndDeletedAtIsNull(ticket.getId(), companyId)
 			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+		maintenanceTicket.getTangibleAsset().restoreInUseAfterTicketCancel();
 		maintenanceTicket.cancel();
+	}
+
+	private void syncRejectedMaintenanceStatusIfNeeded(Ticket ticket, UUID companyId) {
+		if (ticket.getTicketType() != TicketType.MAINTENANCE_REQUEST) {
+			return;
+		}
+		MaintenanceTicket maintenanceTicket = maintenanceTicketRepository
+			.findByIdAndCompany_IdAndDeletedAtIsNull(ticket.getId(), companyId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+		maintenanceTicket.getTangibleAsset().restoreInUseAfterTicketCancel();
+		maintenanceTicket.cancel();
+	}
+
+	private void syncCancelledAssetReturnStatusIfNeeded(Ticket ticket, UUID companyId) {
+		if (ticket.getTicketType() != TicketType.ASSET_RETURN) {
+			return;
+		}
+		AssetReturnTicket assetReturnTicket = assetReturnTicketRepository
+			.findByIdAndCompany_IdAndDeletedAtIsNull(ticket.getId(), companyId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+		cancelAssetReturnDetail(assetReturnTicket);
+	}
+
+	private void syncRejectedAssetReturnStatusIfNeeded(Ticket ticket, UUID companyId) {
+		if (ticket.getTicketType() != TicketType.ASSET_RETURN) {
+			return;
+		}
+		AssetReturnTicket assetReturnTicket = assetReturnTicketRepository
+			.findByIdAndCompany_IdAndDeletedAtIsNull(ticket.getId(), companyId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+		cancelAssetReturnDetail(assetReturnTicket);
+	}
+
+	private void syncMaintenanceStatusIfNeeded(Ticket ticket, UUID companyId, TicketStatus targetStatus) {
+		if (targetStatus == TicketStatus.CANCELLED) {
+			syncCancelledMaintenanceStatusIfNeeded(ticket, companyId);
+		}
+	}
+
+	private void syncAssetReturnStatusIfNeeded(Ticket ticket, UUID companyId, TicketStatus targetStatus) {
+		if (targetStatus == TicketStatus.CANCELLED) {
+			syncCancelledAssetReturnStatusIfNeeded(ticket, companyId);
+		}
+	}
+
+	private void syncCancelledPurchaseReturnStatusIfNeeded(Ticket ticket, UUID companyId) {
+		if (ticket.getTicketType() != TicketType.PURCHASE_RETURN) {
+			return;
+		}
+		PurchaseReturnTicket purchaseReturnTicket = purchaseReturnTicketRepository
+			.findByIdAndCompany_IdAndDeletedAtIsNull(ticket.getId(), companyId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+		cancelPurchaseReturnDetail(purchaseReturnTicket);
+	}
+
+	private void syncRejectedPurchaseReturnStatusIfNeeded(Ticket ticket, UUID companyId) {
+		if (ticket.getTicketType() != TicketType.PURCHASE_RETURN) {
+			return;
+		}
+		PurchaseReturnTicket purchaseReturnTicket = purchaseReturnTicketRepository
+			.findByIdAndCompany_IdAndDeletedAtIsNull(ticket.getId(), companyId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+		cancelPurchaseReturnDetail(purchaseReturnTicket);
+	}
+
+	private void syncPurchaseReturnStatusIfNeeded(Ticket ticket, UUID companyId, TicketStatus targetStatus) {
+		if (targetStatus == TicketStatus.CANCELLED) {
+			syncCancelledPurchaseReturnStatusIfNeeded(ticket, companyId);
+		}
+	}
+
+	private void cancelAssetReturnDetail(AssetReturnTicket assetReturnTicket) {
+		if (assetReturnTicket.getStatus() == AssetReturnTicketStatus.COMPLETED
+			|| assetReturnTicket.getStatus() == AssetReturnTicketStatus.CANCELLED) {
+			return;
+		}
+
+		if (assetReturnTicket.getTangibleAsset() != null) {
+			if (assetReturnTicket.getStatus() == AssetReturnTicketStatus.COLLECTED) {
+				assetReturnTicket.getTangibleAsset().completeReturn();
+			} else {
+				assetReturnTicket.getTangibleAsset().restoreInUseAfterTicketCancel();
+			}
+		} else if (assetReturnTicket.getIntangibleAsset() != null) {
+			if (assetReturnTicket.getStatus() == AssetReturnTicketStatus.COLLECTED) {
+				assetReturnTicket.getIntangibleAsset().cancel();
+			} else {
+				assetReturnTicket.getIntangibleAsset().restoreInUseAfterTicketCancel();
+			}
+		}
+		assetReturnTicket.cancel();
+	}
+
+	private void cancelPurchaseReturnDetail(PurchaseReturnTicket purchaseReturnTicket) {
+		if (purchaseReturnTicket.getStatus() == PurchaseReturnTicketStatus.COMPLETED
+			|| purchaseReturnTicket.getStatus() == PurchaseReturnTicketStatus.CANCELLED) {
+			return;
+		}
+
+		if (purchaseReturnTicket.getTangibleAsset() != null) {
+			if (purchaseReturnTicket.getStatus() == PurchaseReturnTicketStatus.COLLECTED
+				|| purchaseReturnTicket.getStatus() == PurchaseReturnTicketStatus.SHIPPED) {
+				purchaseReturnTicket.getTangibleAsset().completeReturn();
+			} else {
+				purchaseReturnTicket.getTangibleAsset().restoreInUseAfterTicketCancel();
+			}
+		} else if (purchaseReturnTicket.getIntangibleAsset() != null) {
+			if (purchaseReturnTicket.getStatus() == PurchaseReturnTicketStatus.COLLECTED
+				|| purchaseReturnTicket.getStatus() == PurchaseReturnTicketStatus.SHIPPED) {
+				purchaseReturnTicket.getIntangibleAsset().cancel();
+			} else {
+				purchaseReturnTicket.getIntangibleAsset().restoreInUseAfterTicketCancel();
+			}
+		}
+		purchaseReturnTicket.cancel();
 	}
 
 	private void syncAssetRequestStatusIfNeeded(Ticket ticket, UUID companyId, TicketStatus targetStatus) {
