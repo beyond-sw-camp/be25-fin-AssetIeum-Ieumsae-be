@@ -7,18 +7,25 @@ import com.ieumsae.assetieum.domain.dashboard.dto.AssetDemandResponse;
 import com.ieumsae.assetieum.domain.dashboard.dto.BudgetLedgerResponse;
 import com.ieumsae.assetieum.domain.dashboard.dto.BudgetLedgerSearchRequest;
 import com.ieumsae.assetieum.domain.dashboard.dto.BudgetOverviewResponse;
+import com.ieumsae.assetieum.domain.dashboard.dto.EmployeeDepartmentBudgetResponse;
 import com.ieumsae.assetieum.domain.dashboard.dto.ExpiringAssetSummaryResponse;
 import com.ieumsae.assetieum.domain.dashboard.dto.LifecycleEventResponse;
 import com.ieumsae.assetieum.domain.dashboard.dto.OwnedAssetSummaryResponse;
+import com.ieumsae.assetieum.domain.dashboard.dto.RentalAssetSummaryResponse;
 import com.ieumsae.assetieum.domain.dashboard.dto.TicketProgressSummaryResponse;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.type.IntangibleAssetStatus;
 import com.ieumsae.assetieum.domain.intangibleasset.assignment.type.AssignmentStatus;
+import com.ieumsae.assetieum.domain.member.entity.Member;
+import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.type.TangibleAssetStatus;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.type.UsageType;
 import com.ieumsae.assetieum.domain.ticket.assetrequest.type.AssetRequestTicketStatus;
 import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
+import com.ieumsae.assetieum.domain.ticket.rental.type.RentalTicketStatus;
 import com.ieumsae.assetieum.global.common.page.PaginationRequest;
 import com.ieumsae.assetieum.global.common.page.PaginationResponse;
+import com.ieumsae.assetieum.global.exception.BusinessException;
+import com.ieumsae.assetieum.global.exception.ErrorCode;
 import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -45,36 +52,153 @@ public class DashboardService {
 	private static final String TANGIBLE = "TANGIBLE";
 	private static final String INTANGIBLE = "INTANGIBLE";
 
+	private final MemberRepository memberRepository;
 	private final EntityManager entityManager;
 
-	public TicketProgressSummaryResponse getTicketProgressSummary(UUID companyId) {
+	public TicketProgressSummaryResponse getTicketProgressSummary(UUID companyId, UUID departmentId) {
 		return TicketProgressSummaryResponse.builder()
-			.waitingReceipt(countTickets(companyId, List.of(TicketStatus.REQUESTED)))
-			.receiptCompleted(countTickets(companyId, List.of(
+			.waitingReceipt(countTickets(companyId, departmentId, List.of(TicketStatus.REQUESTED)))
+			.receiptCompleted(countTickets(companyId, departmentId, List.of(
 				TicketStatus.DEPARTMENT_APPROVED,
 				TicketStatus.ASSET_APPROVED
 			)))
-			.processing(countTickets(companyId, List.of(TicketStatus.IN_PROGRESS)))
-			.completed(countTickets(companyId, List.of(TicketStatus.COMPLETED)))
+			.processing(countTickets(companyId, departmentId, List.of(TicketStatus.IN_PROGRESS)))
+			.completed(countTickets(companyId, departmentId, List.of(TicketStatus.COMPLETED)))
 			.build();
 	}
 
-	public OwnedAssetSummaryResponse getOwnedAssetSummary(UUID companyId) {
+	public OwnedAssetSummaryResponse getOwnedAssetSummary(UUID companyId, UUID departmentId) {
 		LocalDateTime now = LocalDateTime.now();
 		return OwnedAssetSummaryResponse.builder()
-			.unassigned(countAvailableTangibleAssets(companyId) + countAvailableIntangibleAssets(companyId))
-			.rentalScheduled(countTangibleAssetsByStatus(companyId, TangibleAssetStatus.RESERVED))
-			.rented(countRentedTangibleAssets(companyId))
-			.overdue(countOverdueTangibleAssets(companyId, now))
+			.unassigned(countAvailableTangibleAssets(companyId, departmentId) + countAvailableIntangibleAssets(companyId, departmentId))
+			.rentalScheduled(countTangibleAssetsByStatus(companyId, departmentId, TangibleAssetStatus.RESERVED))
+			.rented(countRentedTangibleAssets(companyId, departmentId))
+			.overdue(countOverdueTangibleAssets(companyId, departmentId, now))
 			.build();
 	}
 
-	public ExpiringAssetSummaryResponse getExpiringAssetSummary(UUID companyId) {
+	public ExpiringAssetSummaryResponse getExpiringAssetSummary(UUID companyId, UUID departmentId) {
 		LocalDateTime now = LocalDateTime.now();
 		LocalDateTime limit = now.plusDays(EXPIRING_DAYS);
 		return ExpiringAssetSummaryResponse.builder()
-			.tangibleAssetCount(countExpiringTangibleAssets(companyId, now, limit))
-			.intangibleAssetCount(countExpiringIntangibleAssets(companyId, now, limit))
+			.tangibleAssetCount(countExpiringTangibleAssets(companyId, departmentId, now, limit))
+			.intangibleAssetCount(countExpiringIntangibleAssets(companyId, departmentId, now, limit))
+			.build();
+	}
+
+	public TicketProgressSummaryResponse getEmployeeTicketProgressSummary(UUID companyId, UUID memberId) {
+		return TicketProgressSummaryResponse.builder()
+			.waitingReceipt(countMemberTickets(companyId, memberId, List.of(TicketStatus.REQUESTED)))
+			.receiptCompleted(countMemberTickets(companyId, memberId, List.of(
+				TicketStatus.DEPARTMENT_APPROVED,
+				TicketStatus.ASSET_APPROVED
+			)))
+			.processing(countMemberTickets(companyId, memberId, List.of(TicketStatus.IN_PROGRESS)))
+			.completed(countMemberTickets(companyId, memberId, List.of(TicketStatus.COMPLETED)))
+			.build();
+	}
+
+	public RentalAssetSummaryResponse getEmployeeRentalAssetSummary(UUID companyId, UUID memberId) {
+		LocalDateTime now = LocalDateTime.now();
+		return RentalAssetSummaryResponse.builder()
+			.rentalScheduled(countMemberRentalScheduledTickets(companyId, memberId))
+			.rented(countMemberRentedTangibleAssets(companyId, memberId))
+			.overdue(countMemberOverdueTangibleAssets(companyId, memberId, now))
+			.build();
+	}
+
+	public OwnedAssetSummaryResponse getEmployeeOwnedAssetSummary(UUID companyId, UUID memberId) {
+		LocalDateTime now = LocalDateTime.now();
+		return OwnedAssetSummaryResponse.builder()
+			.unassigned(0)
+			.rentalScheduled(countMemberRentalScheduledTickets(companyId, memberId))
+			.rented(countMemberRentedTangibleAssets(companyId, memberId))
+			.overdue(countMemberOverdueTangibleAssets(companyId, memberId, now))
+			.build();
+	}
+
+	public ExpiringAssetSummaryResponse getEmployeeExpiringAssetSummary(UUID companyId, UUID memberId) {
+		LocalDateTime now = LocalDateTime.now();
+		LocalDateTime limit = now.plusDays(EXPIRING_DAYS);
+		return ExpiringAssetSummaryResponse.builder()
+			.tangibleAssetCount(countMemberExpiringTangibleAssets(companyId, memberId, now, limit))
+			.intangibleAssetCount(countMemberExpiringIntangibleAssets(companyId, memberId, now, limit))
+			.build();
+	}
+
+	public PaginationResponse<AssetDemandResponse> getEmployeeDepartmentAssetDemands(
+		UUID companyId,
+		UUID memberId,
+		PaginationRequest request
+	) {
+		UUID departmentId = getMemberDepartmentId(companyId, memberId);
+		List<AssetDemandResponse> responses = new ArrayList<>();
+		responses.addAll(getDepartmentTangibleAssetDemands(companyId, departmentId));
+		responses.addAll(getDepartmentIntangibleAssetDemands(companyId, departmentId));
+		List<AssetDemandResponse> sortedResponses = responses.stream()
+			.sorted(Comparator.comparing(AssetDemandResponse::getAssetName))
+			.toList();
+		return toPaginationResponse(sortedResponses, request);
+	}
+
+	public EmployeeDepartmentBudgetResponse getEmployeeDepartmentBudget(UUID companyId, UUID memberId) {
+		Member member = findMember(companyId, memberId);
+		int year = LocalDate.now().getYear();
+		List<Budget> budgets = entityManager.createQuery("""
+				select b
+				from Budget b
+				join fetch b.department d
+				where b.company.id = :companyId
+					and d.id = :departmentId
+					and b.budgetYear = :year
+				""", Budget.class)
+			.setParameter("companyId", companyId)
+			.setParameter("departmentId", member.getDepartment().getId())
+			.setParameter("year", year)
+			.getResultList();
+
+		if (budgets.isEmpty()) {
+			return EmployeeDepartmentBudgetResponse.builder()
+				.departmentId(member.getDepartment().getId())
+				.departmentName(member.getDepartment().getName())
+				.totalAmount(BigDecimal.ZERO)
+				.usedAmount(BigDecimal.ZERO)
+				.remainingAmount(BigDecimal.ZERO)
+				.usageRate(BigDecimal.ZERO)
+				.remainingRate(BigDecimal.ZERO)
+				.build();
+		}
+
+		Budget budget = budgets.get(0);
+		return EmployeeDepartmentBudgetResponse.builder()
+			.departmentId(member.getDepartment().getId())
+			.departmentName(member.getDepartment().getName())
+			.totalAmount(budget.getTotalAmount())
+			.usedAmount(budget.getUsedAmount())
+			.remainingAmount(budget.getAvailableAmount())
+			.usageRate(percent(budget.getUsedAmount(), budget.getTotalAmount()))
+			.remainingRate(percent(budget.getAvailableAmount(), budget.getTotalAmount()))
+			.build();
+	}
+
+	public BudgetOverviewResponse getEmployeeBudgetOverview(
+		UUID companyId,
+		UUID memberId,
+		PaginationRequest request
+	) {
+		EmployeeDepartmentBudgetResponse budget = getEmployeeDepartmentBudget(companyId, memberId);
+		BudgetOverviewResponse.DepartmentBudgetSummary departmentBudget =
+			BudgetOverviewResponse.DepartmentBudgetSummary.builder()
+				.departmentId(budget.getDepartmentId())
+				.departmentName(budget.getDepartmentName())
+				.totalAmount(budget.getTotalAmount())
+				.usedAmount(budget.getUsedAmount())
+				.usageRate(budget.getUsageRate())
+				.build();
+
+		return BudgetOverviewResponse.builder()
+			.commonBudget(null)
+			.departmentBudgets(toPaginationResponse(List.of(departmentBudget), request))
 			.build();
 	}
 
@@ -188,101 +312,226 @@ public class DashboardService {
 		return PaginationResponse.from(page);
 	}
 
-	private long countTickets(UUID companyId, List<TicketStatus> statuses) {
+	private long countTickets(UUID companyId, UUID departmentId, List<TicketStatus> statuses) {
 		return entityManager.createQuery("""
 				select count(t)
 				from Ticket t
 				where t.company.id = :companyId
+					and (:departmentId is null or t.department.id = :departmentId)
 					and t.ticketStatus in :statuses
 					and t.deletedAt is null
 				""", Long.class)
 			.setParameter("companyId", companyId)
+			.setParameter("departmentId", departmentId)
 			.setParameter("statuses", statuses)
 			.getSingleResult();
 	}
 
-	private long countAvailableTangibleAssets(UUID companyId) {
-		return countTangibleAssetsByStatus(companyId, TangibleAssetStatus.AVAILABLE);
-	}
-
-	private long countAvailableIntangibleAssets(UUID companyId) {
+	private long countMemberTickets(UUID companyId, UUID memberId, List<TicketStatus> statuses) {
 		return entityManager.createQuery("""
-				select coalesce(sum(a.seatCount), 0)
-				from IntangibleAsset a
-				where a.company.id = :companyId
-					and a.intangibleAssetStatus = :status
+				select count(t)
+				from Ticket t
+				where t.company.id = :companyId
+					and t.requester.id = :memberId
+					and t.ticketStatus in :statuses
+					and t.deletedAt is null
 				""", Long.class)
 			.setParameter("companyId", companyId)
-			.setParameter("status", IntangibleAssetStatus.AVAILABLE)
+			.setParameter("memberId", memberId)
+			.setParameter("statuses", statuses)
 			.getSingleResult();
 	}
 
-	private long countTangibleAssetsByStatus(UUID companyId, TangibleAssetStatus status) {
+	private long countMemberRentalScheduledTickets(UUID companyId, UUID memberId) {
+		return entityManager.createQuery("""
+				select count(rt)
+				from RentalTicket rt
+				where rt.company.id = :companyId
+					and rt.ticket.requester.id = :memberId
+					and rt.status = :status
+					and rt.deletedAt is null
+				""", Long.class)
+			.setParameter("companyId", companyId)
+			.setParameter("memberId", memberId)
+			.setParameter("status", RentalTicketStatus.RESERVED)
+			.getSingleResult();
+	}
+
+	private long countMemberRentedTangibleAssets(UUID companyId, UUID memberId) {
 		return entityManager.createQuery("""
 				select count(a)
 				from TangibleAsset a
 				where a.company.id = :companyId
-					and a.tangibleAssetStatus = :status
-				""", Long.class)
-			.setParameter("companyId", companyId)
-			.setParameter("status", status)
-			.getSingleResult();
-	}
-
-	private long countRentedTangibleAssets(UUID companyId) {
-		return entityManager.createQuery("""
-				select count(a)
-				from TangibleAsset a
-				where a.company.id = :companyId
+					and a.member.id = :memberId
 					and a.tangibleAssetStatus = :status
 					and a.usageType = :usageType
 				""", Long.class)
 			.setParameter("companyId", companyId)
+			.setParameter("memberId", memberId)
 			.setParameter("status", TangibleAssetStatus.IN_USE)
 			.setParameter("usageType", UsageType.TEMPORARY)
 			.getSingleResult();
 	}
 
-	private long countOverdueTangibleAssets(UUID companyId, LocalDateTime now) {
+	private long countMemberOverdueTangibleAssets(UUID companyId, UUID memberId, LocalDateTime now) {
 		return entityManager.createQuery("""
 				select count(a)
 				from TangibleAsset a
 				where a.company.id = :companyId
+					and a.member.id = :memberId
 					and a.tangibleAssetStatus = :status
 					and a.usageType = :usageType
 					and a.returnDueDate < :now
 				""", Long.class)
 			.setParameter("companyId", companyId)
+			.setParameter("memberId", memberId)
 			.setParameter("status", TangibleAssetStatus.IN_USE)
 			.setParameter("usageType", UsageType.TEMPORARY)
 			.setParameter("now", now)
 			.getSingleResult();
 	}
 
-	private long countExpiringTangibleAssets(UUID companyId, LocalDateTime now, LocalDateTime limit) {
+	private long countMemberExpiringTangibleAssets(
+		UUID companyId,
+		UUID memberId,
+		LocalDateTime now,
+		LocalDateTime limit
+	) {
 		return entityManager.createQuery("""
 				select count(a)
 				from TangibleAsset a
 				where a.company.id = :companyId
+					and a.member.id = :memberId
 					and a.warrantyExpiredAt between :now and :limit
 					and a.tangibleAssetStatus <> :disposed
 				""", Long.class)
 			.setParameter("companyId", companyId)
+			.setParameter("memberId", memberId)
 			.setParameter("now", now)
 			.setParameter("limit", limit)
 			.setParameter("disposed", TangibleAssetStatus.DISPOSED)
 			.getSingleResult();
 	}
 
-	private long countExpiringIntangibleAssets(UUID companyId, LocalDateTime now, LocalDateTime limit) {
+	private long countMemberExpiringIntangibleAssets(
+		UUID companyId,
+		UUID memberId,
+		LocalDateTime now,
+		LocalDateTime limit
+	) {
 		return entityManager.createQuery("""
 				select count(a)
 				from IntangibleAsset a
 				where a.company.id = :companyId
+					and a.member.id = :memberId
 					and a.expiredAt between :now and :limit
 					and a.intangibleAssetStatus not in :excludedStatuses
 				""", Long.class)
 			.setParameter("companyId", companyId)
+			.setParameter("memberId", memberId)
+			.setParameter("now", now)
+			.setParameter("limit", limit)
+			.setParameter("excludedStatuses", List.of(
+				IntangibleAssetStatus.EXPIRED,
+				IntangibleAssetStatus.CANCELLED
+			))
+			.getSingleResult();
+	}
+
+	private long countAvailableTangibleAssets(UUID companyId, UUID departmentId) {
+		return countTangibleAssetsByStatus(companyId, departmentId, TangibleAssetStatus.AVAILABLE);
+	}
+
+	private long countAvailableIntangibleAssets(UUID companyId, UUID departmentId) {
+		return entityManager.createQuery("""
+				select coalesce(sum(a.seatCount), 0)
+				from IntangibleAsset a
+				where a.company.id = :companyId
+					and (:departmentId is null or a.department.id = :departmentId)
+					and a.intangibleAssetStatus = :status
+				""", Long.class)
+			.setParameter("companyId", companyId)
+			.setParameter("departmentId", departmentId)
+			.setParameter("status", IntangibleAssetStatus.AVAILABLE)
+			.getSingleResult();
+	}
+
+	private long countTangibleAssetsByStatus(UUID companyId, UUID departmentId, TangibleAssetStatus status) {
+		return entityManager.createQuery("""
+				select count(a)
+				from TangibleAsset a
+				where a.company.id = :companyId
+					and (:departmentId is null or a.department.id = :departmentId)
+					and a.tangibleAssetStatus = :status
+				""", Long.class)
+			.setParameter("companyId", companyId)
+			.setParameter("departmentId", departmentId)
+			.setParameter("status", status)
+			.getSingleResult();
+	}
+
+	private long countRentedTangibleAssets(UUID companyId, UUID departmentId) {
+		return entityManager.createQuery("""
+				select count(a)
+				from TangibleAsset a
+				where a.company.id = :companyId
+					and (:departmentId is null or a.department.id = :departmentId)
+					and a.tangibleAssetStatus = :status
+					and a.usageType = :usageType
+				""", Long.class)
+			.setParameter("companyId", companyId)
+			.setParameter("departmentId", departmentId)
+			.setParameter("status", TangibleAssetStatus.IN_USE)
+			.setParameter("usageType", UsageType.TEMPORARY)
+			.getSingleResult();
+	}
+
+	private long countOverdueTangibleAssets(UUID companyId, UUID departmentId, LocalDateTime now) {
+		return entityManager.createQuery("""
+				select count(a)
+				from TangibleAsset a
+				where a.company.id = :companyId
+					and (:departmentId is null or a.department.id = :departmentId)
+					and a.tangibleAssetStatus = :status
+					and a.usageType = :usageType
+					and a.returnDueDate < :now
+				""", Long.class)
+			.setParameter("companyId", companyId)
+			.setParameter("departmentId", departmentId)
+			.setParameter("status", TangibleAssetStatus.IN_USE)
+			.setParameter("usageType", UsageType.TEMPORARY)
+			.setParameter("now", now)
+			.getSingleResult();
+	}
+
+	private long countExpiringTangibleAssets(UUID companyId, UUID departmentId, LocalDateTime now, LocalDateTime limit) {
+		return entityManager.createQuery("""
+				select count(a)
+				from TangibleAsset a
+				where a.company.id = :companyId
+					and (:departmentId is null or a.department.id = :departmentId)
+					and a.warrantyExpiredAt between :now and :limit
+					and a.tangibleAssetStatus <> :disposed
+				""", Long.class)
+			.setParameter("companyId", companyId)
+			.setParameter("departmentId", departmentId)
+			.setParameter("now", now)
+			.setParameter("limit", limit)
+			.setParameter("disposed", TangibleAssetStatus.DISPOSED)
+			.getSingleResult();
+	}
+
+	private long countExpiringIntangibleAssets(UUID companyId, UUID departmentId, LocalDateTime now, LocalDateTime limit) {
+		return entityManager.createQuery("""
+				select count(a)
+				from IntangibleAsset a
+				where a.company.id = :companyId
+					and (:departmentId is null or a.department.id = :departmentId)
+					and a.expiredAt between :now and :limit
+					and a.intangibleAssetStatus not in :excludedStatuses
+				""", Long.class)
+			.setParameter("companyId", companyId)
+			.setParameter("departmentId", departmentId)
 			.setParameter("now", now)
 			.setParameter("limit", limit)
 			.setParameter("excludedStatuses", List.of(
@@ -331,6 +580,50 @@ public class DashboardService {
 				long expectedDemand = countIntangibleExpectedDemand(companyId, itemId);
 				long currentInventory = countIntangibleCurrentInventory(companyId, itemId);
 				long scheduledReturn = countIntangibleScheduledReturn(companyId, itemId);
+				return buildAssetDemand(INTANGIBLE, itemId, itemName, expectedDemand, currentInventory, scheduledReturn);
+			})
+			.toList();
+	}
+
+	private List<AssetDemandResponse> getDepartmentTangibleAssetDemands(UUID companyId, UUID departmentId) {
+		List<Object[]> items = entityManager.createQuery("""
+				select distinct i.id, i.productName
+				from TangibleAssetItem i
+				where i.company.id = :companyId
+					and i.deletedAt is null
+				""", Object[].class)
+			.setParameter("companyId", companyId)
+			.getResultList();
+
+		return items.stream()
+			.map(row -> {
+				UUID itemId = (UUID) row[0];
+				String itemName = (String) row[1];
+				long expectedDemand = countDepartmentTangibleExpectedDemand(companyId, departmentId, itemId);
+				long currentInventory = countDepartmentTangibleCurrentInventory(companyId, departmentId, itemId);
+				long scheduledReturn = countDepartmentTangibleScheduledReturn(companyId, departmentId, itemId);
+				return buildAssetDemand(TANGIBLE, itemId, itemName, expectedDemand, currentInventory, scheduledReturn);
+			})
+			.toList();
+	}
+
+	private List<AssetDemandResponse> getDepartmentIntangibleAssetDemands(UUID companyId, UUID departmentId) {
+		List<Object[]> items = entityManager.createQuery("""
+				select distinct i.id, i.productName
+				from IntangibleAssetItem i
+				where i.company.id = :companyId
+					and i.deletedAt is null
+				""", Object[].class)
+			.setParameter("companyId", companyId)
+			.getResultList();
+
+		return items.stream()
+			.map(row -> {
+				UUID itemId = (UUID) row[0];
+				String itemName = (String) row[1];
+				long expectedDemand = countDepartmentIntangibleExpectedDemand(companyId, departmentId, itemId);
+				long currentInventory = countDepartmentIntangibleCurrentInventory(companyId, departmentId, itemId);
+				long scheduledReturn = countDepartmentIntangibleScheduledReturn(companyId, departmentId, itemId);
 				return buildAssetDemand(INTANGIBLE, itemId, itemName, expectedDemand, currentInventory, scheduledReturn);
 			})
 			.toList();
@@ -396,6 +689,44 @@ public class DashboardService {
 			.getSingleResult();
 	}
 
+	private long countDepartmentTangibleExpectedDemand(UUID companyId, UUID departmentId, UUID itemId) {
+		return entityManager.createQuery("""
+				select coalesce(sum(t.quantity), 0)
+				from AssetRequestTicket t
+				where t.company.id = :companyId
+					and t.ticket.department.id = :departmentId
+					and t.tangibleAssetItem.id = :itemId
+					and t.status not in :excludedStatuses
+				""", Long.class)
+			.setParameter("companyId", companyId)
+			.setParameter("departmentId", departmentId)
+			.setParameter("itemId", itemId)
+			.setParameter("excludedStatuses", List.of(
+				AssetRequestTicketStatus.COMPLETED,
+				AssetRequestTicketStatus.CANCELLED
+			))
+			.getSingleResult();
+	}
+
+	private long countDepartmentIntangibleExpectedDemand(UUID companyId, UUID departmentId, UUID itemId) {
+		return entityManager.createQuery("""
+				select coalesce(sum(t.quantity), 0)
+				from AssetRequestTicket t
+				where t.company.id = :companyId
+					and t.ticket.department.id = :departmentId
+					and t.intangibleAssetItem.id = :itemId
+					and t.status not in :excludedStatuses
+				""", Long.class)
+			.setParameter("companyId", companyId)
+			.setParameter("departmentId", departmentId)
+			.setParameter("itemId", itemId)
+			.setParameter("excludedStatuses", List.of(
+				AssetRequestTicketStatus.COMPLETED,
+				AssetRequestTicketStatus.CANCELLED
+			))
+			.getSingleResult();
+	}
+
 	private long countTangibleCurrentInventory(UUID companyId, UUID itemId) {
 		return entityManager.createQuery("""
 				select count(a)
@@ -441,6 +772,57 @@ public class DashboardService {
 		return Math.max(seatCount - activeAssignments, 0);
 	}
 
+	private long countDepartmentTangibleCurrentInventory(UUID companyId, UUID departmentId, UUID itemId) {
+		return entityManager.createQuery("""
+				select count(a)
+				from TangibleAsset a
+				where a.company.id = :companyId
+					and a.department.id = :departmentId
+					and a.tangibleAssetItem.id = :itemId
+					and a.tangibleAssetStatus = :status
+				""", Long.class)
+			.setParameter("companyId", companyId)
+			.setParameter("departmentId", departmentId)
+			.setParameter("itemId", itemId)
+			.setParameter("status", TangibleAssetStatus.AVAILABLE)
+			.getSingleResult();
+	}
+
+	private long countDepartmentIntangibleCurrentInventory(UUID companyId, UUID departmentId, UUID itemId) {
+		Long seatCount = entityManager.createQuery("""
+				select coalesce(sum(a.seatCount), 0)
+				from IntangibleAsset a
+				where a.company.id = :companyId
+					and a.department.id = :departmentId
+					and a.intangibleAssetItem.id = :itemId
+					and a.intangibleAssetStatus in :statuses
+				""", Long.class)
+			.setParameter("companyId", companyId)
+			.setParameter("departmentId", departmentId)
+			.setParameter("itemId", itemId)
+			.setParameter("statuses", List.of(
+				IntangibleAssetStatus.AVAILABLE,
+				IntangibleAssetStatus.IN_USE
+			))
+			.getSingleResult();
+
+		Long activeAssignments = entityManager.createQuery("""
+				select count(aa)
+				from IntangibleAssetAssignment aa
+				where aa.company.id = :companyId
+					and aa.department.id = :departmentId
+					and aa.intangibleAsset.intangibleAssetItem.id = :itemId
+					and aa.assignmentStatus = :status
+				""", Long.class)
+			.setParameter("companyId", companyId)
+			.setParameter("departmentId", departmentId)
+			.setParameter("itemId", itemId)
+			.setParameter("status", AssignmentStatus.ACTIVE)
+			.getSingleResult();
+
+		return Math.max(seatCount - activeAssignments, 0);
+	}
+
 	private long countTangibleScheduledReturn(UUID companyId, UUID itemId) {
 		return entityManager.createQuery("""
 				select count(a)
@@ -466,6 +848,40 @@ public class DashboardService {
 					and a.expiredAt is not null
 				""", Long.class)
 			.setParameter("companyId", companyId)
+			.setParameter("itemId", itemId)
+			.setParameter("status", IntangibleAssetStatus.IN_USE)
+			.getSingleResult();
+	}
+
+	private long countDepartmentTangibleScheduledReturn(UUID companyId, UUID departmentId, UUID itemId) {
+		return entityManager.createQuery("""
+				select count(a)
+				from TangibleAsset a
+				where a.company.id = :companyId
+					and a.department.id = :departmentId
+					and a.tangibleAssetItem.id = :itemId
+					and a.tangibleAssetStatus = :status
+					and a.returnDueDate is not null
+				""", Long.class)
+			.setParameter("companyId", companyId)
+			.setParameter("departmentId", departmentId)
+			.setParameter("itemId", itemId)
+			.setParameter("status", TangibleAssetStatus.IN_USE)
+			.getSingleResult();
+	}
+
+	private long countDepartmentIntangibleScheduledReturn(UUID companyId, UUID departmentId, UUID itemId) {
+		return entityManager.createQuery("""
+				select coalesce(sum(a.seatCount), 0)
+				from IntangibleAsset a
+				where a.company.id = :companyId
+					and a.department.id = :departmentId
+					and a.intangibleAssetItem.id = :itemId
+					and a.intangibleAssetStatus = :status
+					and a.expiredAt is not null
+				""", Long.class)
+			.setParameter("companyId", companyId)
+			.setParameter("departmentId", departmentId)
 			.setParameter("itemId", itemId)
 			.setParameter("status", IntangibleAssetStatus.IN_USE)
 			.getSingleResult();
@@ -902,6 +1318,15 @@ public class DashboardService {
 			return null;
 		}
 		return "%" + keyword.trim().toLowerCase() + "%";
+	}
+
+	private UUID getMemberDepartmentId(UUID companyId, UUID memberId) {
+		return findMember(companyId, memberId).getDepartment().getId();
+	}
+
+	private Member findMember(UUID companyId, UUID memberId) {
+		return memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(memberId, companyId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 	}
 
 	private <T> PaginationResponse<T> toPaginationResponse(List<T> content, PaginationRequest request) {
