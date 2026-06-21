@@ -57,6 +57,9 @@ public class BudgetExecutionService {
         if (hasEnoughInventory(assetRequestTicket, companyId)) {
             return;
         }
+        if (!isStandardAssetRequest(assetRequestTicket)) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "비표준 자산요청은 재고가 충분한 품목만 요청할 수 있습니다.");
+        }
 
         BigDecimal amount = resolveEstimatedAmount(assetRequestTicket, companyId);
         Budget budget = findBudgetForAssetRequest(ticket, assetRequestTicket);

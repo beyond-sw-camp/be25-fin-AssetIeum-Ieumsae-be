@@ -1,7 +1,12 @@
 package com.ieumsae.assetieum.domain.ticket.purchaserequest.service;
 
 import com.ieumsae.assetieum.domain.budget.budget.service.BudgetExecutionService;
+import com.ieumsae.assetieum.domain.intangibleasset.asset.entity.IntangibleAsset;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.repository.IntangibleAssetRepository;
+import com.ieumsae.assetieum.domain.intangibleasset.asset.type.IntangibleAssetStatus;
+import com.ieumsae.assetieum.domain.intangibleasset.assignment.entity.IntangibleAssetAssignment;
+import com.ieumsae.assetieum.domain.intangibleasset.assignment.repository.IntangibleAssetAssignmentRepository;
+import com.ieumsae.assetieum.domain.intangibleasset.assignment.type.AssignmentStatus;
 import com.ieumsae.assetieum.domain.intangibleasset.category.entity.IntangibleAssetCategory;
 import com.ieumsae.assetieum.domain.intangibleasset.category.repository.IntangibleAssetCategoryRepository;
 import com.ieumsae.assetieum.domain.intangibleasset.item.entity.IntangibleAssetItem;
@@ -11,7 +16,13 @@ import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.type.MemberRole;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.PurchasePlanItem;
 import com.ieumsae.assetieum.domain.purchase.purchaseplanitem.repository.PurchasePlanItemRepository;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.entity.TangibleAsset;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.repository.TangibleAssetRepository;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.type.AssetUsageType;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.type.TangibleAssetStatus;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.type.UsageType;
+import com.ieumsae.assetieum.domain.tangibleasset.assignment.entity.TangibleAssetAssignment;
+import com.ieumsae.assetieum.domain.tangibleasset.assignment.repository.TangibleAssetAssignmentRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.category.entity.TangibleAssetCategory;
 import com.ieumsae.assetieum.domain.tangibleasset.category.repository.TangibleAssetCategoryRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
@@ -25,6 +36,8 @@ import com.ieumsae.assetieum.domain.ticket.common.type.AssetType;
 import com.ieumsae.assetieum.domain.ticket.common.type.RequestMethod;
 import com.ieumsae.assetieum.domain.ticket.common.type.RequestedUsageType;
 import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
+import com.ieumsae.assetieum.domain.ticket.purchaserequest.dto.DirectPurchaseAssetAssignRequest;
+import com.ieumsae.assetieum.domain.ticket.purchaserequest.dto.DirectPurchaseAssetAssignResponse;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.dto.DirectPurchaseRequestTicketCreateRequest;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.dto.DirectPurchaseResultCreateRequest;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.dto.DirectPurchaseResultCreateResponse;
@@ -38,8 +51,10 @@ import com.ieumsae.assetieum.domain.ticket.purchaserequest.repository.PurchaseRe
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.type.ConfirmationStatus;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
+import com.ieumsae.assetieum.global.common.util.CodeGenerator;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -51,11 +66,18 @@ import org.springframework.util.StringUtils;
 @Transactional(readOnly = true)
 public class PurchaseRequestTicketService {
 
+	private static final String TANGIBLE_ASSET_CODE_PREFIX = "TA";
+	private static final String TANGIBLE_ASSET_REDIS_KEY_PREFIX = "tangible-asset:code:";
+	private static final String INTANGIBLE_ASSET_CODE_PREFIX = "IA";
+	private static final String INTANGIBLE_ASSET_REDIS_KEY_PREFIX = "intangible-asset:code:";
+
 	private final TicketRepository ticketRepository;
 	private final PurchaseRequestTicketRepository purchaseRequestTicketRepository;
 	private final DirectPurchaseResultRepository directPurchaseResultRepository;
 	private final TangibleAssetRepository tangibleAssetRepository;
 	private final IntangibleAssetRepository intangibleAssetRepository;
+	private final TangibleAssetAssignmentRepository tangibleAssetAssignmentRepository;
+	private final IntangibleAssetAssignmentRepository intangibleAssetAssignmentRepository;
 	private final TangibleAssetCategoryRepository tangibleAssetCategoryRepository;
 	private final IntangibleAssetCategoryRepository intangibleAssetCategoryRepository;
 	private final TangibleAssetItemRepository tangibleAssetItemRepository;
@@ -66,6 +88,7 @@ public class PurchaseRequestTicketService {
 	private final PurchaseRequestActionResolver purchaseRequestActionResolver;
 	private final PurchasePlanItemRepository purchasePlanItemRepository;
 	private final BudgetExecutionService budgetExecutionService;
+	private final CodeGenerator codeGenerator;
 
 	@Transactional
 	public PurchaseRequestTicketCreateResponse createTeamPurchaseRequestTicket(
@@ -240,6 +263,31 @@ public class PurchaseRequestTicketService {
 		return DirectPurchaseResultCreateResponse.from(ticket, result, resolveAssetType(purchaseRequestTicket));
 	}
 
+	@Transactional
+	public DirectPurchaseAssetAssignResponse assignDirectPurchaseAsset(
+		AuthenticatedMember authenticatedMember,
+		UUID ticketId,
+		DirectPurchaseAssetAssignRequest request
+	) {
+		UUID companyId = authenticatedMember.companyId();
+		Ticket ticket = ticketRepository.findWithLockByIdAndCompany_IdAndDeletedAtIsNull(ticketId, companyId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+		PurchaseRequestTicket purchaseRequestTicket = purchaseRequestTicketRepository.findByIdAndCompany_Id(
+				ticketId,
+				companyId
+			)
+			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+		DirectPurchaseResult result = directPurchaseResultRepository.findByIdAndCompany_Id(ticketId, companyId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+		AssetType assetType = resolveAssetType(purchaseRequestTicket);
+
+		validateDirectPurchaseAssetAssignable(purchaseRequestTicket, ticket, result);
+		if (assetType == AssetType.TANGIBLE) {
+			return assignDirectPurchaseTangibleAsset(companyId, ticket, purchaseRequestTicket, result, request);
+		}
+		return assignDirectPurchaseIntangibleAsset(companyId, ticket, purchaseRequestTicket, result, request);
+	}
+
 	public PurchaseRequestTicketDetailResponse getPurchaseRequestTicket(
 		AuthenticatedMember authenticatedMember,
 		UUID ticketId
@@ -279,6 +327,195 @@ public class PurchaseRequestTicketService {
 	private DirectPurchaseResult findDirectPurchaseResult(UUID ticketId, UUID companyId) {
 		return directPurchaseResultRepository.findByIdAndCompany_Id(ticketId, companyId)
 			.orElse(null);
+	}
+
+	private DirectPurchaseAssetAssignResponse assignDirectPurchaseTangibleAsset(
+		UUID companyId,
+		Ticket ticket,
+		PurchaseRequestTicket purchaseRequestTicket,
+		DirectPurchaseResult result,
+		DirectPurchaseAssetAssignRequest request
+	) {
+		TangibleAssetItem item = resolveDirectPurchaseTangibleItem(companyId, purchaseRequestTicket, request);
+		TangibleAsset asset = tangibleAssetRepository.save(TangibleAsset.builder()
+			.company(ticket.getCompany())
+			.tangibleAssetItem(item)
+			.assetCode(codeGenerator.generate(TANGIBLE_ASSET_CODE_PREFIX, TANGIBLE_ASSET_REDIS_KEY_PREFIX, companyId))
+			.serialNumber(result.getSerialNumber())
+			.location(result.getLocation())
+			.purchaseDate(result.getPurchaseDate())
+			.purchasePrice(result.getActualPrice())
+			.purchaseVendor(result.getPurchaseVendor())
+			.warrantyExpiredAt(result.getWarrantyExpiredAt())
+			.tangibleAssetStatus(TangibleAssetStatus.AVAILABLE)
+			.build());
+
+		TangibleAssetAssignment assignment = tangibleAssetAssignmentRepository.save(TangibleAssetAssignment.builder()
+			.company(ticket.getCompany())
+			.tangibleAsset(asset)
+			.member(ticket.getRequester())
+			.department(ticket.getDepartment())
+			.assignmentType(UsageType.PERMANENT)
+			.assignmentStatus(com.ieumsae.assetieum.domain.tangibleasset.assignment.type.AssignmentStatus.ACTIVE)
+			.build());
+		asset.markInUse(
+			ticket.getRequester(),
+			ticket.getDepartment(),
+			UsageType.PERMANENT,
+			resolveAssetUsageType(purchaseRequestTicket.getRequestedUsageType()),
+			assignment.getAssignedAt(),
+			null
+		);
+		completeDirectPurchaseTicket(ticket, purchaseRequestTicket);
+
+		return DirectPurchaseAssetAssignResponse.from(
+			ticket,
+			purchaseRequestTicket,
+			result,
+			AssetType.TANGIBLE,
+			item.getId(),
+			item.getProductName(),
+			asset.getId(),
+			asset.getAssetCode(),
+			assignment.getId()
+		);
+	}
+
+	private DirectPurchaseAssetAssignResponse assignDirectPurchaseIntangibleAsset(
+		UUID companyId,
+		Ticket ticket,
+		PurchaseRequestTicket purchaseRequestTicket,
+		DirectPurchaseResult result,
+		DirectPurchaseAssetAssignRequest request
+	) {
+		IntangibleAssetItem item = resolveDirectPurchaseIntangibleItem(companyId, purchaseRequestTicket, request);
+		IntangibleAsset asset = intangibleAssetRepository.save(IntangibleAsset.builder()
+			.company(ticket.getCompany())
+			.intangibleAssetItem(item)
+			.assetCode(codeGenerator.generate(INTANGIBLE_ASSET_CODE_PREFIX, INTANGIBLE_ASSET_REDIS_KEY_PREFIX, companyId))
+			.licenseCode(result.getLicenseCode())
+			.seatCount(result.getSeatCount())
+			.startedAt(result.getStartedAt())
+			.expiredAt(result.getExpiredAt())
+			.isAutoRenewal(result.getIsAutoRenewal())
+			.billingCycle(result.getBillingCycle())
+			.purchaseDate(result.getPurchaseDate())
+			.purchasePrice(result.getActualPrice())
+			.purchaseVendor(result.getPurchaseVendor())
+			.intangibleAssetStatus(IntangibleAssetStatus.AVAILABLE)
+			.build());
+
+		IntangibleAssetAssignment assignment = intangibleAssetAssignmentRepository.save(IntangibleAssetAssignment.builder()
+			.company(ticket.getCompany())
+			.intangibleAsset(asset)
+			.member(ticket.getRequester())
+			.department(ticket.getDepartment())
+			.assignedAt(result.getStartedAt())
+			.endedAt(result.getExpiredAt())
+			.assignmentStatus(AssignmentStatus.ACTIVE)
+			.build());
+		if (asset.getSeatCount() == 1) {
+			asset.assignTo(ticket.getRequester(), ticket.getDepartment());
+		} else {
+			asset.markInUse();
+		}
+		completeDirectPurchaseTicket(ticket, purchaseRequestTicket);
+
+		return DirectPurchaseAssetAssignResponse.from(
+			ticket,
+			purchaseRequestTicket,
+			result,
+			AssetType.INTANGIBLE,
+			item.getId(),
+			item.getProductName(),
+			asset.getId(),
+			asset.getAssetCode(),
+			assignment.getId()
+		);
+	}
+
+	private TangibleAssetItem resolveDirectPurchaseTangibleItem(
+		UUID companyId,
+		PurchaseRequestTicket purchaseRequestTicket,
+		DirectPurchaseAssetAssignRequest request
+	) {
+		if (Boolean.TRUE.equals(purchaseRequestTicket.getIsStandard())) {
+			return purchaseRequestTicket.getTangibleAssetItem();
+		}
+		if (request.getItemId() != null) {
+			TangibleAssetItem item = tangibleAssetItemRepository.findByIdAndCompany_IdAndDeletedAtIsNull(
+					request.getItemId(),
+					companyId
+				)
+				.orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_ITEM_NOT_FOUND));
+			validateTangibleItemCategory(purchaseRequestTicket, item);
+			return item;
+		}
+
+		String productName = normalize(request.getProductName());
+		if (!StringUtils.hasText(productName)) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "Product name is required when creating a non-standard tangible item.");
+		}
+		if (tangibleAssetItemRepository.existsByCompany_IdAndProductName(companyId, productName)) {
+			throw new BusinessException(ErrorCode.TANGIBLE_ASSET_ITEM_DUPLICATED_PRODUCT_NAME);
+		}
+
+		return tangibleAssetItemRepository.save(TangibleAssetItem.builder()
+			.company(purchaseRequestTicket.getCompany())
+			.tangibleAssetCategory(purchaseRequestTicket.getTangibleAssetCategory())
+			.productName(productName)
+			.manufacturer(defaultText(request.getManufacturer(), purchaseRequestTicket.getManufacturer()))
+			.modelName(normalize(request.getModelName()))
+			.isStandard(Boolean.FALSE)
+			.build());
+	}
+
+	private IntangibleAssetItem resolveDirectPurchaseIntangibleItem(
+		UUID companyId,
+		PurchaseRequestTicket purchaseRequestTicket,
+		DirectPurchaseAssetAssignRequest request
+	) {
+		if (Boolean.TRUE.equals(purchaseRequestTicket.getIsStandard())) {
+			return purchaseRequestTicket.getIntangibleAssetItem();
+		}
+		if (request.getItemId() != null) {
+			IntangibleAssetItem item = intangibleAssetItemRepository.findByIdAndCompany_IdAndDeletedAtIsNull(
+					request.getItemId(),
+					companyId
+				)
+				.orElseThrow(() -> new BusinessException(ErrorCode.INTANGIBLE_ASSET_ITEM_NOT_FOUND));
+			validateIntangibleItemCategoryAndLicenseType(purchaseRequestTicket, item);
+			return item;
+		}
+
+		String productName = normalize(request.getProductName());
+		if (!StringUtils.hasText(productName)) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "Product name is required when creating a non-standard intangible item.");
+		}
+		if (intangibleAssetItemRepository.existsByCompany_IdAndProductName(companyId, productName)) {
+			throw new BusinessException(ErrorCode.INTANGIBLE_ASSET_ITEM_DUPLICATED_PRODUCT_NAME);
+		}
+
+		return intangibleAssetItemRepository.save(IntangibleAssetItem.builder()
+			.company(purchaseRequestTicket.getCompany())
+			.intangibleAssetCategory(purchaseRequestTicket.getIntangibleAssetCategory())
+			.productName(productName)
+			.provider(defaultText(request.getProvider(), purchaseRequestTicket.getManufacturer()))
+			.licenseType(purchaseRequestTicket.getLicenseType())
+			.isStandard(Boolean.FALSE)
+			.build());
+	}
+
+	private void completeDirectPurchaseTicket(Ticket ticket, PurchaseRequestTicket purchaseRequestTicket) {
+		purchaseRequestTicket.complete();
+		ticket.changeProcessingStatus(TicketStatus.COMPLETED, LocalDateTime.now());
+	}
+
+	private AssetUsageType resolveAssetUsageType(RequestedUsageType requestedUsageType) {
+		return switch (requestedUsageType) {
+			case PERSONAL -> AssetUsageType.PERSONAL;
+			case DEPARTMENT -> AssetUsageType.DEPARTMENT;
+		};
 	}
 
 	private PurchaseRequestTicketCreateResponse createPurchaseRequestTicket(
@@ -609,6 +846,53 @@ public class PurchaseRequestTicketService {
 		throw new BusinessException(ErrorCode.ACCESS_DENIED);
 	}
 
+	private void validateDirectPurchaseAssetAssignable(
+		PurchaseRequestTicket purchaseRequestTicket,
+		Ticket ticket,
+		DirectPurchaseResult result
+	) {
+		if (purchaseRequestTicket.getRequestMethod() != RequestMethod.DIRECT_PURCHASE) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "Only direct purchase tickets can register and assign direct purchase assets.");
+		}
+		if (ticket.getTicketStatus() != TicketStatus.IN_PROGRESS) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "Direct purchase assets can be assigned only while the ticket is in progress.");
+		}
+		if (result.getConfirmationStatus() != ConfirmationStatus.CONFIRMED) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "Direct purchase result must be confirmed before asset registration.");
+		}
+		if (purchaseRequestTicket.getQuantity() != 1) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "Direct purchase asset registration currently supports one asset per ticket.");
+		}
+		if (resolveAssetType(purchaseRequestTicket) == AssetType.TANGIBLE
+			&& Boolean.TRUE.equals(purchaseRequestTicket.getIsStandard())
+			&& purchaseRequestTicket.getTangibleAssetItem() == null) {
+			throw new BusinessException(ErrorCode.TANGIBLE_ASSET_ITEM_NOT_FOUND);
+		}
+		if (resolveAssetType(purchaseRequestTicket) == AssetType.INTANGIBLE
+			&& Boolean.TRUE.equals(purchaseRequestTicket.getIsStandard())
+			&& purchaseRequestTicket.getIntangibleAssetItem() == null) {
+			throw new BusinessException(ErrorCode.INTANGIBLE_ASSET_ITEM_NOT_FOUND);
+		}
+	}
+
+	private void validateTangibleItemCategory(PurchaseRequestTicket purchaseRequestTicket, TangibleAssetItem item) {
+		if (!item.getTangibleAssetCategory().getId().equals(purchaseRequestTicket.getTangibleAssetCategory().getId())) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "Selected tangible item category does not match the direct purchase ticket.");
+		}
+	}
+
+	private void validateIntangibleItemCategoryAndLicenseType(
+		PurchaseRequestTicket purchaseRequestTicket,
+		IntangibleAssetItem item
+	) {
+		if (!item.getIntangibleAssetCategory().getId().equals(purchaseRequestTicket.getIntangibleAssetCategory().getId())) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "Selected intangible item category does not match the direct purchase ticket.");
+		}
+		if (item.getLicenseType() != purchaseRequestTicket.getLicenseType()) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "Selected intangible item license type does not match the direct purchase ticket.");
+		}
+	}
+
 	private void validateDirectPurchaseResultRequest(
 		UUID companyId,
 		AssetType assetType,
@@ -703,6 +987,14 @@ public class PurchaseRequestTicketService {
 			return null;
 		}
 		return value.trim();
+	}
+
+	private String defaultText(String requestedValue, String fallbackValue) {
+		String normalized = normalize(requestedValue);
+		if (StringUtils.hasText(normalized)) {
+			return normalized;
+		}
+		return normalize(fallbackValue);
 	}
 
 	private record DirectPurchaseTarget(

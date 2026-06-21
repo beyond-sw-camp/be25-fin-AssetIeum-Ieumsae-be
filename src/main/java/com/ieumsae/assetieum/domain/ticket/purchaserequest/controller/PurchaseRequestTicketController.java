@@ -1,5 +1,7 @@
 package com.ieumsae.assetieum.domain.ticket.purchaserequest.controller;
 
+import com.ieumsae.assetieum.domain.ticket.purchaserequest.dto.DirectPurchaseAssetAssignRequest;
+import com.ieumsae.assetieum.domain.ticket.purchaserequest.dto.DirectPurchaseAssetAssignResponse;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.dto.DirectPurchaseRequestTicketCreateRequest;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.dto.DirectPurchaseResultCreateRequest;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.dto.DirectPurchaseResultCreateResponse;
@@ -122,5 +124,20 @@ public class PurchaseRequestTicketController {
 			ticketId
 		);
 		return ApiResponse.ok("직접구매 증빙 확인완료 처리에 성공했습니다.", response);
+	}
+
+	@PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
+	@PostMapping("/{ticketId}/direct-purchase-assets/assign")
+	public ApiResponse<DirectPurchaseAssetAssignResponse> assignDirectPurchaseAsset(
+		@AuthenticationPrincipal AuthenticatedMember authenticatedMember,
+		@PathVariable UUID ticketId,
+		@Valid @RequestBody DirectPurchaseAssetAssignRequest request
+	) {
+		DirectPurchaseAssetAssignResponse response = purchaseRequestTicketService.assignDirectPurchaseAsset(
+			authenticatedMember,
+			ticketId,
+			request
+		);
+		return ApiResponse.ok("직접구매 자산 등록 및 할당에 성공했습니다.", response);
 	}
 }
