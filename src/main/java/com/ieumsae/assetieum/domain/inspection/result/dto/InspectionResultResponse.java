@@ -1,6 +1,7 @@
 package com.ieumsae.assetieum.domain.inspection.result.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.ieumsae.assetieum.domain.inspection.followup.entity.InspectionFollowUp;
 import com.ieumsae.assetieum.domain.inspection.result.entity.InspectionResult;
 import com.ieumsae.assetieum.domain.inspection.target.entity.InspectionTarget;
 import lombok.Builder;
@@ -18,6 +19,8 @@ public class InspectionResultResponse {
     private UUID inspectionId;
 
     private UUID inspectionTargetId;
+
+    private UUID followUpId;
 
     private String productName;
 
@@ -38,12 +41,20 @@ public class InspectionResultResponse {
     private LocalDateTime updatedAt;
 
     public static InspectionResultResponse from(InspectionResult inspectionResult) {
+        return from(inspectionResult, null);
+    }
+
+    public static InspectionResultResponse from(
+            InspectionResult inspectionResult,
+            InspectionFollowUp inspectionFollowUp
+    ) {
         InspectionTarget target = inspectionResult.getInspectionTarget();
 
         return InspectionResultResponse.builder()
                 .inspectionResultId(inspectionResult.getId())
                 .inspectionId(inspectionResult.getInspection().getId())
                 .inspectionTargetId(target.getId())
+                .followUpId(inspectionFollowUp == null ? null : inspectionFollowUp.getId())
                 .productName(resolveProductName(target))
                 .assetCode(resolveAssetCode(target))
                 .followUpRequests(inspectionResult.getFollowUpRequests())

@@ -59,8 +59,9 @@ public class InspectionResultService {
 
         target.markResponded();
 
+        InspectionFollowUp inspectionFollowUp = null;
         if (Boolean.TRUE.equals(request.getFollowUpRequests())) {
-            inspectionFollowUpRepository.save(InspectionFollowUp.builder()
+            inspectionFollowUp = inspectionFollowUpRepository.save(InspectionFollowUp.builder()
                     .company(reviewer.getCompany())
                     .inspectionResult(inspectionResult)
                     .processor(inspection.getInspector())
@@ -68,7 +69,7 @@ public class InspectionResultService {
                     .build());
         }
 
-        return InspectionResultResponse.from(inspectionResult);
+        return InspectionResultResponse.from(inspectionResult, inspectionFollowUp);
     }
 
     public InspectionResultResponse getInspectionResult(
@@ -85,7 +86,11 @@ public class InspectionResultService {
                 .findByInspectionTarget_IdAndCompany_Id(targetId, companyId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.INSPECTION_RESULT_NOT_FOUND));
 
-        return InspectionResultResponse.from(inspectionResult);
+        InspectionFollowUp inspectionFollowUp = inspectionFollowUpRepository
+                .findByInspectionResult_IdAndCompany_Id(inspectionResult.getId(), companyId)
+                .orElse(null);
+
+        return InspectionResultResponse.from(inspectionResult, inspectionFollowUp);
     }
 
     private InspectionTarget findTarget(UUID targetId, UUID companyId) {
