@@ -157,6 +157,9 @@ public class TicketService {
 		validateTicketStatus(ticket, TicketStatus.REQUESTED, "요청 상태의 티켓만 부서장 반려 처리할 수 있습니다.");
 
 		ticket.rejectDepartment(request.getRejectionReason().trim(), LocalDateTime.now());
+		syncCancelledDetailStatusIfNeeded(ticket, companyId);
+		syncCancelledPurchaseRequestStatusIfNeeded(ticket, companyId);
+		syncCancelledRentalStatusIfNeeded(ticket, companyId);
 		syncRejectedMaintenanceStatusIfNeeded(ticket, companyId);
 		syncRejectedAssetReturnStatusIfNeeded(ticket, companyId);
 		syncRejectedPurchaseReturnStatusIfNeeded(ticket, companyId);
@@ -199,7 +202,9 @@ public class TicketService {
 		releaseReservedRentalAssetIfNeeded(ticket, companyId);
 		budgetExecutionService.releaseHoldForCancellation(ticket, companyId);
 		ticket.rejectAsset(assignee, request.getRejectionReason().trim(), LocalDateTime.now());
+		syncCancelledDetailStatusIfNeeded(ticket, companyId);
 		syncCancelledPurchaseRequestStatusIfNeeded(ticket, companyId);
+		syncCancelledRentalStatusIfNeeded(ticket, companyId);
 		syncRejectedMaintenanceStatusIfNeeded(ticket, companyId);
 		syncCancelledAssetReturnStatusIfNeeded(ticket, companyId);
 		syncCancelledPurchaseReturnStatusIfNeeded(ticket, companyId);
@@ -223,6 +228,7 @@ public class TicketService {
 		ticket.changeProcessingStatus(request.getTicketStatus(), LocalDateTime.now());
 		syncAssetRequestStatusIfNeeded(ticket, companyId, request.getTicketStatus());
 		syncPurchaseRequestStatusIfNeeded(ticket, companyId, request.getTicketStatus());
+		syncRentalStatusIfNeeded(ticket, companyId, request.getTicketStatus());
 		syncMaintenanceStatusIfNeeded(ticket, companyId, request.getTicketStatus());
 		syncAssetReturnStatusIfNeeded(ticket, companyId, request.getTicketStatus());
 		syncPurchaseReturnStatusIfNeeded(ticket, companyId, request.getTicketStatus());
@@ -662,6 +668,12 @@ public class TicketService {
 		}
 		RentalTicket rentalTicket = findRentalTicket(ticket.getId(), companyId);
 		rentalTicket.cancelReservation();
+	}
+
+	private void syncRentalStatusIfNeeded(Ticket ticket, UUID companyId, TicketStatus targetStatus) {
+		if (targetStatus == TicketStatus.CANCELLED) {
+			syncCancelledRentalStatusIfNeeded(ticket, companyId);
+		}
 	}
 
 	private void syncCancelledMaintenanceStatusIfNeeded(Ticket ticket, UUID companyId) {

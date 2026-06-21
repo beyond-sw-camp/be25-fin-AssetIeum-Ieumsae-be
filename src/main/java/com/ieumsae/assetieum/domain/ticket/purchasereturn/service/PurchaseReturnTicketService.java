@@ -158,6 +158,9 @@ public class PurchaseReturnTicketService {
 		LocalDateTime processedAt = LocalDateTime.now();
 		// 반품 완료 시 별도 환불금액 입력 없이 자산 구매가 기준으로 사용 예산을 회복한다.
 		budgetExecutionService.recoverForPurchaseReturn(ticket, purchaseReturnTicket);
+		if (purchaseReturnTicket.getTangibleAsset() != null) {
+			purchaseReturnTicket.getTangibleAsset().dispose();
+		}
 		purchaseReturnTicket.complete(processedAt);
 		ticket.changeProcessingStatus(TicketStatus.COMPLETED, processedAt);
 

@@ -188,7 +188,7 @@ public class TangibleAsset extends BaseEntity {
         this.assetUsageType = null;
         this.usedStartedAt = null;
         this.returnDueDate = null;
-        this.tangibleAssetStatus = TangibleAssetStatus.AVAILABLE;
+        this.tangibleAssetStatus = TangibleAssetStatus.RETURN_REQUESTED;
     }
 
     public void completeReturn() {
@@ -224,5 +224,15 @@ public class TangibleAsset extends BaseEntity {
 
     public void updateReturnDueDate(LocalDateTime returnDueDate) {
         this.returnDueDate = returnDueDate;
+    }
+
+    public void dispose() {
+        this.member = null;
+        this.department = null;
+        this.usageType = null;
+        this.assetUsageType = null;
+        this.usedStartedAt = null;
+        this.returnDueDate = null;
+        this.tangibleAssetStatus = TangibleAssetStatus.DISPOSED;
     }
 }
