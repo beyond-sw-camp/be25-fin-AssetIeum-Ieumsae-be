@@ -2,6 +2,7 @@ package com.ieumsae.assetieum.domain.inspection.inspection.service;
 
 import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.department.entity.Department;
+import com.ieumsae.assetieum.domain.department.repository.DepartmentRepository;
 import com.ieumsae.assetieum.domain.inspection.inspection.entity.Inspection;
 import com.ieumsae.assetieum.domain.inspection.inspection.type.InspectionTargetType;
 import com.ieumsae.assetieum.domain.inspection.inspection.type.InspectionType;
@@ -9,6 +10,9 @@ import com.ieumsae.assetieum.domain.inspection.target.entity.InspectionTarget;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.entity.IntangibleAsset;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.repository.IntangibleAssetRepository;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.type.IntangibleAssetStatus;
+import com.ieumsae.assetieum.domain.intangibleasset.assignment.entity.IntangibleAssetAssignment;
+import com.ieumsae.assetieum.domain.intangibleasset.assignment.repository.IntangibleAssetAssignmentRepository;
+import com.ieumsae.assetieum.domain.intangibleasset.assignment.type.AssignmentStatus;
 import com.ieumsae.assetieum.domain.intangibleasset.category.repository.IntangibleAssetCategoryRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.entity.TangibleAsset;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.repository.TangibleAssetRepository;
@@ -16,11 +20,17 @@ import com.ieumsae.assetieum.domain.tangibleasset.asset.type.TangibleAssetStatus
 import com.ieumsae.assetieum.domain.tangibleasset.category.repository.TangibleAssetCategoryRepository;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -28,8 +38,10 @@ public class InspectionTargetResolver {
 
     private final TangibleAssetCategoryRepository tangibleAssetCategoryRepository;
     private final IntangibleAssetCategoryRepository intangibleAssetCategoryRepository;
+    private final DepartmentRepository departmentRepository;
     private final TangibleAssetRepository tangibleAssetRepository;
     private final IntangibleAssetRepository intangibleAssetRepository;
+    private final IntangibleAssetAssignmentRepository intangibleAssetAssignmentRepository;
 
     public void validateCategory(InspectionType inspectionType, UUID companyId, UUID categoryId) {
         if (categoryId == null) {
@@ -82,6 +94,7 @@ public class InspectionTargetResolver {
                 .company(company)
                 .inspection(inspection)
                 .tangibleAsset(asset)
+                .member(asset.getMember())
                 .build();
     }
 
@@ -93,6 +106,7 @@ public class InspectionTargetResolver {
                 .company(company)
                 .inspection(inspection)
                 .intangibleAsset(asset)
+                .member(asset.getMember())
                 .build();
     }
 
@@ -108,9 +122,9 @@ public class InspectionTargetResolver {
                     company.getId(),
                     TangibleAssetStatus.IN_USE
             );
-            case DEPARTMENT -> tangibleAssetRepository.findAllByCompany_IdAndDepartment_IdAndTangibleAssetStatus(
+            case DEPARTMENT -> tangibleAssetRepository.findAllByCompany_IdAndDepartment_IdInAndTangibleAssetStatus(
                     company.getId(),
-                    department.getId(),
+                    resolveDepartmentAndDescendantIds(department.getId(), company.getId()),
                     TangibleAssetStatus.IN_USE
             );
             case CATEGORY -> tangibleAssetRepository.findAllByCompany_IdAndTangibleAssetItem_TangibleAssetCategory_IdInAndTangibleAssetStatus(
@@ -125,6 +139,7 @@ public class InspectionTargetResolver {
                         .company(company)
                         .inspection(inspection)
                         .tangibleAsset(asset)
+                        .member(asset.getMember())
                         .build())
                 .toList();
     }
@@ -141,9 +156,9 @@ public class InspectionTargetResolver {
                     company.getId(),
                     IntangibleAssetStatus.IN_USE
             );
-            case DEPARTMENT -> intangibleAssetRepository.findAllByCompany_IdAndDepartment_IdAndIntangibleAssetStatus(
+            case DEPARTMENT -> intangibleAssetRepository.findAllByCompany_IdAndDepartment_IdInAndIntangibleAssetStatus(
                     company.getId(),
-                    department.getId(),
+                    resolveDepartmentAndDescendantIds(department.getId(), company.getId()),
                     IntangibleAssetStatus.IN_USE
             );
             case CATEGORY -> intangibleAssetRepository.findAllByCompany_IdAndIntangibleAssetItem_IntangibleAssetCategory_IdInAndIntangibleAssetStatus(
@@ -153,13 +168,64 @@ public class InspectionTargetResolver {
             );
         };
 
-        return assets.stream()
+        return createIntangibleTargetsBySeat(company, inspection, assets);
+    }
+
+    private List<InspectionTarget> createIntangibleTargetsBySeat(
+            Company company,
+            Inspection inspection,
+            List<IntangibleAsset> assets
+    ) {
+        Map<UUID, IntangibleAsset> multiSeatAssets = assets.stream()
+                .filter(asset -> asset.getSeatCount() != null && asset.getSeatCount() >= 2)
+                .collect(Collectors.toMap(IntangibleAsset::getId, Function.identity()));
+
+        List<InspectionTarget> targets = new ArrayList<>();
+
+        assets.stream()
+                .filter(asset -> asset.getSeatCount() == null || asset.getSeatCount() < 2)
                 .map(asset -> InspectionTarget.builder()
                         .company(company)
                         .inspection(inspection)
                         .intangibleAsset(asset)
+                        .member(asset.getMember())
                         .build())
-                .toList();
+                .forEach(targets::add);
+
+        if (multiSeatAssets.isEmpty()) {
+            return targets;
+        }
+
+        intangibleAssetAssignmentRepository
+                .findAllByCompany_IdAndIntangibleAsset_IdInAndAssignmentStatus(
+                        company.getId(),
+                        new ArrayList<>(multiSeatAssets.keySet()),
+                        AssignmentStatus.ACTIVE
+                )
+                .stream()
+                .map(assignment -> createIntangibleAssignmentTarget(
+                        company,
+                        inspection,
+                        multiSeatAssets.get(assignment.getIntangibleAsset().getId()),
+                        assignment
+                ))
+                .forEach(targets::add);
+
+        return targets;
+    }
+
+    private InspectionTarget createIntangibleAssignmentTarget(
+            Company company,
+            Inspection inspection,
+            IntangibleAsset asset,
+            IntangibleAssetAssignment assignment
+    ) {
+        return InspectionTarget.builder()
+                .company(company)
+                .inspection(inspection)
+                .intangibleAsset(asset)
+                .member(assignment.getMember())
+                .build();
     }
 
     private List<UUID> resolveTangibleCategoryIds(UUID categoryId, UUID companyId) {
@@ -176,5 +242,28 @@ public class InspectionTargetResolver {
         );
         categoryIds.add(categoryId);
         return categoryIds;
+    }
+
+    private List<UUID> resolveDepartmentAndDescendantIds(UUID departmentId, UUID companyId) {
+        List<Department> departments = departmentRepository.findAllByCompany_IdAndDeletedAtIsNullOrderByCreatedAtAsc(
+                companyId
+        );
+        Set<UUID> departmentIds = new LinkedHashSet<>();
+        departmentIds.add(departmentId);
+
+        boolean added;
+        do {
+            added = false;
+            for (Department department : departments) {
+                Department parentDepartment = department.getParentDepartment();
+                if (parentDepartment != null
+                        && departmentIds.contains(parentDepartment.getId())
+                        && departmentIds.add(department.getId())) {
+                    added = true;
+                }
+            }
+        } while (added);
+
+        return new ArrayList<>(departmentIds);
     }
 }

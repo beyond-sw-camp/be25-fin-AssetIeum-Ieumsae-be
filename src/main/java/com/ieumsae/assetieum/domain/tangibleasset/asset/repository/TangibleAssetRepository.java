@@ -87,9 +87,9 @@ public interface TangibleAssetRepository extends JpaRepository<TangibleAsset, UU
 
     List<TangibleAsset> findAllByCompany_IdAndTangibleAssetStatus(UUID companyId, TangibleAssetStatus status);
 
-    List<TangibleAsset> findAllByCompany_IdAndDepartment_IdAndTangibleAssetStatus(
+    List<TangibleAsset> findAllByCompany_IdAndDepartment_IdInAndTangibleAssetStatus(
             UUID companyId,
-            UUID departmentId,
+            List<UUID> departmentIds,
             TangibleAssetStatus status
     );
 
