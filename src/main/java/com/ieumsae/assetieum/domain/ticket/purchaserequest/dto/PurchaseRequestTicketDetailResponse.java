@@ -18,6 +18,7 @@ import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
 import com.ieumsae.assetieum.domain.ticket.common.type.TicketType;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.entity.DirectPurchaseResult;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.entity.PurchaseRequestTicket;
+import com.ieumsae.assetieum.domain.ticket.purchaserequest.type.ConfirmationStatus;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.type.PurchaseRequestTicketStatus;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -65,7 +66,13 @@ public class PurchaseRequestTicketDetailResponse {
 	private final String purchaseUrl;
 	private final int quantity;
 	private final BigDecimal expectedPrice;
+	private final BigDecimal expectedTotalPrice;   // 예상 합계금액 (단가 × 수량)
 	private final BigDecimal actualPrice;
+	private final BigDecimal priceDifference;      // 차액 (실제 - 예상합계)
+	private final String proofFileUrl;             // 증빙 파일 URL
+	@JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+	private final LocalDateTime proofFileUploadedAt; // 증빙 파일 업로드 일시
+	private final ConfirmationStatus confirmationStatus; // 확인 상태
 	@JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
 	private final LocalDateTime orderedAt;
 	@JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
@@ -117,7 +124,12 @@ public class PurchaseRequestTicketDetailResponse {
 			.purchaseUrl(purchaseRequestTicket.getPurchaseUrl())
 			.quantity(purchaseRequestTicket.getQuantity())
 			.expectedPrice(purchaseRequestTicket.getExpectedPrice())
+			.expectedTotalPrice(resolveExpectedTotalPrice(purchaseRequestTicket))
 			.actualPrice(resolveActualPrice(linkedPurchasePlanItem, directPurchaseResult))
+			.priceDifference(resolvePriceDifference(purchaseRequestTicket, linkedPurchasePlanItem, directPurchaseResult))
+			.proofFileUrl(directPurchaseResult != null ? directPurchaseResult.getProofFileUrl() : null)
+			.proofFileUploadedAt(directPurchaseResult != null ? directPurchaseResult.getProofFileUploadedAt() : null)
+			.confirmationStatus(directPurchaseResult != null ? directPurchaseResult.getConfirmationStatus() : null)
 			.orderedAt(resolveOrderedAt(linkedPurchasePlanItem))
 			.deliveryConfirmedAt(resolveDeliveryConfirmedAt(linkedPurchasePlanItem))
 			.registeredAt(resolveRegisteredAt(linkedPurchasePlanItem, directPurchaseResult))
@@ -140,6 +152,26 @@ public class PurchaseRequestTicketDetailResponse {
 		}
 		return linkedPurchasePlanItem.getActualUnitPrice()
 			.multiply(BigDecimal.valueOf(linkedPurchasePlanItem.getQuantity()));
+	}
+
+	private static BigDecimal resolveExpectedTotalPrice(PurchaseRequestTicket ticket) {
+		if (ticket.getExpectedPrice() == null) {
+			return null;
+		}
+		return ticket.getExpectedPrice().multiply(BigDecimal.valueOf(ticket.getQuantity()));
+	}
+
+	private static BigDecimal resolvePriceDifference(
+		PurchaseRequestTicket ticket,
+		PurchasePlanItem linkedPurchasePlanItem,
+		DirectPurchaseResult directPurchaseResult
+	) {
+		BigDecimal actualPrice = resolveActualPrice(linkedPurchasePlanItem, directPurchaseResult);
+		BigDecimal expectedTotal = resolveExpectedTotalPrice(ticket);
+		if (actualPrice == null || expectedTotal == null) {
+			return null;
+		}
+		return actualPrice.subtract(expectedTotal);
 	}
 
 	private static LocalDateTime resolveOrderedAt(PurchasePlanItem linkedPurchasePlanItem) {

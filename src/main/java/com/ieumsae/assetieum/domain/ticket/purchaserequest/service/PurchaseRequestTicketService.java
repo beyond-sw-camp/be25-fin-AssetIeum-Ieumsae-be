@@ -35,6 +35,7 @@ import com.ieumsae.assetieum.domain.ticket.purchaserequest.entity.DirectPurchase
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.entity.PurchaseRequestTicket;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.repository.DirectPurchaseResultRepository;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.repository.PurchaseRequestTicketRepository;
+import com.ieumsae.assetieum.domain.ticket.purchaserequest.type.ConfirmationStatus;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
@@ -150,8 +151,6 @@ public class PurchaseRequestTicketService {
 			request.getBillingCycle()
 		));
 		budgetExecutionService.executeForDirectPurchaseResult(ticket, companyId, request.getActualPrice());
-		purchaseRequestTicket.complete();
-		ticket.changeProcessingStatus(TicketStatus.COMPLETED, java.time.LocalDateTime.now());
 
 		return DirectPurchaseResultCreateResponse.from(ticket, result, assetType);
 	}
@@ -172,6 +171,9 @@ public class PurchaseRequestTicketService {
 		AssetType assetType = resolveAssetType(purchaseRequestTicket);
 
 		validateDirectPurchaseResultUpdatable(purchaseRequestTicket, ticket, submitter);
+		if (result.getConfirmationStatus() == ConfirmationStatus.CONFIRMED) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "이미 확인 완료된 직접구매 정보는 수정할 수 없습니다.");
+		}
 		validateDirectPurchaseResultRequest(companyId, assetType, request, result);
 
 		result.update(
@@ -210,6 +212,30 @@ public class PurchaseRequestTicketService {
 			result,
 			resolveAssetType(purchaseRequestTicket)
 		);
+	}
+
+	@Transactional
+	public DirectPurchaseResultCreateResponse confirmDirectPurchaseResult(
+		AuthenticatedMember authenticatedMember,
+		UUID ticketId
+	) {
+		UUID companyId = authenticatedMember.companyId();
+		Member member = ticketRequesterResolver.resolveActiveRequester(authenticatedMember.id(), companyId);
+		Ticket ticket = ticketRepository.findWithLockByIdAndCompany_IdAndDeletedAtIsNull(ticketId, companyId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+		DirectPurchaseResult result = directPurchaseResultRepository.findByIdAndCompany_Id(ticketId, companyId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+		PurchaseRequestTicket purchaseRequestTicket = result.getPurchaseRequestTicket();
+
+		validateDirectPurchaseResultReadable(ticket, member);
+
+		if (result.getConfirmationStatus() == ConfirmationStatus.CONFIRMED) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "이미 확인완료 처리된 직접구매 결과입니다.");
+		}
+
+		result.confirm();
+
+		return DirectPurchaseResultCreateResponse.from(ticket, result, resolveAssetType(purchaseRequestTicket));
 	}
 
 	public PurchaseRequestTicketDetailResponse getPurchaseRequestTicket(

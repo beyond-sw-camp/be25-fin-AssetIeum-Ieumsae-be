@@ -29,6 +29,13 @@ public class AssetRequestValidator {
 		if (ticket.getRequester().getId().equals(member.getId())) {
 			throw new BusinessException(ErrorCode.ACCESS_DENIED);
 		}
+		// 담당자가 지정된 경우 담당자 본인만 할당 처리 가능
+		if (ticket.getAssignee() == null) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "담당자 지정 후 처리할 수 있습니다.");
+		}
+		if (!ticket.getAssignee().getId().equals(member.getId())) {
+			throw new BusinessException(ErrorCode.ACCESS_DENIED);
+		}
 	}
 
 	public void validateAssignmentTarget(

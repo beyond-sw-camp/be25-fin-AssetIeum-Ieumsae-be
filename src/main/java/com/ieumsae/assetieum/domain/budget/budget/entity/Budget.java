@@ -60,7 +60,7 @@ public class Budget extends BaseEntity {
     }
 
     public void decreaseHold(BigDecimal amount) {
-        this.heldAmount = this.heldAmount.subtract(amount);
+        this.heldAmount = this.heldAmount.subtract(amount).max(BigDecimal.ZERO);
     }
 
     public void increaseUsed(BigDecimal amount) {
@@ -68,7 +68,7 @@ public class Budget extends BaseEntity {
     }
 
     public void decreaseUsed(BigDecimal amount) {
-        this.usedAmount = this.usedAmount.subtract(amount);
+        this.usedAmount = this.usedAmount.subtract(amount).max(BigDecimal.ZERO);
     }
 
     public BigDecimal getAvailableAmount() {

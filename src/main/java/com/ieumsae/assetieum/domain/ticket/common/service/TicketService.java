@@ -40,9 +40,11 @@ import com.ieumsae.assetieum.domain.ticket.common.type.RequestMethod;
 import com.ieumsae.assetieum.domain.ticket.maintenance.entity.MaintenanceTicket;
 import com.ieumsae.assetieum.domain.ticket.maintenance.repository.MaintenanceTicketRepository;
 import com.ieumsae.assetieum.domain.ticket.maintenance.type.MaintenanceTicketStatus;
+import com.ieumsae.assetieum.domain.ticket.purchaserequest.entity.DirectPurchaseResult;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.entity.PurchaseRequestTicket;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.repository.DirectPurchaseResultRepository;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.repository.PurchaseRequestTicketRepository;
+import com.ieumsae.assetieum.domain.ticket.purchaserequest.type.ConfirmationStatus;
 import com.ieumsae.assetieum.domain.ticket.purchasereturn.entity.PurchaseReturnTicket;
 import com.ieumsae.assetieum.domain.ticket.purchasereturn.repository.PurchaseReturnTicketRepository;
 import com.ieumsae.assetieum.domain.ticket.purchasereturn.type.PurchaseReturnTicketStatus;
@@ -441,12 +443,20 @@ public class TicketService {
 	}
 
 	private void validateCancellable(Ticket ticket, Member member) {
+		// 요청자 본인은 부서장 승인 전(REQUESTED)에만 취소 가능
 		if (ticket.getRequester().getId().equals(member.getId())) {
 			validateTicketStatus(ticket, TicketStatus.REQUESTED, "부서장 승인 전 티켓만 취소할 수 있습니다.");
 			return;
 		}
 
 		if (isAssetRole(member.getRole()) && isCancellableByAssetRole(ticket.getTicketStatus())) {
+			// ASSET_APPROVED 또는 IN_PROGRESS 상태는 담당자 본인만 취소 가능
+			if (ticket.getTicketStatus() == TicketStatus.ASSET_APPROVED
+				|| ticket.getTicketStatus() == TicketStatus.IN_PROGRESS) {
+				if (ticket.getAssignee() == null || !ticket.getAssignee().getId().equals(member.getId())) {
+					throw new BusinessException(ErrorCode.ACCESS_DENIED);
+				}
+			}
 			return;
 		}
 
@@ -496,15 +506,22 @@ public class TicketService {
 			validateRentalProcessingStatusChangeable(ticket, member, targetStatus);
 			return;
 		}
+		// 대여연장은 반납 예정일 변경 API를 통해서만 완료 처리되므로 수동 상태 변경 불가
+		if (ticket.getTicketType() == TicketType.RENTAL_EXTENSION) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "대여연장 티켓은 반납 예정일 변경 API를 통해서만 완료 처리할 수 있습니다.");
+		}
 		if (ticket.getTicketType() == TicketType.PURCHASE_REQUEST) {
 			validatePurchaseRequestProcessingStatusChangeable(ticket, member, targetStatus);
 			return;
 		}
-		if (ticket.getTicketType() != TicketType.ASSET_REQUEST
-			&& ticket.getTicketType() != TicketType.RENTAL) {
+		if (ticket.getTicketType() != TicketType.ASSET_REQUEST) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "자산요청 티켓만 처리상태를 변경할 수 있습니다.");
 		}
 		if (!isAssetRole(member.getRole())) {
+			throw new BusinessException(ErrorCode.ACCESS_DENIED);
+		}
+		// 담당자 본인만 처리 가능
+		if (ticket.getAssignee() == null || !ticket.getAssignee().getId().equals(member.getId())) {
 			throw new BusinessException(ErrorCode.ACCESS_DENIED);
 		}
 		if (!isProcessingTargetStatus(targetStatus)) {
@@ -516,19 +533,21 @@ public class TicketService {
 		if (isTerminalProcessingStatus(ticket.getTicketStatus())) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "완료 또는 취소된 티켓은 처리상태를 변경할 수 없습니다.");
 		}
-		if (ticket.getTicketStatus() == TicketStatus.ASSET_APPROVED && targetStatus == TicketStatus.COMPLETED) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "처리중 상태 이후 완료할 수 있습니다.");
+		if (targetStatus == TicketStatus.COMPLETED) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "자산요청 티켓은 자산 할당 처리를 통해서만 완료할 수 있습니다.");
 		}
 		if (processingStatusOrder(targetStatus) <= processingStatusOrder(ticket.getTicketStatus())) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "현재 처리상태 이후의 상태로만 변경할 수 있습니다.");
 		}
 	}
 
+
 	private void validateManualProcessingCancelChangeable(Ticket ticket, Member member, TicketStatus targetStatus) {
 		if (!isAssetRole(member.getRole())) {
 			throw new BusinessException(ErrorCode.ACCESS_DENIED);
 		}
-		if (ticket.getAssignee() != null && !ticket.getAssignee().getId().equals(member.getId())) {
+		// 담당자 본인만 취소 가능
+		if (ticket.getAssignee() == null || !ticket.getAssignee().getId().equals(member.getId())) {
 			throw new BusinessException(ErrorCode.ACCESS_DENIED);
 		}
 		if ((ticket.getTicketStatus() != TicketStatus.ASSET_APPROVED
@@ -558,6 +577,10 @@ public class TicketService {
 		TicketStatus targetStatus
 	) {
 		if (!isAssetRole(member.getRole())) {
+			throw new BusinessException(ErrorCode.ACCESS_DENIED);
+		}
+		// 담당자 본인만 처리 가능
+		if (ticket.getAssignee() == null || !ticket.getAssignee().getId().equals(member.getId())) {
 			throw new BusinessException(ErrorCode.ACCESS_DENIED);
 		}
 		if (!isProcessingTargetStatus(targetStatus)) {
@@ -602,8 +625,11 @@ public class TicketService {
 
 	private void validatePurchaseRequestCanComplete(PurchaseRequestTicket purchaseRequestTicket) {
 		if (purchaseRequestTicket.getRequestMethod() == RequestMethod.DIRECT_PURCHASE) {
-			if (!directPurchaseResultRepository.existsByPurchaseRequestTicket_Id(purchaseRequestTicket.getId())) {
-				throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "직접구매 결과 등록 후 완료 처리할 수 있습니다.");
+			DirectPurchaseResult result = directPurchaseResultRepository.findByIdAndCompany_Id(
+					purchaseRequestTicket.getId(), purchaseRequestTicket.getCompany().getId())
+				.orElseThrow(() -> new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "직접구매 결과 등록 후 완료 처리할 수 있습니다."));
+			if (result.getConfirmationStatus() != ConfirmationStatus.CONFIRMED) {
+				throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "직접구매 결과 확인(CONFIRMED) 후 완료 처리할 수 있습니다.");
 			}
 			return;
 		}
