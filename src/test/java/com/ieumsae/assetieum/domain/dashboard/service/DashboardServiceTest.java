@@ -23,7 +23,7 @@ class DashboardServiceTest {
     @DisplayName("대시보드 티켓 진행 상태 요약 조회 쿼리 테스트")
     void testGetTicketProgressSummary() {
         UUID companyId = UUID.randomUUID();
-        assertThatCode(() -> dashboardService.getTicketProgressSummary(companyId))
+        assertThatCode(() -> dashboardService.getTicketProgressSummary(companyId, null))
                 .doesNotThrowAnyException();
     }
 
@@ -31,7 +31,7 @@ class DashboardServiceTest {
     @DisplayName("대시보드 보유 자산 요약 조회 쿼리 테스트")
     void testGetOwnedAssetSummary() {
         UUID companyId = UUID.randomUUID();
-        assertThatCode(() -> dashboardService.getOwnedAssetSummary(companyId))
+        assertThatCode(() -> dashboardService.getOwnedAssetSummary(companyId, null))
                 .doesNotThrowAnyException();
     }
 
@@ -39,7 +39,7 @@ class DashboardServiceTest {
     @DisplayName("대시보드 만료 예정 자산 요약 조회 쿼리 테스트")
     void testGetExpiringAssetSummary() {
         UUID companyId = UUID.randomUUID();
-        assertThatCode(() -> dashboardService.getExpiringAssetSummary(companyId))
+        assertThatCode(() -> dashboardService.getExpiringAssetSummary(companyId, null))
                 .doesNotThrowAnyException();
     }
 
