@@ -4,6 +4,7 @@ import com.ieumsae.assetieum.domain.inspection.result.entity.InspectionResult;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface InspectionResultRepository extends JpaRepository<InspectionResult, UUID> {
@@ -11,4 +12,6 @@ public interface InspectionResultRepository extends JpaRepository<InspectionResu
     List<InspectionResult> findAllByInspection_IdAndCompany_Id(UUID inspectionId, UUID companyId);
 
     boolean existsByInspectionTarget_IdAndCompany_Id(UUID inspectionTargetId, UUID companyId);
+
+    Optional<InspectionResult> findByInspectionTarget_IdAndCompany_Id(UUID inspectionTargetId, UUID companyId);
 }

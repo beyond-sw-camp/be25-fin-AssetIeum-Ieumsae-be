@@ -32,9 +32,6 @@ public class InspectionResultResponse {
     private String reviewerName;
 
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
-    private LocalDateTime checkedAt;
-
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime createdAt;
 
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
@@ -53,7 +50,6 @@ public class InspectionResultResponse {
                 .responseContent(inspectionResult.getResponseContent())
                 .reviewerId(inspectionResult.getReviewer() == null ? null : inspectionResult.getReviewer().getId())
                 .reviewerName(inspectionResult.getReviewer() == null ? null : inspectionResult.getReviewer().getName())
-                .checkedAt(inspectionResult.getCheckedAt())
                 .createdAt(inspectionResult.getCreatedAt())
                 .updatedAt(inspectionResult.getUpdatedAt())
                 .build();

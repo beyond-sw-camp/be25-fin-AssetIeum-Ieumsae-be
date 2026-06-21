@@ -8,6 +8,7 @@ import com.ieumsae.assetieum.global.security.AuthenticatedMember;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -30,8 +31,19 @@ public class InspectionResultController {
             @Valid @RequestBody InspectionResultCreateRequest request
     ) {
         InspectionResultResponse response =
-                inspectionResultService.createTangibleAssetInspectionResult(targetId, request, member);
+                inspectionResultService.createInspectionResult(targetId, request, member);
 
         return ApiResponse.ok("전수조사 응답을 등록했습니다.", response);
+    }
+
+    @GetMapping
+    public ApiResponse<InspectionResultResponse> getInspectionResult(
+            @AuthenticationPrincipal AuthenticatedMember member,
+            @PathVariable UUID targetId
+    ) {
+        InspectionResultResponse response =
+                inspectionResultService.getInspectionResult(targetId, member);
+
+        return ApiResponse.ok("전수조사 응답 조회에 성공했습니다.", response);
     }
 }

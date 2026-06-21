@@ -23,7 +23,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
@@ -37,25 +36,18 @@ public class InspectionResultService {
     private final MemberRepository memberRepository;
 
     @Transactional
-    public InspectionResultResponse createTangibleAssetInspectionResult(
+    public InspectionResultResponse createInspectionResult(
             UUID targetId,
             InspectionResultCreateRequest request,
             AuthenticatedMember authenticatedMember
     ) {
-        // 1. 입력값 검증
         UUID companyId = authenticatedMember.companyId();
-
-        InspectionTarget target = inspectionTargetRepository.findByIdAndCompany_Id(targetId, companyId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.INSPECTION_TARGET_NOT_FOUND));
+        InspectionTarget target = findTarget(targetId, companyId);
         Inspection inspection = target.getInspection();
-
-        Member reviewer = memberRepository
-                .findByIdAndCompany_IdAndDeletedAtIsNull(authenticatedMember.id(), companyId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+        Member reviewer = findActiveMember(authenticatedMember.id(), companyId);
 
         validateResultCreatable(inspection, target, reviewer, companyId);
 
-        // 2. 전수조사 응답 등록
         InspectionResult inspectionResult = inspectionResultRepository.save(InspectionResult.builder()
                 .company(reviewer.getCompany())
                 .inspection(inspection)
@@ -63,13 +55,10 @@ public class InspectionResultService {
                 .followUpRequests(request.getFollowUpRequests())
                 .responseContent(request.getResponseContent().trim())
                 .reviewer(reviewer)
-                .checkedAt(LocalDateTime.now())
                 .build());
 
-        // 3. 해당 대상 자산 응답 여부 기록
         target.markResponded();
 
-        // 4. 필요 시, 후속 처리 필요 여부 등록
         if (Boolean.TRUE.equals(request.getFollowUpRequests())) {
             inspectionFollowUpRepository.save(InspectionFollowUp.builder()
                     .company(reviewer.getCompany())
@@ -82,16 +71,45 @@ public class InspectionResultService {
         return InspectionResultResponse.from(inspectionResult);
     }
 
+    public InspectionResultResponse getInspectionResult(
+            UUID targetId,
+            AuthenticatedMember authenticatedMember
+    ) {
+        UUID companyId = authenticatedMember.companyId();
+        InspectionTarget target = findTarget(targetId, companyId);
+        Member viewer = findActiveMember(authenticatedMember.id(), companyId);
+
+        validateResultReadable(target.getInspection(), target, viewer);
+
+        InspectionResult inspectionResult = inspectionResultRepository
+                .findByInspectionTarget_IdAndCompany_Id(targetId, companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.INSPECTION_RESULT_NOT_FOUND));
+
+        return InspectionResultResponse.from(inspectionResult);
+    }
+
+    private InspectionTarget findTarget(UUID targetId, UUID companyId) {
+        return inspectionTargetRepository.findByIdAndCompany_Id(targetId, companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.INSPECTION_TARGET_NOT_FOUND));
+    }
+
+    private Member findActiveMember(UUID memberId, UUID companyId) {
+        Member member = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(memberId, companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+
+        if (!member.isActive()) {
+            throw new BusinessException(ErrorCode.INACTIVE_MEMBER);
+        }
+
+        return member;
+    }
+
     private void validateResultCreatable(
             Inspection inspection,
             InspectionTarget target,
             Member reviewer,
             UUID companyId
     ) {
-        if (inspection.getInspectionType() != InspectionType.TANGIBLE_ASSET) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
-        }
-
         if (inspection.getInspectionStatus() != InspectionStatus.IN_PROGRESS) {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
         }
@@ -101,33 +119,49 @@ public class InspectionResultService {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
         }
 
-        validateReviewer(inspection, target, reviewer);
+        validateResultWriter(inspection, target, reviewer);
     }
 
-    private void validateReviewer(Inspection inspection, InspectionTarget target, Member reviewer) {
+    private void validateResultWriter(Inspection inspection, InspectionTarget target, Member reviewer) {
         if (inspection.getInspectorType() == InspectorType.ASSET_TEAM) {
-            if (isAssetTeamReviewer(reviewer)) {
+            if (isAssetManagerRole(reviewer)) {
                 return;
             }
             throw new BusinessException(ErrorCode.ACCESS_DENIED);
         }
 
-        if (inspection.getInspectionType() == InspectionType.TANGIBLE_ASSET) {
-            validateAssignedMember(target.getTangibleAsset().getMember(), reviewer);
+        validateAssignedMember(resolveAssignedMember(inspection, target), reviewer);
+    }
+
+    private void validateResultReadable(Inspection inspection, InspectionTarget target, Member viewer) {
+        if (isAssetManagerRole(viewer)) {
             return;
         }
 
-        validateAssignedMember(target.getIntangibleAsset().getMember(), reviewer);
+        if (inspection.getInspectorType() == InspectorType.EMPLOYEE) {
+            validateAssignedMember(resolveAssignedMember(inspection, target), viewer);
+            return;
+        }
+
+        throw new BusinessException(ErrorCode.ACCESS_DENIED);
     }
 
-    private boolean isAssetTeamReviewer(Member reviewer) {
-        return reviewer.getRole() == MemberRole.ASSET_MANAGER
-                || reviewer.getRole() == MemberRole.ASSET_TEAM
-                || reviewer.getRole() == MemberRole.ADMIN;
+    private boolean isAssetManagerRole(Member member) {
+        return member.getRole() == MemberRole.ASSET_MANAGER
+                || member.getRole() == MemberRole.ASSET_TEAM
+                || member.getRole() == MemberRole.ADMIN;
     }
 
-    private void validateAssignedMember(Member assignedMember, Member reviewer) {
-        if (assignedMember != null && assignedMember.getId().equals(reviewer.getId())) {
+    private Member resolveAssignedMember(Inspection inspection, InspectionTarget target) {
+        if (inspection.getInspectionType() == InspectionType.TANGIBLE_ASSET) {
+            return target.getTangibleAsset() == null ? null : target.getTangibleAsset().getMember();
+        }
+
+        return target.getIntangibleAsset() == null ? null : target.getIntangibleAsset().getMember();
+    }
+
+    private void validateAssignedMember(Member assignedMember, Member member) {
+        if (assignedMember != null && assignedMember.getId().equals(member.getId())) {
             return;
         }
 
