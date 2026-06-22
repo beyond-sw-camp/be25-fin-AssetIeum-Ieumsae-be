@@ -16,6 +16,10 @@ public class TicketListItemResponse {
 	private final TicketType ticketType;
 	private final RequestMethod requestMethod;
 	private final String requestedItemName;
+	private final UUID requesterId;
+	private final String requesterName;
+	private final UUID departmentId;
+	private final String departmentName;
 	@JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
 	private final LocalDateTime requestedAt;
 	private final TicketStatus ticketStatus;
@@ -26,6 +30,10 @@ public class TicketListItemResponse {
 		TicketType ticketType,
 		RequestMethod requestMethod,
 		String requestedItemName,
+		UUID requesterId,
+		String requesterName,
+		UUID departmentId,
+		String departmentName,
 		LocalDateTime requestedAt,
 		TicketStatus ticketStatus
 	) {
@@ -34,6 +42,10 @@ public class TicketListItemResponse {
 		this.ticketType = ticketType;
 		this.requestMethod = requestMethod;
 		this.requestedItemName = requestedItemName;
+		this.requesterId = requesterId;
+		this.requesterName = requesterName;
+		this.departmentId = departmentId;
+		this.departmentName = departmentName;
 		this.requestedAt = requestedAt;
 		this.ticketStatus = ticketStatus;
 	}
