@@ -5,6 +5,7 @@ import com.ieumsae.assetieum.domain.inspection.followup.dto.InspectionFollowUpSt
 import com.ieumsae.assetieum.domain.inspection.followup.entity.InspectionFollowUp;
 import com.ieumsae.assetieum.domain.inspection.followup.repository.InspectionFollowUpRepository;
 import com.ieumsae.assetieum.domain.inspection.followup.type.InspectionFollowUpStatus;
+import com.ieumsae.assetieum.domain.inspection.inspection.service.InspectionService;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
@@ -21,6 +22,7 @@ import java.util.UUID;
 public class InspectionFollowUpService {
 
     private final InspectionFollowUpRepository inspectionFollowUpRepository;
+    private final InspectionService inspectionService;
 
     public InspectionFollowUpResponse getInspectionFollowUp(
             UUID followUpId,
@@ -47,6 +49,11 @@ public class InspectionFollowUpService {
                 : null;
 
         followUp.updateStatus(nextStatus, request.getActionDetail(), processedAt);
+        if (nextStatus == InspectionFollowUpStatus.COMPLETED) {
+            inspectionService.closeIfCompletedAndAllFollowUpsCompleted(
+                    followUp.getInspectionResult().getInspection()
+            );
+        }
 
         return InspectionFollowUpResponse.from(followUp);
     }

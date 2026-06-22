@@ -4,6 +4,8 @@ import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.company.repository.CompanyRepository;
 import com.ieumsae.assetieum.domain.department.entity.Department;
 import com.ieumsae.assetieum.domain.department.repository.DepartmentRepository;
+import com.ieumsae.assetieum.domain.inspection.followup.repository.InspectionFollowUpRepository;
+import com.ieumsae.assetieum.domain.inspection.followup.type.InspectionFollowUpStatus;
 import com.ieumsae.assetieum.domain.inspection.inspection.dto.InspectionCreateRequest;
 import com.ieumsae.assetieum.domain.inspection.inspection.dto.InspectionDetailResponse;
 import com.ieumsae.assetieum.domain.inspection.inspection.dto.InspectionResponse;
@@ -12,16 +14,19 @@ import com.ieumsae.assetieum.domain.inspection.inspection.dto.InspectionSearchRe
 import com.ieumsae.assetieum.domain.inspection.inspection.dto.InspectionStatisticsResponse;
 import com.ieumsae.assetieum.domain.inspection.inspection.entity.Inspection;
 import com.ieumsae.assetieum.domain.inspection.inspection.repository.InspectionRepository;
+import com.ieumsae.assetieum.domain.inspection.inspection.type.InspectionStatus;
 import com.ieumsae.assetieum.domain.inspection.inspection.type.InspectionTargetType;
 import com.ieumsae.assetieum.domain.inspection.inspection.type.InspectionType;
 import com.ieumsae.assetieum.domain.inspection.result.entity.InspectionResult;
 import com.ieumsae.assetieum.domain.inspection.target.entity.InspectionTarget;
 import com.ieumsae.assetieum.domain.inspection.target.repository.InspectionTargetRepository;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.entity.IntangibleAsset;
+import com.ieumsae.assetieum.domain.intangibleasset.category.entity.IntangibleAssetCategory;
 import com.ieumsae.assetieum.domain.intangibleasset.category.repository.IntangibleAssetCategoryRepository;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.entity.TangibleAsset;
+import com.ieumsae.assetieum.domain.tangibleasset.category.entity.TangibleAssetCategory;
 import com.ieumsae.assetieum.domain.tangibleasset.category.repository.TangibleAssetCategoryRepository;
 import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.exception.BusinessException;
@@ -48,6 +53,7 @@ public class InspectionService {
     private final InspectionRepository inspectionRepository;
     private final InspectionTargetResolver inspectionTargetResolver;
     private final InspectionTargetRepository inspectionTargetRepository;
+    private final InspectionFollowUpRepository inspectionFollowUpRepository;
     private final TangibleAssetCategoryRepository tangibleAssetCategoryRepository;
     private final IntangibleAssetCategoryRepository intangibleAssetCategoryRepository;
 
@@ -79,8 +85,8 @@ public class InspectionService {
                 .targetDepartment(department)
                 .targetCategoryId(request.getTargetCategoryId())
                 .inspectorType(request.getInspectorType())
-                .startDate(request.getStartDate())
-                .endDate(request.getEndDate())
+                .startDate(request.getStartDate().toLocalDate().atStartOfDay())
+                .endDate(request.getEndDate().toLocalDate().atTime(23, 59, 59))
                 .description(request.getDescription())
                 .inspector(inspector)
                 .build();
@@ -187,12 +193,12 @@ public class InspectionService {
 
         if (inspectionType == InspectionType.TANGIBLE_ASSET) {
             return tangibleAssetCategoryRepository.findByIdAndCompany_Id(categoryId, companyId)
-                    .map(category -> category.getName())
+                    .map(TangibleAssetCategory::getName)
                     .orElse(null);
         }
 
         return intangibleAssetCategoryRepository.findByIdAndCompany_Id(categoryId, companyId)
-                .map(category -> category.getName())
+                .map(IntangibleAssetCategory::getName)
                 .orElse(null);
     }
 
@@ -319,5 +325,72 @@ public class InspectionService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
 
         return inspectionRepository.getInspectionStatistics(companyId, inspectionType);
+    }
+
+    @Transactional
+    public InspectionResponse closeInspection(
+            UUID inspectionId,
+            InspectionType inspectionType,
+            UUID companyId
+    ) {
+        Inspection inspection = inspectionRepository.findByIdAndCompany_IdAndInspectionType(
+                        inspectionId,
+                        companyId,
+                        inspectionType
+                )
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_INPUT_VALUE));
+
+        if (inspection.getInspectionStatus() == InspectionStatus.CLOSED) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+
+        inspection.close();
+
+        return InspectionResponse.from(inspection);
+    }
+
+    @Transactional
+    public void completeIfAllResponsesCompletedAndCloseIfAllFollowUpsCompleted(Inspection inspection) {
+        UUID inspectionId = inspection.getId();
+        UUID companyId = inspection.getCompany().getId();
+
+        if (inspection.getInspectionStatus() == InspectionStatus.IN_PROGRESS
+                && !hasUnrespondedTarget(inspectionId, companyId)) {
+            inspection.complete();
+        }
+
+        closeIfCompletedAndAllFollowUpsCompleted(inspection);
+    }
+
+    @Transactional
+    public void closeIfCompletedAndAllFollowUpsCompleted(Inspection inspection) {
+        if (inspection.getInspectionStatus() != InspectionStatus.COMPLETED) {
+            return;
+        }
+
+        UUID inspectionId = inspection.getId();
+        UUID companyId = inspection.getCompany().getId();
+
+        if (hasIncompleteFollowUp(inspectionId, companyId)) {
+            return;
+        }
+
+        inspection.close();
+    }
+
+    private boolean hasUnrespondedTarget(UUID inspectionId, UUID companyId) {
+        return inspectionTargetRepository.existsByInspection_IdAndCompany_IdAndIsRespondedFalse(
+                inspectionId,
+                companyId
+        );
+    }
+
+    private boolean hasIncompleteFollowUp(UUID inspectionId, UUID companyId) {
+        return inspectionFollowUpRepository
+                .existsByInspectionResult_Inspection_IdAndCompany_IdAndInspectionFollowUpStatusNot(
+                        inspectionId,
+                        companyId,
+                        InspectionFollowUpStatus.COMPLETED
+                );
     }
 }

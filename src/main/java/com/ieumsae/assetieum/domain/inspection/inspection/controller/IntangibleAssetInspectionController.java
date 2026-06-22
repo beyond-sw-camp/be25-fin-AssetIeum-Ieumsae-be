@@ -17,6 +17,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -77,5 +78,16 @@ public class IntangibleAssetInspectionController {
                 inspectionService.getInspectionStatistics(InspectionType.INTANGIBLE_ASSET, member.companyId());
 
         return ApiResponse.ok("무형자산 전수조사 통계 조회에 성공했습니다.", response);
+    }
+    @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
+    @PatchMapping("/{inspectionId}/close")
+    public ApiResponse<InspectionResponse> closeInspection(
+            @AuthenticationPrincipal AuthenticatedMember member,
+            @PathVariable UUID inspectionId
+    ) {
+        InspectionResponse response =
+                inspectionService.closeInspection(inspectionId, InspectionType.INTANGIBLE_ASSET, member.companyId());
+
+        return ApiResponse.ok("무형자산 전수조사를 최종 종료했습니다.", response);
     }
 }

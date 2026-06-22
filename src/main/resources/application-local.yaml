@@ -24,6 +24,10 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
 
+  batch:
+    job:
+      enabled: false
+
 logging:
   level:
     org.hibernate.SQL: debug

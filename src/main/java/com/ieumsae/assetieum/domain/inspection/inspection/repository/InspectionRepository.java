@@ -1,6 +1,10 @@
 package com.ieumsae.assetieum.domain.inspection.inspection.repository;
 
 import com.ieumsae.assetieum.domain.inspection.inspection.entity.Inspection;
+import com.ieumsae.assetieum.domain.inspection.inspection.type.InspectionStatus;
+import com.ieumsae.assetieum.domain.inspection.inspection.type.InspectionType;
+import java.time.LocalDateTime;
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
@@ -8,4 +12,22 @@ import java.util.UUID;
 
 public interface InspectionRepository extends JpaRepository<Inspection, UUID>, InspectionRepositoryCustom {
     Optional<Inspection> findByIdAndCompany_Id(UUID inspectionId, UUID companyId);
+
+    Optional<Inspection> findByIdAndCompany_IdAndInspectionType(
+            UUID inspectionId,
+            UUID companyId,
+            InspectionType inspectionType
+    );
+
+    List<Inspection> findAllByInspectionStatusAndStartDateGreaterThanEqualAndStartDateLessThan(
+            InspectionStatus inspectionStatus,
+            LocalDateTime startInclusive,
+            LocalDateTime endExclusive
+    );
+
+    List<Inspection> findAllByInspectionStatusAndEndDateGreaterThanEqualAndEndDateLessThan(
+            InspectionStatus inspectionStatus,
+            LocalDateTime startInclusive,
+            LocalDateTime endExclusive
+    );
 }

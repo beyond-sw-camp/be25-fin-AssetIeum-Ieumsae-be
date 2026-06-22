@@ -4,6 +4,7 @@ import com.ieumsae.assetieum.domain.inspection.followup.entity.InspectionFollowU
 import com.ieumsae.assetieum.domain.inspection.followup.repository.InspectionFollowUpRepository;
 import com.ieumsae.assetieum.domain.inspection.followup.type.InspectionFollowUpStatus;
 import com.ieumsae.assetieum.domain.inspection.inspection.entity.Inspection;
+import com.ieumsae.assetieum.domain.inspection.inspection.service.InspectionService;
 import com.ieumsae.assetieum.domain.inspection.inspection.type.InspectionStatus;
 import com.ieumsae.assetieum.domain.inspection.inspection.type.InspectorType;
 import com.ieumsae.assetieum.domain.inspection.result.dto.InspectionResultCreateRequest;
@@ -33,6 +34,7 @@ public class InspectionResultService {
     private final InspectionResultRepository inspectionResultRepository;
     private final InspectionFollowUpRepository inspectionFollowUpRepository;
     private final MemberRepository memberRepository;
+    private final InspectionService inspectionService;
 
     @Transactional
     public InspectionResultResponse createInspectionResult(
@@ -67,6 +69,8 @@ public class InspectionResultService {
                     .inspectionFollowUpStatus(InspectionFollowUpStatus.PENDING)
                     .build());
         }
+
+        inspectionService.completeIfAllResponsesCompletedAndCloseIfAllFollowUpsCompleted(inspection);
 
         return InspectionResultResponse.from(inspectionResult, inspectionFollowUp);
     }
