@@ -40,6 +40,8 @@ dependencies {
 	// Web MVC / REST API
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 
+	// Spring Batch
+	implementation 'org.springframework.boot:spring-boot-starter-batch'
 
 	// =========================
 	// Authentication
