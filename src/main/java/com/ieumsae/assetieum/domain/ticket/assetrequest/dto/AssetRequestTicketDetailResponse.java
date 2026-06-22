@@ -44,6 +44,8 @@ public class AssetRequestTicketDetailResponse {
 	@JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
 	private final LocalDateTime assetProcessedAt;
 	@JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+	private final LocalDateTime assetAssignedAt;
+	@JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
 	private final LocalDateTime assetRegisteredAt;
 	@JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
 	private final LocalDateTime processedAt;
@@ -83,6 +85,7 @@ public class AssetRequestTicketDetailResponse {
 			.linkedPurchaseId(null)
 			.assetAssignee(MemberSummary.from(ticket.getAssignee()))
 			.assetProcessedAt(resolveAssetProcessedAt(ticket))
+			.assetAssignedAt(resolveAssetAssignedAt(ticket, assetRequestTicket, viewerRole))
 			.assetRegisteredAt(null)
 			.processedAt(ticket.getUpdatedAt())
 			.completedAt(ticket.getCompletedAt())
@@ -117,6 +120,27 @@ public class AssetRequestTicketDetailResponse {
 			return ticket.getPurchaseApprovedAt();
 		}
 		return ticket.getPurchaseRejectedAt();
+	}
+
+	private static LocalDateTime resolveAssetAssignedAt(
+		Ticket ticket,
+		AssetRequestTicket assetRequestTicket,
+		MemberRole viewerRole
+	) {
+		if (!canViewAssetAssignedAt(viewerRole)) {
+			return null;
+		}
+		if (assetRequestTicket.getStatus() != AssetRequestTicketStatus.ASSIGNED
+			&& assetRequestTicket.getStatus() != AssetRequestTicketStatus.COMPLETED) {
+			return null;
+		}
+		return ticket.getCompletedAt() != null ? ticket.getCompletedAt() : ticket.getUpdatedAt();
+	}
+
+	private static boolean canViewAssetAssignedAt(MemberRole viewerRole) {
+		return viewerRole == MemberRole.ASSET_MANAGER
+			|| viewerRole == MemberRole.ASSET_TEAM
+			|| viewerRole == MemberRole.ADMIN;
 	}
 
 	private static List<HistoryItem> createHistories(Ticket ticket) {

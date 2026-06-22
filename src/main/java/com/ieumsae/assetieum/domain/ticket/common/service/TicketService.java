@@ -128,6 +128,24 @@ public class TicketService {
 	}
 
 	@Transactional
+	public TicketCancelResponse cancelTicketForOffboarding(UUID companyId, UUID ticketId) {
+		Ticket ticket = findActiveTicket(ticketId, companyId);
+		validateDirectPurchaseResultNotRegisteredForCancel(ticket, companyId);
+
+		releaseReservedRentalAssetIfNeeded(ticket, companyId);
+		budgetExecutionService.releaseHoldForCancellation(ticket, companyId);
+		ticket.cancel(LocalDateTime.now());
+		syncCancelledDetailStatusIfNeeded(ticket, companyId);
+		syncCancelledPurchaseRequestStatusIfNeeded(ticket, companyId);
+		syncCancelledRentalStatusIfNeeded(ticket, companyId);
+		syncCancelledMaintenanceStatusIfNeeded(ticket, companyId);
+		syncCancelledAssetReturnStatusIfNeeded(ticket, companyId);
+		syncCancelledPurchaseReturnStatusIfNeeded(ticket, companyId);
+
+		return TicketCancelResponse.from(ticket);
+	}
+
+	@Transactional
 	public DepartmentApprovalResponse approveDepartment(
 		AuthenticatedMember authenticatedMember,
 		UUID ticketId

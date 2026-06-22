@@ -8,15 +8,26 @@ import com.ieumsae.assetieum.domain.member.dto.MemberCreateResponse;
 import com.ieumsae.assetieum.domain.member.dto.MemberDepartmentUpdateRequest;
 import com.ieumsae.assetieum.domain.member.dto.MemberDepartmentUpdateResponse;
 import com.ieumsae.assetieum.domain.member.dto.MemberListItemResponse;
+import com.ieumsae.assetieum.domain.member.dto.MemberOffboardingCompleteResponse;
+import com.ieumsae.assetieum.domain.member.dto.MemberOffboardingStartRequest;
+import com.ieumsae.assetieum.domain.member.dto.MemberOffboardingStartResponse;
+import com.ieumsae.assetieum.domain.member.dto.MemberOffboardingTargetsResponse;
 import com.ieumsae.assetieum.domain.member.dto.MemberSearchRequest;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
 import com.ieumsae.assetieum.domain.member.type.MemberRole;
 import com.ieumsae.assetieum.domain.member.type.MemberStatus;
+import com.ieumsae.assetieum.domain.intangibleasset.assignment.service.IntangibleAssetAssignmentService;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.entity.TangibleAsset;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.type.TangibleAssetStatus;
+import com.ieumsae.assetieum.domain.tangibleasset.assignment.service.TangibleAssetAssignmentService;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
+import jakarta.persistence.EntityManager;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -35,6 +46,9 @@ public class MemberService {
 	private final MemberRepository memberRepository;
 	private final DepartmentRepository departmentRepository;
 	private final PasswordEncoder passwordEncoder;
+	private final EntityManager entityManager;
+	private final TangibleAssetAssignmentService tangibleAssetAssignmentService;
+	private final IntangibleAssetAssignmentService intangibleAssetAssignmentService;
 
 	public PaginationResponse<MemberListItemResponse> getMembers(
 		AuthenticatedMember authenticatedMember,
@@ -105,6 +119,72 @@ public class MemberService {
 		return MemberDepartmentUpdateResponse.from(member, previousDepartment);
 	}
 
+	public MemberOffboardingTargetsResponse getOffboardingTargets(
+		AuthenticatedMember authenticatedMember,
+		UUID memberId
+	) {
+		Member actor = validateOffboardingActor(authenticatedMember);
+		Member targetMember = findMember(memberId, authenticatedMember.companyId());
+
+		return buildOffboardingTargets(targetMember);
+	}
+
+	@Transactional
+	public MemberOffboardingStartResponse startOffboarding(
+		AuthenticatedMember authenticatedMember,
+		UUID memberId,
+		MemberOffboardingStartRequest request
+	) {
+		Member actor = validateOffboardingActor(authenticatedMember);
+		Member targetMember = findMember(memberId, authenticatedMember.companyId());
+		validateNotResigned(targetMember);
+
+		LocalDateTime resignedAt = request.getResignedAt() == null ? LocalDateTime.now() : request.getResignedAt();
+		List<TangibleAsset> tangibleAssets = findMemberTangibleAssets(targetMember);
+		List<Object[]> intangibleAssets = findMemberActiveIntangibleAssets(targetMember);
+
+		long returnedTangibleAssetCount = returnTangibleAssets(targetMember, tangibleAssets);
+		long endedIntangibleAssignmentCount = endIntangibleAssignments(targetMember, intangibleAssets);
+		long remainingTargetCount = buildOffboardingTargets(targetMember).getRemainingTargetCount();
+
+		return MemberOffboardingStartResponse.builder()
+			.memberId(targetMember.getId())
+			.memberName(targetMember.getName())
+			.memberStatus(targetMember.getStatus())
+			.returnedTangibleAssetCount(returnedTangibleAssetCount)
+			.endedIntangibleAssignmentCount(endedIntangibleAssignmentCount)
+			.remainingTargetCount(remainingTargetCount)
+			.resignedAt(resignedAt)
+			.reason(request.getReason())
+			.build();
+	}
+
+	@Transactional
+	public MemberOffboardingCompleteResponse completeOffboarding(
+		AuthenticatedMember authenticatedMember,
+		UUID memberId
+	) {
+		Member actor = validateOffboardingActor(authenticatedMember);
+		Member targetMember = findMember(memberId, authenticatedMember.companyId());
+		validateNotResigned(targetMember);
+
+		MemberOffboardingTargetsResponse targets = buildOffboardingTargets(targetMember);
+		if (targets.getRemainingTargetCount() > 0) {
+			throw new BusinessException(
+				ErrorCode.INVALID_INPUT_VALUE,
+				"회수되지 않은 자산 또는 진행 중인 티켓이 있어 퇴사 완료 처리할 수 없습니다."
+			);
+		}
+
+		targetMember.resign();
+		return MemberOffboardingCompleteResponse.builder()
+			.memberId(targetMember.getId())
+			.memberName(targetMember.getName())
+			.memberStatus(targetMember.getStatus())
+			.completedAt(LocalDateTime.now())
+			.build();
+	}
+
 	private void validateAdmin(AuthenticatedMember authenticatedMember) {
 		Member member = validateActiveMember(authenticatedMember);
 
@@ -125,6 +205,126 @@ public class MemberService {
 		}
 
 		return member;
+	}
+
+	private Member validateOffboardingActor(AuthenticatedMember authenticatedMember) {
+		Member actor = validateActiveMember(authenticatedMember);
+		if (actor.getRole() != MemberRole.ADMIN) {
+			throw new BusinessException(ErrorCode.ACCESS_DENIED);
+		}
+		return actor;
+	}
+
+	private void validateNotResigned(Member member) {
+		if (member.getStatus() == MemberStatus.RESIGNED) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "이미 퇴사 처리된 사원입니다.");
+		}
+	}
+
+	private Member findMember(UUID memberId, UUID companyId) {
+		return memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(memberId, companyId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+	}
+
+	private long returnTangibleAssets(Member targetMember, List<TangibleAsset> tangibleAssets) {
+		long count = 0;
+		for (TangibleAsset asset : tangibleAssets) {
+			if (asset.getTangibleAssetStatus() != TangibleAssetStatus.IN_USE) {
+				continue;
+			}
+			tangibleAssetAssignmentService.cancelAsset(asset.getId(), targetMember.getCompany().getId());
+			count++;
+		}
+		return count;
+	}
+
+	private long endIntangibleAssignments(Member targetMember, List<Object[]> intangibleAssets) {
+		long count = 0;
+		for (Object[] row : intangibleAssets) {
+			UUID assetId = (UUID) row[0];
+			intangibleAssetAssignmentService.cancelAsset(
+				assetId,
+				targetMember.getId(),
+				targetMember.getCompany().getId()
+			);
+			count++;
+		}
+		return count;
+	}
+
+	private MemberOffboardingTargetsResponse buildOffboardingTargets(Member member) {
+		List<MemberOffboardingTargetsResponse.TangibleAssetTarget> tangibleAssets = findMemberTangibleAssets(member)
+			.stream()
+			.map(asset -> MemberOffboardingTargetsResponse.TangibleAssetTarget.builder()
+				.assetId(asset.getId())
+				.assetCode(asset.getAssetCode())
+				.assetName(asset.getTangibleAssetItem().getProductName())
+				.assetStatus(asset.getTangibleAssetStatus())
+				.returnDueDate(asset.getReturnDueDate())
+				.build())
+			.toList();
+
+		List<MemberOffboardingTargetsResponse.IntangibleAssetTarget> intangibleAssets = findMemberActiveIntangibleAssets(member)
+			.stream()
+			.map(row -> MemberOffboardingTargetsResponse.IntangibleAssetTarget.builder()
+				.assetId((UUID) row[0])
+				.assetCode((String) row[1])
+				.assetName((String) row[2])
+				.assetStatus((com.ieumsae.assetieum.domain.intangibleasset.asset.type.IntangibleAssetStatus) row[3])
+				.expiredAt((LocalDateTime) row[4])
+				.build())
+			.toList();
+
+		return MemberOffboardingTargetsResponse.builder()
+			.memberId(member.getId())
+			.memberName(member.getName())
+			.departmentId(member.getDepartment().getId())
+			.departmentName(member.getDepartment().getName())
+			.memberStatus(member.getStatus())
+			.tangibleAssets(tangibleAssets)
+			.intangibleAssets(intangibleAssets)
+			.remainingTargetCount(tangibleAssets.size() + intangibleAssets.size())
+			.build();
+	}
+
+	private List<TangibleAsset> findMemberTangibleAssets(Member member) {
+		return entityManager.createQuery("""
+				select asset
+				from TangibleAsset asset
+				join fetch asset.tangibleAssetItem item
+				where asset.company.id = :companyId
+					and asset.member.id = :memberId
+					and asset.tangibleAssetStatus <> :disposed
+				order by asset.createdAt asc
+				""", TangibleAsset.class)
+			.setParameter("companyId", member.getCompany().getId())
+			.setParameter("memberId", member.getId())
+			.setParameter("disposed", TangibleAssetStatus.DISPOSED)
+			.getResultList();
+	}
+
+	private List<Object[]> findMemberActiveIntangibleAssets(Member member) {
+		return entityManager.createQuery("""
+				select asset.id, asset.assetCode, item.productName, asset.intangibleAssetStatus, asset.expiredAt
+				from IntangibleAssetAssignment assignment
+				join assignment.intangibleAsset asset
+				join asset.intangibleAssetItem item
+				where assignment.company.id = :companyId
+					and assignment.member.id = :memberId
+					and assignment.assignmentStatus = :assignmentStatus
+				order by assignment.assignedAt asc
+				""", Object[].class)
+			.setParameter("companyId", member.getCompany().getId())
+			.setParameter("memberId", member.getId())
+			.setParameter(
+				"assignmentStatus",
+				com.ieumsae.assetieum.domain.intangibleasset.assignment.type.AssignmentStatus.ACTIVE
+			)
+			.getResultList();
+	}
+
+	private long countMemberActiveIntangibleAssignments(Member member) {
+		return findMemberActiveIntangibleAssets(member).size();
 	}
 
 	private Department findActiveDepartment(UUID departmentId, UUID companyId) {
