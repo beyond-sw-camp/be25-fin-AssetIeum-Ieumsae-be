@@ -89,4 +89,8 @@ public class Member extends BaseEntity {
 	public void changeRole(MemberRole role) {
 		this.role = role;
 	}
+
+	public void resign() {
+		this.status = MemberStatus.RESIGNED;
+	}
 }
