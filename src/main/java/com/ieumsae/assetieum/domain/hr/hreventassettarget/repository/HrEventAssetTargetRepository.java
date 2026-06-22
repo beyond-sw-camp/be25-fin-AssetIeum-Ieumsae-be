@@ -17,4 +17,7 @@ public interface HrEventAssetTargetRepository extends JpaRepository<HrEventAsset
             "intangibleAsset.intangibleAssetItem"
     })
     List<HrEventAssetTarget> findAllByHrEvent_IdAndCompany_IdOrderByCreatedAtAsc(UUID eventId, UUID companyId);
+
+    List<HrEventAssetTarget> findAllByHrEvent_IdAndCompany_Id(UUID eventId, UUID companyId);
+
 }

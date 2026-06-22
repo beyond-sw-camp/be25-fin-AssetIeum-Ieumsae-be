@@ -9,13 +9,13 @@ import com.ieumsae.assetieum.domain.hr.hrevent.dto.HrEventResponse;
 import com.ieumsae.assetieum.domain.hr.hrevent.dto.HrEventSearchRequest;
 import com.ieumsae.assetieum.domain.hr.hrevent.entity.HrEvent;
 import com.ieumsae.assetieum.domain.hr.hrevent.repository.HrEventRepository;
+import com.ieumsae.assetieum.domain.hr.hrevent.service.handler.HrEventHandlerResolver;
 import com.ieumsae.assetieum.domain.hr.hrevent.type.HrEventStatus;
 import com.ieumsae.assetieum.domain.hr.hreventassettarget.dto.HrEventAssetTargetCreateRequest;
 import com.ieumsae.assetieum.domain.hr.hreventassettarget.dto.HrEventAssetTargetResponse;
 import com.ieumsae.assetieum.domain.hr.hreventassettarget.entity.HrEventAssetTarget;
 import com.ieumsae.assetieum.domain.hr.hreventassettarget.repository.HrEventAssetTargetRepository;
 import com.ieumsae.assetieum.domain.hr.hreventassettarget.type.HrEventAssetActionType;
-import com.ieumsae.assetieum.domain.hr.hrtemplate.dto.HrTemplateResponse;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.entity.IntangibleAsset;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.repository.IntangibleAssetRepository;
 import com.ieumsae.assetieum.domain.intangibleasset.assignment.entity.IntangibleAssetAssignment;
@@ -56,6 +56,7 @@ public class HrEventService {
     private final TangibleAssetRepository tangibleAssetRepository;
     private final IntangibleAssetRepository intangibleAssetRepository;
     private final IntangibleAssetAssignmentRepository intangibleAssetAssignmentRepository;
+    private final HrEventHandlerResolver hrEventHandlerResolver;
     private final CodeGenerator codeGenerator;
 
     @Transactional
@@ -63,24 +64,29 @@ public class HrEventService {
             HrEventCreateRequest request,
             AuthenticatedMember member
     ) {
-        // 1. 입력값 검증
         Company company = companyRepository.findById(member.companyId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
 
-        Member authenticatedMember = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(member.id(), member.companyId())
+        Member authenticatedMember = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(
+                        member.id(),
+                        member.companyId()
+                )
                 .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
-        Member targetMember = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(request.getMemberId(), member.companyId())
+        Member targetMember = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(
+                        request.getMemberId(),
+                        member.companyId()
+                )
                 .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
-        if (!authenticatedMember.getDepartment().getId().equals(targetMember.getDepartment().getId())) {
-            throw new BusinessException(ErrorCode.HR_EVENT_MEMBER_DEPARTMENT_MISMATCH);
-        }
+        validateSameDepartment(authenticatedMember, targetMember.getDepartment().getId());
 
-        Department department = departmentRepository.findByIdAndCompany_IdAndDeletedAtIsNull(authenticatedMember.getDepartment().getId(), member.companyId())
+        Department department = departmentRepository.findByIdAndCompany_IdAndDeletedAtIsNull(
+                        authenticatedMember.getDepartment().getId(),
+                        member.companyId()
+                )
                 .orElseThrow(() -> new BusinessException(ErrorCode.DEPARTMENT_NOT_FOUND));
 
-        // 2. HR 이벤트 등록
         HrEvent hrEvent = HrEvent.builder()
                 .company(company)
                 .department(department)
@@ -195,8 +201,14 @@ public class HrEventService {
         }
     }
 
+    private void validateSameDepartment(Member authenticatedMember, UUID departmentId) {
+        if (!authenticatedMember.getDepartment().getId().equals(departmentId)) {
+            throw new BusinessException(ErrorCode.HR_EVENT_MEMBER_DEPARTMENT_MISMATCH);
+        }
+    }
+
     @Transactional
-    public HrTemplateResponse deleteHrEvent(
+    public HrEventResponse deleteHrEvent(
             UUID eventId,
             AuthenticatedMember member
     ) {
@@ -204,17 +216,32 @@ public class HrEventService {
         Company company = companyRepository.findById(member.companyId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
 
+        Member authenticatedMember = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(
+                        member.id(),
+                        member.companyId()
+                )
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+
         HrEvent hrEvent = hrEventRepository.findByIdAndCompany_IdAndCancelledAtIsNull(eventId, member.companyId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.HR_EVENT_NOT_FOUND));
 
-        if(hrEvent.getHrEventStatus() != HrEventStatus.PENDING) {
+        validateSameDepartment(authenticatedMember, hrEvent.getDepartment().getId());
+
+        if (hrEvent.getHrEventStatus() != HrEventStatus.PENDING) {
             throw new BusinessException(ErrorCode.HR_EVENT_ALREADY_IN_PROGRESS);
         }
 
         // 2. 이벤트 삭제 (soft delete)
         hrEvent.delete();
 
-        return null;
+        List<HrEventAssetTarget> hrEventAssetTargets =
+                hrEventAssetTargetRepository.findAllByHrEvent_IdAndCompany_Id(hrEvent.getId(), member.companyId());
+
+        for (HrEventAssetTarget target : hrEventAssetTargets) {
+            target.cancel();
+        }
+
+        return HrEventResponse.from(hrEvent);
     }
 
     public PaginationResponse<HrEventResponse> getHrEvents(
@@ -225,7 +252,10 @@ public class HrEventService {
         companyRepository.findById(authenticatedMember.companyId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
 
-        Member member = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(authenticatedMember.id(), authenticatedMember.companyId())
+        Member member = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(
+                        authenticatedMember.id(),
+                        authenticatedMember.companyId()
+                )
                 .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
         // 2. 페이징 처리 및 반환
@@ -268,7 +298,7 @@ public class HrEventService {
         HrEvent hrEvent = hrEventRepository.findByIdAndCompany_IdAndCancelledAtIsNull(eventId, member.companyId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.HR_EVENT_NOT_FOUND));
 
-        if(hrEvent.getHrEventStatus() != HrEventStatus.IN_PROGRESS) {
+        if (hrEvent.getHrEventStatus() != HrEventStatus.IN_PROGRESS) {
             throw new BusinessException(ErrorCode.HR_EVENT_NOT_IN_PROGRESS);
         }
 
@@ -295,20 +325,6 @@ public class HrEventService {
 
     private void executeHrEvent(HrEvent hrEvent) {
         hrEvent.start();
-
-        switch (hrEvent.getEventType()) {
-            case ONBOARDING -> executeOnboarding(hrEvent);
-            case OFFBOARDING -> executeOffboarding(hrEvent);
-            case DEPARTMENT_TRANSFER -> executeDepartmentTransfer(hrEvent);
-        }
-    }
-
-    private void executeOnboarding(HrEvent hrEvent) {
-    }
-
-    private void executeOffboarding(HrEvent hrEvent) {
-    }
-
-    private void executeDepartmentTransfer(HrEvent hrEvent) {
+        hrEventHandlerResolver.resolve(hrEvent.getEventType()).handle(hrEvent);
     }
 }

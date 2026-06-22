@@ -5,7 +5,6 @@ import com.ieumsae.assetieum.domain.hr.hrevent.dto.HrEventResponse;
 import com.ieumsae.assetieum.domain.hr.hrevent.dto.HrEventSearchRequest;
 import com.ieumsae.assetieum.domain.hr.hrevent.service.HrEventService;
 import com.ieumsae.assetieum.domain.hr.hreventassettarget.dto.HrEventAssetTargetResponse;
-import com.ieumsae.assetieum.domain.hr.hrtemplate.dto.HrTemplateResponse;
 import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.response.ApiResponse;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
@@ -47,11 +46,11 @@ public class HrEventController {
 
     @PreAuthorize("hasAnyRole('ASSET_MANAGER', 'DEPARTMENT_MANAGER', 'ADMIN')")
     @DeleteMapping("/{eventId}")
-    public ApiResponse<HrTemplateResponse> deleteHrTemplate(
+    public ApiResponse<HrEventResponse> deleteHrEvent(
             @AuthenticationPrincipal AuthenticatedMember member,
             @PathVariable UUID eventId
     ) {
-        HrTemplateResponse response =
+        HrEventResponse response =
                 hrEventService.deleteHrEvent(eventId, member);
 
         return ApiResponse.ok("HR 이벤트가 삭제되었습니다.", response);

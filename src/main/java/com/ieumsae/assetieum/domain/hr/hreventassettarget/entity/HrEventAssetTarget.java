@@ -84,4 +84,7 @@ public class HrEventAssetTarget extends BaseEntity {
     @Column(name = "processed_at")
     private LocalDateTime processedAt;
 
+    public void cancel() {
+        this.targetStatus = HrEventAssetTargetStatus.CANCELLED;
+    }
 }
