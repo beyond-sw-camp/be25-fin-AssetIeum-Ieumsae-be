@@ -3,10 +3,6 @@ package com.ieumsae.assetieum.domain.member.service;
 import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.department.entity.Department;
 import com.ieumsae.assetieum.domain.department.repository.DepartmentRepository;
-import com.ieumsae.assetieum.domain.hr.hrevent.entity.HrEvent;
-import com.ieumsae.assetieum.domain.hr.hrevent.repository.HrEventRepository;
-import com.ieumsae.assetieum.domain.hr.hrevent.type.HrEventStatus;
-import com.ieumsae.assetieum.domain.hr.hrevent.type.HrEventType;
 import com.ieumsae.assetieum.domain.member.dto.MemberCreateRequest;
 import com.ieumsae.assetieum.domain.member.dto.MemberCreateResponse;
 import com.ieumsae.assetieum.domain.member.dto.MemberDepartmentUpdateRequest;
@@ -25,9 +21,6 @@ import com.ieumsae.assetieum.domain.intangibleasset.assignment.service.Intangibl
 import com.ieumsae.assetieum.domain.tangibleasset.asset.entity.TangibleAsset;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.type.TangibleAssetStatus;
 import com.ieumsae.assetieum.domain.tangibleasset.assignment.service.TangibleAssetAssignmentService;
-import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
-import com.ieumsae.assetieum.domain.ticket.common.service.TicketService;
-import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import com.ieumsae.assetieum.global.common.page.PaginationResponse;
@@ -35,7 +28,6 @@ import com.ieumsae.assetieum.global.security.AuthenticatedMember;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -55,10 +47,8 @@ public class MemberService {
 	private final DepartmentRepository departmentRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final EntityManager entityManager;
-	private final HrEventRepository hrEventRepository;
 	private final TangibleAssetAssignmentService tangibleAssetAssignmentService;
 	private final IntangibleAssetAssignmentService intangibleAssetAssignmentService;
-	private final TicketService ticketService;
 
 	public PaginationResponse<MemberListItemResponse> getMembers(
 		AuthenticatedMember authenticatedMember,
@@ -152,15 +142,9 @@ public class MemberService {
 		LocalDateTime resignedAt = request.getResignedAt() == null ? LocalDateTime.now() : request.getResignedAt();
 		List<TangibleAsset> tangibleAssets = findMemberTangibleAssets(targetMember);
 		List<Object[]> intangibleAssets = findMemberActiveIntangibleAssets(targetMember);
-		List<Ticket> activeTickets = findMemberActiveTickets(targetMember);
-		Optional<HrEvent> offboardingEvent = findOpenOffboardingEvent(targetMember);
-		offboardingEvent
-			.filter(event -> event.getHrEventStatus() == HrEventStatus.PENDING)
-			.ifPresent(HrEvent::start);
 
 		long returnedTangibleAssetCount = returnTangibleAssets(targetMember, tangibleAssets);
 		long endedIntangibleAssignmentCount = endIntangibleAssignments(targetMember, intangibleAssets);
-		long cancelledTicketCount = cancelActiveTickets(authenticatedMember, activeTickets);
 		long remainingTargetCount = buildOffboardingTargets(targetMember).getRemainingTargetCount();
 
 		return MemberOffboardingStartResponse.builder()
@@ -169,12 +153,9 @@ public class MemberService {
 			.memberStatus(targetMember.getStatus())
 			.returnedTangibleAssetCount(returnedTangibleAssetCount)
 			.endedIntangibleAssignmentCount(endedIntangibleAssignmentCount)
-			.cancelledTicketCount(cancelledTicketCount)
 			.remainingTargetCount(remainingTargetCount)
 			.resignedAt(resignedAt)
 			.reason(request.getReason())
-			.hrEventId(offboardingEvent.map(HrEvent::getId).orElse(null))
-			.hrEventStatus(offboardingEvent.map(HrEvent::getHrEventStatus).orElse(null))
 			.build();
 	}
 
@@ -196,15 +177,11 @@ public class MemberService {
 		}
 
 		targetMember.resign();
-		Optional<HrEvent> offboardingEvent = findOpenOffboardingEvent(targetMember);
-		offboardingEvent.ifPresent(HrEvent::complete);
 		return MemberOffboardingCompleteResponse.builder()
 			.memberId(targetMember.getId())
 			.memberName(targetMember.getName())
 			.memberStatus(targetMember.getStatus())
 			.completedAt(LocalDateTime.now())
-			.hrEventId(offboardingEvent.map(HrEvent::getId).orElse(null))
-			.hrEventStatus(offboardingEvent.map(HrEvent::getHrEventStatus).orElse(null))
 			.build();
 	}
 
@@ -249,18 +226,6 @@ public class MemberService {
 			.orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 	}
 
-	private Optional<HrEvent> findOpenOffboardingEvent(Member member) {
-		return hrEventRepository
-			.findAllByCompany_IdAndMember_IdAndEventTypeAndHrEventStatusInAndCancelledAtIsNullOrderByEventDateDesc(
-				member.getCompany().getId(),
-				member.getId(),
-				HrEventType.OFFBOARDING,
-				List.of(HrEventStatus.PENDING, HrEventStatus.IN_PROGRESS)
-			)
-			.stream()
-			.findFirst();
-	}
-
 	private long returnTangibleAssets(Member targetMember, List<TangibleAsset> tangibleAssets) {
 		long count = 0;
 		for (TangibleAsset asset : tangibleAssets) {
@@ -282,19 +247,6 @@ public class MemberService {
 				targetMember.getId(),
 				targetMember.getCompany().getId()
 			);
-			count++;
-		}
-		return count;
-	}
-
-	private long cancelActiveTickets(AuthenticatedMember authenticatedMember, List<Ticket> activeTickets) {
-		long count = 0;
-		for (Ticket ticket : activeTickets) {
-			if (ticket.getTicketStatus() == TicketStatus.CANCELLED
-				|| ticket.getTicketStatus() == TicketStatus.COMPLETED) {
-				continue;
-			}
-			ticketService.cancelTicketForOffboarding(authenticatedMember.companyId(), ticket.getId());
 			count++;
 		}
 		return count;
@@ -323,16 +275,6 @@ public class MemberService {
 				.build())
 			.toList();
 
-		List<MemberOffboardingTargetsResponse.ActiveTicketTarget> activeTickets = findMemberActiveTickets(member)
-			.stream()
-			.map(ticket -> MemberOffboardingTargetsResponse.ActiveTicketTarget.builder()
-				.ticketId(ticket.getId())
-				.ticketNo(ticket.getTicketNo())
-				.ticketType(ticket.getTicketType())
-				.ticketStatus(ticket.getTicketStatus())
-				.build())
-			.toList();
-
 		return MemberOffboardingTargetsResponse.builder()
 			.memberId(member.getId())
 			.memberName(member.getName())
@@ -341,8 +283,7 @@ public class MemberService {
 			.memberStatus(member.getStatus())
 			.tangibleAssets(tangibleAssets)
 			.intangibleAssets(intangibleAssets)
-			.activeTickets(activeTickets)
-			.remainingTargetCount(tangibleAssets.size() + intangibleAssets.size() + activeTickets.size())
+			.remainingTargetCount(tangibleAssets.size() + intangibleAssets.size())
 			.build();
 	}
 
@@ -382,33 +323,8 @@ public class MemberService {
 			.getResultList();
 	}
 
-	private List<Ticket> findMemberActiveTickets(Member member) {
-		return entityManager.createQuery("""
-				select ticket
-				from Ticket ticket
-				where ticket.company.id = :companyId
-					and ticket.requester.id = :memberId
-					and ticket.ticketStatus in :statuses
-					and ticket.deletedAt is null
-				order by ticket.createdAt asc
-				""", Ticket.class)
-			.setParameter("companyId", member.getCompany().getId())
-			.setParameter("memberId", member.getId())
-			.setParameter("statuses", List.of(
-				TicketStatus.REQUESTED,
-				TicketStatus.DEPARTMENT_APPROVED,
-				TicketStatus.ASSET_APPROVED,
-				TicketStatus.IN_PROGRESS
-			))
-			.getResultList();
-	}
-
 	private long countMemberActiveIntangibleAssignments(Member member) {
 		return findMemberActiveIntangibleAssets(member).size();
-	}
-
-	private long countMemberActiveTickets(Member member) {
-		return findMemberActiveTickets(member).size();
 	}
 
 	private Department findActiveDepartment(UUID departmentId, UUID companyId) {

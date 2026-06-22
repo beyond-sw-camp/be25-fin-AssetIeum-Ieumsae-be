@@ -5,8 +5,6 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.type.IntangibleAssetStatus;
 import com.ieumsae.assetieum.domain.member.type.MemberStatus;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.type.TangibleAssetStatus;
-import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
-import com.ieumsae.assetieum.domain.ticket.common.type.TicketType;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -23,7 +21,6 @@ import lombok.Getter;
 	"memberStatus",
 	"tangibleAssets",
 	"intangibleAssets",
-	"activeTickets",
 	"remainingTargetCount"
 })
 public class MemberOffboardingTargetsResponse {
@@ -35,7 +32,6 @@ public class MemberOffboardingTargetsResponse {
 	private final MemberStatus memberStatus;
 	private final List<TangibleAssetTarget> tangibleAssets;
 	private final List<IntangibleAssetTarget> intangibleAssets;
-	private final List<ActiveTicketTarget> activeTickets;
 	private final long remainingTargetCount;
 
 	@Getter
@@ -60,14 +56,5 @@ public class MemberOffboardingTargetsResponse {
 
 		@JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
 		private final LocalDateTime expiredAt;
-	}
-
-	@Getter
-	@Builder
-	public static class ActiveTicketTarget {
-		private final UUID ticketId;
-		private final String ticketNo;
-		private final TicketType ticketType;
-		private final TicketStatus ticketStatus;
 	}
 }

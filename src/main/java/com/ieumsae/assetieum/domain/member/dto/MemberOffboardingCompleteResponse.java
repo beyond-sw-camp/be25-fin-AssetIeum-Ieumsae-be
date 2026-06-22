@@ -2,7 +2,6 @@ package com.ieumsae.assetieum.domain.member.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import com.ieumsae.assetieum.domain.hr.hrevent.type.HrEventStatus;
 import com.ieumsae.assetieum.domain.member.type.MemberStatus;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -15,9 +14,7 @@ import lombok.Getter;
 	"memberId",
 	"memberName",
 	"memberStatus",
-	"completedAt",
-	"hrEventId",
-	"hrEventStatus"
+	"completedAt"
 })
 public class MemberOffboardingCompleteResponse {
 
@@ -27,6 +24,4 @@ public class MemberOffboardingCompleteResponse {
 
 	@JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
 	private final LocalDateTime completedAt;
-	private final UUID hrEventId;
-	private final HrEventStatus hrEventStatus;
 }
