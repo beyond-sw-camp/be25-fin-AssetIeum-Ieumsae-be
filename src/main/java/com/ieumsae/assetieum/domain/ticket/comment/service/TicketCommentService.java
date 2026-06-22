@@ -20,6 +20,8 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -65,7 +67,7 @@ public class TicketCommentService {
 			.findAllByTicket_IdAndCompany_IdAndDeletedAtIsNull(
 				ticketId,
 				companyId,
-				request.toPageable()
+				PageRequest.of(request.getPage(), request.getSize(), Sort.by(Sort.Direction.ASC, "createdAt"))
 			)
 			.map(TicketCommentResponse::from);
 
