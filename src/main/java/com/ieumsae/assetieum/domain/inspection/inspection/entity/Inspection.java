@@ -83,4 +83,8 @@ public class Inspection extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "inspector_id", nullable = false)
     private Member inspector;
+
+    public void start() {
+        this.inspectionStatus = InspectionStatus.IN_PROGRESS;
+    }
 }

@@ -79,7 +79,7 @@ public class InspectionService {
                 .targetDepartment(department)
                 .targetCategoryId(request.getTargetCategoryId())
                 .inspectorType(request.getInspectorType())
-                .startDate(request.getStartDate())
+                .startDate(request.getStartDate().toLocalDate().atStartOfDay())
                 .endDate(request.getEndDate())
                 .description(request.getDescription())
                 .inspector(inspector)
