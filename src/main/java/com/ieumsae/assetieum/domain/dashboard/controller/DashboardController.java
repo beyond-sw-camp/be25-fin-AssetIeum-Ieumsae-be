@@ -62,19 +62,14 @@ public class DashboardController {
 		return ApiResponse.ok("보유자산 현황 조회에 성공했습니다.", response);
 	}
 
-	@PreAuthorize("hasAnyRole('EMPLOYEE', 'ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN', 'DEPARTMENT_MANAGER')")
+	@PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
 	@GetMapping("/owned-assets/details")
 	public ApiResponse<PaginationResponse<OwnedAssetDetailResponse>> getOwnedAssetDetails(
 		@AuthenticationPrincipal AuthenticatedMember authenticatedMember,
 		@Valid @ModelAttribute OwnedAssetDetailSearchRequest request
 	) {
-		PaginationResponse<OwnedAssetDetailResponse> response = isEmployee(authenticatedMember)
-			? dashboardService.getEmployeeOwnedAssetDetails(
-				authenticatedMember.companyId(),
-				authenticatedMember.id(),
-				request
-			)
-			: dashboardService.getOwnedAssetDetails(authenticatedMember.companyId(), request);
+		PaginationResponse<OwnedAssetDetailResponse> response =
+			dashboardService.getOwnedAssetDetails(authenticatedMember.companyId(), request);
 
 		return ApiResponse.ok("보유자산 현황 상세 조회에 성공했습니다.", response);
 	}
@@ -92,19 +87,14 @@ public class DashboardController {
 		return ApiResponse.ok("만료예정 자산 현황 조회에 성공했습니다.", response);
 	}
 
-	@PreAuthorize("hasAnyRole('EMPLOYEE', 'ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN', 'DEPARTMENT_MANAGER')")
+	@PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
 	@GetMapping("/expiring-assets/details")
 	public ApiResponse<PaginationResponse<ExpiringAssetDetailResponse>> getExpiringAssetDetails(
 		@AuthenticationPrincipal AuthenticatedMember authenticatedMember,
 		@Valid @ModelAttribute ExpiringAssetDetailSearchRequest request
 	) {
-		PaginationResponse<ExpiringAssetDetailResponse> response = isEmployee(authenticatedMember)
-			? dashboardService.getEmployeeExpiringAssetDetails(
-				authenticatedMember.companyId(),
-				authenticatedMember.id(),
-				request
-			)
-			: dashboardService.getExpiringAssetDetails(authenticatedMember.companyId(), request);
+		PaginationResponse<ExpiringAssetDetailResponse> response =
+			dashboardService.getExpiringAssetDetails(authenticatedMember.companyId(), request);
 
 		return ApiResponse.ok("만료예정 자산 현황 상세 조회에 성공했습니다.", response);
 	}

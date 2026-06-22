@@ -62,6 +62,9 @@ public class ActivityLog {
 	@Column(name = "target_id", nullable = false, columnDefinition = "CHAR(36)")
 	private UUID subjectId;
 
+	@Column(name = "target_path", length = 500)
+	private String targetPath;
+
 	@CreatedDate
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private LocalDateTime createdAt;
