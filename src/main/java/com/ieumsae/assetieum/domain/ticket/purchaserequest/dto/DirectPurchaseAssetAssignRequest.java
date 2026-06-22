@@ -24,4 +24,5 @@ public class DirectPurchaseAssetAssignRequest {
 
 	@Size(max = 100)
 	private String provider;
+
 }
