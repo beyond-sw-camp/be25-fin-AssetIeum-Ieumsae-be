@@ -11,22 +11,21 @@ CREATE TABLE `hr_event_asset_targets`
     `action_type`              VARCHAR(50)  NOT NULL,
     `target_status`            VARCHAR(50)  NOT NULL DEFAULT 'PENDING',
     `processed_at`             DATETIME     NULL,
-    `description`              VARCHAR(500) NULL,
     `created_at`               DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at`               DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT `PK_hr_event_asset_targets`
         PRIMARY KEY (`hr_event_asset_target_id`),
-    CONSTRAINT `FK_hr_event_asset_targets_company_id_companies`
+    CONSTRAINT `FK_hr_evt_asset_targets_company`
         FOREIGN KEY (`company_id`) REFERENCES `companies` (`company_id`),
-    CONSTRAINT `FK_hr_event_asset_targets_hr_event_id_hr_events`
+    CONSTRAINT `FK_hr_evt_asset_targets_event`
         FOREIGN KEY (`hr_event_id`) REFERENCES `hr_events` (`hr_event_id`),
-    CONSTRAINT `FK_hr_event_asset_targets_member_id_members`
+    CONSTRAINT `FK_hr_evt_asset_targets_member`
         FOREIGN KEY (`member_id`) REFERENCES `members` (`member_id`),
-    CONSTRAINT `FK_hr_event_asset_targets_tangible_asset_id_tangible_assets`
+    CONSTRAINT `FK_hr_evt_asset_targets_tangible`
         FOREIGN KEY (`tangible_asset_id`) REFERENCES `tangible_assets` (`tangible_asset_id`),
-    CONSTRAINT `FK_hr_event_asset_targets_intangible_asset_id_intangible_assets`
+    CONSTRAINT `FK_hr_evt_asset_targets_intangible`
         FOREIGN KEY (`intangible_asset_id`) REFERENCES `intangible_assets` (`intangible_asset_id`),
-    CONSTRAINT `FK_hr_event_asset_targets_intangible_assignment_id_intangible_asset_assignments`
+    CONSTRAINT `FK_hr_evt_asset_targets_int_assign`
         FOREIGN KEY (`intangible_assignment_id`)
             REFERENCES `intangible_asset_assignments` (`intangible_asset_assignment_id`),
     CONSTRAINT `CK_hr_event_asset_targets_asset_type_1`
@@ -43,14 +42,14 @@ CREATE TABLE `hr_event_asset_targets`
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci;
 
-CREATE UNIQUE INDEX `UK_hr_event_asset_targets_tangible`
+CREATE UNIQUE INDEX `UK_hr_evt_asset_targets_tangible`
     ON `hr_event_asset_targets` (`hr_event_id`, `tangible_asset_id`);
 
-CREATE UNIQUE INDEX `UK_hr_event_asset_targets_intangible`
+CREATE UNIQUE INDEX `UK_hr_evt_asset_targets_intangible`
     ON `hr_event_asset_targets` (`hr_event_id`, `intangible_asset_id`, `intangible_assignment_id`);
 
-CREATE INDEX `IDX_hr_event_asset_targets_event_status`
+CREATE INDEX `IDX_hr_evt_asset_targets_event_status`
     ON `hr_event_asset_targets` (`hr_event_id`, `target_status`);
 
-CREATE INDEX `IDX_hr_event_asset_targets_member`
+CREATE INDEX `IDX_hr_evt_asset_targets_member`
     ON `hr_event_asset_targets` (`member_id`);
