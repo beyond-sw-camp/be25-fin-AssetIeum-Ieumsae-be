@@ -1,5 +1,8 @@
 package com.ieumsae.assetieum.domain.ticket.purchaserequest.dto;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.type.BillingCycle;
 import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
@@ -11,6 +14,7 @@ import com.ieumsae.assetieum.domain.ticket.purchaserequest.entity.PurchaseReques
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.type.ConfirmationStatus;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 import lombok.Builder;
 import lombok.Getter;
@@ -18,6 +22,10 @@ import lombok.Getter;
 @Getter
 @Builder
 public class DirectPurchaseResultCreateResponse {
+
+	private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+	private static final TypeReference<List<String>> STRING_LIST_TYPE = new TypeReference<>() {
+	};
 
 	private final UUID ticketId;
 	private final String ticketNo;
@@ -29,10 +37,12 @@ public class DirectPurchaseResultCreateResponse {
 	private final LocalDateTime purchaseDate;
 	private final String purchaseVendor;
 	private final String serialNumber;
+	private final List<String> serialNumbers;
 	private final String location;
 	@JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
 	private final LocalDateTime warrantyExpiredAt;
 	private final String licenseCode;
+	private final List<String> licenseCodes;
 	private final Integer seatCount;
 	private final Boolean isAutoRenewal;
 	@JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
@@ -60,6 +70,8 @@ public class DirectPurchaseResultCreateResponse {
 		BigDecimal diff = (expectedTotal != null && result.getActualPrice() != null)
 			? result.getActualPrice().subtract(expectedTotal)
 			: null;
+		List<String> serialNumbers = parseStoredValues(result.getSerialNumber());
+		List<String> licenseCodes = parseStoredValues(result.getLicenseCode());
 
 		return DirectPurchaseResultCreateResponse.builder()
 			.ticketId(ticket.getId())
@@ -70,10 +82,12 @@ public class DirectPurchaseResultCreateResponse {
 			.actualPrice(result.getActualPrice())
 			.purchaseDate(result.getPurchaseDate())
 			.purchaseVendor(result.getPurchaseVendor())
-			.serialNumber(result.getSerialNumber())
+			.serialNumber(firstValue(serialNumbers))
+			.serialNumbers(serialNumbers)
 			.location(result.getLocation())
 			.warrantyExpiredAt(result.getWarrantyExpiredAt())
-			.licenseCode(result.getLicenseCode())
+			.licenseCode(firstValue(licenseCodes))
+			.licenseCodes(licenseCodes)
 			.seatCount(result.getSeatCount())
 			.isAutoRenewal(result.getIsAutoRenewal())
 			.startedAt(result.getStartedAt())
@@ -85,5 +99,27 @@ public class DirectPurchaseResultCreateResponse {
 			.proofFileUploadedAt(result.getProofFileUploadedAt())
 			.confirmationStatus(result.getConfirmationStatus())
 			.build();
+	}
+
+	private static String firstValue(List<String> values) {
+		return values.isEmpty() ? null : values.get(0);
+	}
+
+	private static List<String> parseStoredValues(String storedValue) {
+		if (storedValue == null || storedValue.isBlank()) {
+			return List.of();
+		}
+		String normalized = storedValue.trim();
+		if (!normalized.startsWith("[")) {
+			return List.of(normalized);
+		}
+		try {
+			return OBJECT_MAPPER.readValue(normalized, STRING_LIST_TYPE).stream()
+				.filter(value -> value != null && !value.isBlank())
+				.map(String::trim)
+				.toList();
+		} catch (JsonProcessingException e) {
+			return List.of(normalized);
+		}
 	}
 }

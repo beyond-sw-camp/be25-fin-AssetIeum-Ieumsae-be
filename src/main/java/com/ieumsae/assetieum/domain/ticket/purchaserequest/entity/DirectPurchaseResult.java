@@ -62,7 +62,7 @@ public class DirectPurchaseResult extends BaseEntity {
 	@Column(name = "purchase_vendor", nullable = false, length = 150)
 	private String purchaseVendor;
 
-	@Column(name = "serial_number", length = 100)
+	@Column(name = "serial_number", columnDefinition = "TEXT")
 	private String serialNumber;
 
 	@Column(name = "location", length = 150)
@@ -71,7 +71,7 @@ public class DirectPurchaseResult extends BaseEntity {
 	@Column(name = "warranty_expired_at")
 	private LocalDateTime warrantyExpiredAt;
 
-	@Column(name = "license_code", length = 50)
+	@Column(name = "license_code", columnDefinition = "TEXT")
 	private String licenseCode;
 
 	@Column(name = "seat_count")

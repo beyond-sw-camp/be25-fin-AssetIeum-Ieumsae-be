@@ -8,6 +8,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -32,6 +33,8 @@ public class DirectPurchaseResultCreateRequest {
 	@Size(max = 100, message = "시리얼번호는 100자 이하여야 합니다.")
 	private String serialNumber;
 
+	private List<@Size(max = 100) String> serialNumbers;
+
 	@Size(max = 150, message = "위치는 150자 이하여야 합니다.")
 	private String location;
 
@@ -40,6 +43,8 @@ public class DirectPurchaseResultCreateRequest {
 
 	@Size(max = 50, message = "라이선스코드는 50자 이하여야 합니다.")
 	private String licenseCode;
+
+	private List<@Size(max = 50) String> licenseCodes;
 
 	private Integer seatCount;
 
