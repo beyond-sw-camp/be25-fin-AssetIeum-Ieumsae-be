@@ -87,4 +87,12 @@ public class Inspection extends BaseEntity {
     public void start() {
         this.inspectionStatus = InspectionStatus.IN_PROGRESS;
     }
+
+    public void complete() {
+        this.inspectionStatus = InspectionStatus.COMPLETED;
+    }
+
+    public void close() {
+        this.inspectionStatus = InspectionStatus.CLOSED;
+    }
 }

@@ -1,6 +1,7 @@
 package com.ieumsae.assetieum.domain.inspection.followup.repository;
 
 import com.ieumsae.assetieum.domain.inspection.followup.entity.InspectionFollowUp;
+import com.ieumsae.assetieum.domain.inspection.followup.type.InspectionFollowUpStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -12,4 +13,10 @@ public interface InspectionFollowUpRepository extends JpaRepository<InspectionFo
     List<InspectionFollowUp> findAllByInspectionResult_IdInAndCompany_Id(List<UUID> inspectionResultIds, UUID companyId);
 
     Optional<InspectionFollowUp> findByInspectionResult_IdAndCompany_Id(UUID inspectionResultId, UUID companyId);
+
+    boolean existsByInspectionResult_Inspection_IdAndCompany_IdAndInspectionFollowUpStatusNot(
+            UUID inspectionId,
+            UUID companyId,
+            InspectionFollowUpStatus status
+    );
 }

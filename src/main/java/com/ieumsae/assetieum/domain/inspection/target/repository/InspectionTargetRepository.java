@@ -14,6 +14,8 @@ public interface InspectionTargetRepository
 
     Optional<InspectionTarget> findByIdAndCompany_Id(UUID targetId, UUID companyId);
 
+    boolean existsByInspection_IdAndCompany_IdAndIsRespondedFalse(UUID inspectionId, UUID companyId);
+
     @Query("""
             select target
             from InspectionTarget target
