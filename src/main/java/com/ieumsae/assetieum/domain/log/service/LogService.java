@@ -65,7 +65,20 @@ public class LogService {
 		String detail
 	) {
 		Member actor = findMember(authenticatedMember.id(), authenticatedMember.companyId());
-		recordAuditLog(actor, action, subjectType, subjectId, detail);
+		recordAuditLog(actor, action, subjectType, subjectId, null, detail);
+	}
+
+	@Transactional
+	public void recordAuditLog(
+		AuthenticatedMember authenticatedMember,
+		AuditLogAction action,
+		LogSubjectType subjectType,
+		UUID subjectId,
+		String targetPath,
+		String detail
+	) {
+		Member actor = findMember(authenticatedMember.id(), authenticatedMember.companyId());
+		recordAuditLog(actor, action, subjectType, subjectId, targetPath, detail);
 	}
 
 	@Transactional
@@ -76,12 +89,25 @@ public class LogService {
 		UUID subjectId,
 		String detail
 	) {
+		recordAuditLog(actor, action, subjectType, subjectId, null, detail);
+	}
+
+	@Transactional
+	public void recordAuditLog(
+		Member actor,
+		AuditLogAction action,
+		LogSubjectType subjectType,
+		UUID subjectId,
+		String targetPath,
+		String detail
+	) {
 		auditLogRepository.save(AuditLog.builder()
 			.company(actor.getCompany())
 			.member(actor)
 			.action(action)
 			.subjectType(subjectType)
 			.subjectId(resolveSubjectId(subjectId))
+			.targetPath(normalizeTargetPath(targetPath))
 			.beforeValue("-")
 			.afterValue(normalizeDetail(detail))
 			.build());
@@ -96,7 +122,20 @@ public class LogService {
 		String detail
 	) {
 		Member actor = findMember(authenticatedMember.id(), authenticatedMember.companyId());
-		recordActivityLog(actor, action, subjectType, subjectId, detail);
+		recordActivityLog(actor, action, subjectType, subjectId, null, detail);
+	}
+
+	@Transactional
+	public void recordActivityLog(
+		AuthenticatedMember authenticatedMember,
+		ActivityLogAction action,
+		LogSubjectType subjectType,
+		UUID subjectId,
+		String targetPath,
+		String detail
+	) {
+		Member actor = findMember(authenticatedMember.id(), authenticatedMember.companyId());
+		recordActivityLog(actor, action, subjectType, subjectId, targetPath, detail);
 	}
 
 	@Transactional
@@ -107,12 +146,25 @@ public class LogService {
 		UUID subjectId,
 		String detail
 	) {
+		recordActivityLog(actor, action, subjectType, subjectId, null, detail);
+	}
+
+	@Transactional
+	public void recordActivityLog(
+		Member actor,
+		ActivityLogAction action,
+		LogSubjectType subjectType,
+		UUID subjectId,
+		String targetPath,
+		String detail
+	) {
 		activityLogRepository.save(ActivityLog.builder()
 			.company(actor.getCompany())
 			.member(actor)
 			.action(action)
 			.subjectType(subjectType)
 			.subjectId(resolveSubjectId(subjectId))
+			.targetPath(normalizeTargetPath(targetPath))
 			.build());
 	}
 
@@ -200,6 +252,13 @@ public class LogService {
 			return "-";
 		}
 		return detail.trim();
+	}
+
+	private String normalizeTargetPath(String targetPath) {
+		if (!StringUtils.hasText(targetPath)) {
+			return null;
+		}
+		return targetPath.trim();
 	}
 
 	private UUID resolveSubjectId(UUID subjectId) {
