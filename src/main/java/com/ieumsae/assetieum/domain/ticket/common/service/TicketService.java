@@ -166,6 +166,21 @@ public class TicketService {
 	}
 
 	@Transactional
+	public void approveDepartmentForHrEvent(
+		UUID companyId,
+		UUID ticketId
+	) {
+		Ticket ticket = findActiveTicket(ticketId, companyId);
+		validateTicketStatus(ticket, TicketStatus.REQUESTED, "HR 이벤트로 생성된 요청 상태의 티켓만 부서장 승인 처리할 수 있습니다.");
+
+		reserveRentalAssetIfNeeded(ticket, companyId);
+		budgetExecutionService.holdForAssetRequest(ticket, companyId);
+		budgetExecutionService.holdForPurchaseRequest(ticket, companyId);
+		ticket.approveDepartment(LocalDateTime.now());
+
+	}
+
+	@Transactional
 	public DepartmentApprovalResponse rejectDepartment(
 		AuthenticatedMember authenticatedMember,
 		UUID ticketId,
