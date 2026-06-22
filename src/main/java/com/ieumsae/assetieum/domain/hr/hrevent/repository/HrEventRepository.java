@@ -3,6 +3,7 @@ package com.ieumsae.assetieum.domain.hr.hrevent.repository;
 import com.ieumsae.assetieum.domain.hr.hrevent.entity.HrEvent;
 import com.ieumsae.assetieum.domain.hr.hrevent.type.HrEventStatus;
 import com.ieumsae.assetieum.domain.hr.hrevent.type.HrEventType;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -17,5 +18,11 @@ public interface HrEventRepository extends JpaRepository<HrEvent, UUID>, HrEvent
             UUID memberId,
             HrEventType eventType,
             List<HrEventStatus> statuses
+    );
+
+    List<HrEvent> findAllByHrEventStatusAndEventDateGreaterThanEqualAndEventDateLessThanAndCancelledAtIsNullOrderByEventDateAsc(
+            HrEventStatus status,
+            LocalDateTime startInclusive,
+            LocalDateTime endExclusive
     );
 }
