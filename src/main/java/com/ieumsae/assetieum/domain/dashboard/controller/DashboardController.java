@@ -4,8 +4,12 @@ import com.ieumsae.assetieum.domain.dashboard.dto.AssetDemandResponse;
 import com.ieumsae.assetieum.domain.dashboard.dto.BudgetLedgerResponse;
 import com.ieumsae.assetieum.domain.dashboard.dto.BudgetLedgerSearchRequest;
 import com.ieumsae.assetieum.domain.dashboard.dto.BudgetOverviewResponse;
+import com.ieumsae.assetieum.domain.dashboard.dto.ExpiringAssetDetailResponse;
+import com.ieumsae.assetieum.domain.dashboard.dto.ExpiringAssetDetailSearchRequest;
 import com.ieumsae.assetieum.domain.dashboard.dto.ExpiringAssetSummaryResponse;
 import com.ieumsae.assetieum.domain.dashboard.dto.LifecycleEventResponse;
+import com.ieumsae.assetieum.domain.dashboard.dto.OwnedAssetDetailResponse;
+import com.ieumsae.assetieum.domain.dashboard.dto.OwnedAssetDetailSearchRequest;
 import com.ieumsae.assetieum.domain.dashboard.dto.OwnedAssetSummaryResponse;
 import com.ieumsae.assetieum.domain.dashboard.dto.TicketProgressSummaryResponse;
 import com.ieumsae.assetieum.domain.dashboard.service.DashboardService;
@@ -59,6 +63,23 @@ public class DashboardController {
 	}
 
 	@PreAuthorize("hasAnyRole('EMPLOYEE', 'ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN', 'DEPARTMENT_MANAGER')")
+	@GetMapping("/owned-assets/details")
+	public ApiResponse<PaginationResponse<OwnedAssetDetailResponse>> getOwnedAssetDetails(
+		@AuthenticationPrincipal AuthenticatedMember authenticatedMember,
+		@Valid @ModelAttribute OwnedAssetDetailSearchRequest request
+	) {
+		PaginationResponse<OwnedAssetDetailResponse> response = isEmployee(authenticatedMember)
+			? dashboardService.getEmployeeOwnedAssetDetails(
+				authenticatedMember.companyId(),
+				authenticatedMember.id(),
+				request
+			)
+			: dashboardService.getOwnedAssetDetails(authenticatedMember.companyId(), request);
+
+		return ApiResponse.ok("보유자산 현황 상세 조회에 성공했습니다.", response);
+	}
+
+	@PreAuthorize("hasAnyRole('EMPLOYEE', 'ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN', 'DEPARTMENT_MANAGER')")
 	@GetMapping("/expiring-assets")
 	public ApiResponse<ExpiringAssetSummaryResponse> getExpiringAssetSummary(
 		@AuthenticationPrincipal AuthenticatedMember authenticatedMember,
@@ -69,6 +90,23 @@ public class DashboardController {
 			: dashboardService.getExpiringAssetSummary(authenticatedMember.companyId(), departmentId);
 
 		return ApiResponse.ok("만료예정 자산 현황 조회에 성공했습니다.", response);
+	}
+
+	@PreAuthorize("hasAnyRole('EMPLOYEE', 'ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN', 'DEPARTMENT_MANAGER')")
+	@GetMapping("/expiring-assets/details")
+	public ApiResponse<PaginationResponse<ExpiringAssetDetailResponse>> getExpiringAssetDetails(
+		@AuthenticationPrincipal AuthenticatedMember authenticatedMember,
+		@Valid @ModelAttribute ExpiringAssetDetailSearchRequest request
+	) {
+		PaginationResponse<ExpiringAssetDetailResponse> response = isEmployee(authenticatedMember)
+			? dashboardService.getEmployeeExpiringAssetDetails(
+				authenticatedMember.companyId(),
+				authenticatedMember.id(),
+				request
+			)
+			: dashboardService.getExpiringAssetDetails(authenticatedMember.companyId(), request);
+
+		return ApiResponse.ok("만료예정 자산 현황 상세 조회에 성공했습니다.", response);
 	}
 
 	@PreAuthorize("hasAnyRole('EMPLOYEE', 'ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN', 'DEPARTMENT_MANAGER')")
