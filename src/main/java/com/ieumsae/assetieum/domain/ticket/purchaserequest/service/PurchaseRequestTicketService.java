@@ -676,7 +676,8 @@ public class PurchaseRequestTicketService {
 		List<TicketAssignmentTarget> assignmentTargets
 	) {
 		if (assignmentTargets.isEmpty()) {
-			return createRequesterAssignees(ticket.getRequester(), quantity);
+			// 직접구매 자산도 티켓 등록 시 저장된 배정 대상자를 기준으로만 개별 할당한다.
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "배정 대상자를 1명 이상 입력해야 합니다.");
 		}
 		if (assignmentTargets.size() != quantity) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "배정 대상자 수는 요청 수량과 일치해야 합니다.");

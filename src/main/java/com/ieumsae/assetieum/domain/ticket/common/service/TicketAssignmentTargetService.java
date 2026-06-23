@@ -36,8 +36,9 @@ public class TicketAssignmentTargetService {
 		boolean allowDuplicateMembers
 	) {
 		if (memberIds == null || memberIds.isEmpty()) {
-			if (requiredCount > 1) {
-				throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "수량이 2개 이상이면 배정 대상자를 입력해야 합니다.");
+			// 개별 자산 할당 대상이 흐려지지 않도록 요청 시점에 배정 대상자를 반드시 받는다.
+			if (requiredCount >= 1) {
+				throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "배정 대상자를 1명 이상 입력해야 합니다.");
 			}
 			saveRequesterFallbackTargets(ticket, requiredCount);
 			return;

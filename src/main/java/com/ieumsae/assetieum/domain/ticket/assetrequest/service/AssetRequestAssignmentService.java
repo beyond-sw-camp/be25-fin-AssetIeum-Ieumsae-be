@@ -293,10 +293,8 @@ public class AssetRequestAssignmentService {
 				.toList();
 		}
 		if (request.getAssigneeIds() == null || request.getAssigneeIds().isEmpty()) {
-			if (assetRequestTicket.getIntangibleAssetItem() != null) {
-				throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "무형자산은 배정 대상자를 1명 이상 입력해야 합니다.");
-			}
-			return createRequesterAssignees(ticket.getRequester(), capacity);
+			// 과거 데이터나 수동 호출에서도 대상자 없는 자동 배정을 허용하지 않는다.
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "배정 대상자를 1명 이상 입력해야 합니다.");
 		}
 		if (assetRequestTicket.getRequestedUsageType() == RequestedUsageType.DEPARTMENT) {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "부서용 요청에는 개인 배정 대상자를 지정할 수 없습니다.");
