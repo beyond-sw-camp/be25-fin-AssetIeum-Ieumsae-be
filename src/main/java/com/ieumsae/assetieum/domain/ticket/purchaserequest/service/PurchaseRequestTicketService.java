@@ -526,6 +526,10 @@ public class PurchaseRequestTicketService {
 				.purchaseVendor(result.getPurchaseVendor())
 				.intangibleAssetStatus(IntangibleAssetStatus.AVAILABLE)
 				.build());
+			if (asset.getSeatCount() > 1) {
+				asset.markInUse();
+				asset.transferDepartment(ticket.getDepartment());
+			}
 
 			int assignableSeats = assignmentTargets.isEmpty() ? 1 : asset.getSeatCount();
 			int assignedSeatCount = 0;
@@ -544,6 +548,7 @@ public class PurchaseRequestTicketService {
 					asset.assignTo(targetAssignee, targetAssignee.getDepartment());
 				} else {
 					asset.markInUse();
+					asset.transferDepartment(ticket.getDepartment());
 				}
 				markAssignmentTargetAssigned(
 					assignmentTargets,
@@ -689,9 +694,6 @@ public class PurchaseRequestTicketService {
 		List<TicketAssignmentTarget> assignmentTargets
 	) {
 		if (assignmentTargets.isEmpty()) {
-			if (requestedUsageType == RequestedUsageType.DEPARTMENT) {
-				return createRequesterAssignees(ticket.getRequester(), quantity);
-			}
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "배정 대상자를 입력해야 합니다.");
 		}
 		int capacity = quantity * seatCount;
@@ -1069,7 +1071,8 @@ public class PurchaseRequestTicketService {
 				ticket,
 				assignmentTargetMemberIds,
 				requestedUsageType,
-				quantity
+				quantity,
+				true
 			);
 			return;
 		}
@@ -1078,7 +1081,8 @@ public class PurchaseRequestTicketService {
 			ticket,
 			assignmentTargetMemberIds,
 			requestedUsageType,
-			quantity * seatCount
+			quantity * seatCount,
+			false
 		);
 	}
 

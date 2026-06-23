@@ -328,12 +328,30 @@ public class PurchasePlanService {
 
         // 2. 상태 변경
         validateStatusTransition(purchasePlan.getPurchaseRequestStatus(), request.getStatus());
+        validatePurchasePlanCompletionReady(purchasePlan, request.getStatus(), companyId);
         purchasePlan.updateStatus(request.getStatus());
         syncBudgetByPurchasePlanStatus(purchasePlan, request.getStatus(), companyId);
         syncLinkedTicketStatusByPurchasePlanStatus(purchasePlan, request.getStatus(), companyId);
 
         return PurchasePlanResponse.from(purchasePlan);
 
+    }
+
+    private void validatePurchasePlanCompletionReady(
+            PurchasePlan purchasePlan,
+            PurchaseRequestStatus status,
+            UUID companyId
+    ) {
+        if (status != PurchaseRequestStatus.COMPLETED) {
+            return;
+        }
+
+        List<PurchasePlanItem> items = findPurchasePlanItems(purchasePlan.getId(), companyId);
+        boolean hasUnregisteredItem = items.stream()
+                .anyMatch(item -> item.getPurchasePlanItemStatus() != PurchasePlanItemStatus.ASSET_REGISTERED);
+        if (hasUnregisteredItem) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "모든 구매계획 항목의 자산 등록이 완료된 후 구매계획을 완료할 수 있습니다.");
+        }
     }
 
     private void syncBudgetByPurchasePlanStatus(
@@ -882,7 +900,7 @@ public class PurchasePlanService {
             PurchasePlanItemCreateTangibleAssetRequest request
     ) {
         Ticket linkedTicket = purchasePlanItem.getTicket();
-        if (linkedTicket == null || linkedTicket.getTicketType() != TicketType.ASSET_REQUEST) {
+        if (!usesTicketAssignmentTargets(linkedTicket)) {
             return normalizeMemberIds(request.getMemberIds(), purchasePlanItem.getQuantity());
         }
 
@@ -911,7 +929,7 @@ public class PurchasePlanService {
             PurchasePlanItemCreateIntangibleAssetRequest request
     ) {
         Ticket linkedTicket = purchasePlanItem.getTicket();
-        if (linkedTicket == null || linkedTicket.getTicketType() != TicketType.ASSET_REQUEST) {
+        if (!usesTicketAssignmentTargets(linkedTicket)) {
             return normalizeIntangibleMemberIds(
                     request.getMemberIds(),
                     purchasePlanItem.getQuantity(),
@@ -929,11 +947,7 @@ public class PurchasePlanService {
             return distributeAssignmentTargetsByAsset(targets, purchasePlanItem.getQuantity(), request.getSeatCount());
         }
 
-        List<List<UUID>> ticketRequesterIds = new ArrayList<>();
-        for (int i = 0; i < purchasePlanItem.getQuantity(); i++) {
-            ticketRequesterIds.add(List.of(linkedTicket.getRequester().getId()));
-        }
-        return ticketRequesterIds;
+        throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "무형자산은 배정 대상자를 1명 이상 입력해야 합니다.");
     }
 
     private List<List<UUID>> distributeAssignmentTargetsByAsset(
@@ -956,7 +970,7 @@ public class PurchasePlanService {
 
     private List<TicketAssignmentTarget> resolveLinkedAssignmentTargets(PurchasePlanItem purchasePlanItem, UUID companyId) {
         Ticket linkedTicket = purchasePlanItem.getTicket();
-        if (linkedTicket == null || linkedTicket.getTicketType() != TicketType.ASSET_REQUEST) {
+        if (!usesTicketAssignmentTargets(linkedTicket)) {
             return List.of();
         }
         return ticketAssignmentTargetService.findTargets(companyId, linkedTicket);
@@ -976,11 +990,17 @@ public class PurchasePlanService {
 
     private UUID resolveAssetDepartmentId(PurchasePlanItem purchasePlanItem, UUID requestedDepartmentId) {
         Ticket linkedTicket = purchasePlanItem.getTicket();
-        if (linkedTicket != null && linkedTicket.getTicketType() == TicketType.ASSET_REQUEST) {
-            return null;
+        if (usesTicketAssignmentTargets(linkedTicket)) {
+            return linkedTicket.getDepartment().getId();
         }
 
         return requestedDepartmentId;
+    }
+
+    private boolean usesTicketAssignmentTargets(Ticket linkedTicket) {
+        return linkedTicket != null
+                && (linkedTicket.getTicketType() == TicketType.ASSET_REQUEST
+                || linkedTicket.getTicketType() == TicketType.PURCHASE_REQUEST);
     }
 
     private BigDecimal calculateActualAmount(BigDecimal purchasePrice, Integer quantity) {

@@ -32,12 +32,9 @@ public class TicketAssignmentTargetService {
 		Ticket ticket,
 		List<UUID> memberIds,
 		int requiredCount,
-		RequestedUsageType requestedUsageType
+		RequestedUsageType requestedUsageType,
+		boolean allowDuplicateMembers
 	) {
-		validateUsageTargetPolicy(memberIds, requestedUsageType);
-		if (requestedUsageType == RequestedUsageType.DEPARTMENT) {
-			return;
-		}
 		if (memberIds == null || memberIds.isEmpty()) {
 			if (requiredCount > 1) {
 				throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "수량이 2개 이상이면 배정 대상자를 입력해야 합니다.");
@@ -48,7 +45,7 @@ public class TicketAssignmentTargetService {
 		if (memberIds.size() != requiredCount) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "배정 대상자 수는 요청 수량과 일치해야 합니다.");
 		}
-		saveTargets(companyId, ticket, memberIds);
+		saveTargets(companyId, ticket, memberIds, allowDuplicateMembers);
 	}
 
 	@Transactional
@@ -58,11 +55,10 @@ public class TicketAssignmentTargetService {
 		List<UUID> memberIds,
 		RequestedUsageType requestedUsageType
 	) {
-		validateUsageTargetPolicy(memberIds, requestedUsageType);
 		if (memberIds == null || memberIds.isEmpty()) {
 			return;
 		}
-		saveTargets(companyId, ticket, memberIds);
+		saveTargets(companyId, ticket, memberIds, false);
 	}
 
 	@Transactional
@@ -72,14 +68,10 @@ public class TicketAssignmentTargetService {
 		List<UUID> memberIds,
 		RequestedUsageType requestedUsageType
 	) {
-		validateUsageTargetPolicy(memberIds, requestedUsageType);
-		if (requestedUsageType == RequestedUsageType.DEPARTMENT) {
-			return;
-		}
 		if (memberIds == null || memberIds.isEmpty()) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "배정 대상자를 입력해야 합니다.");
 		}
-		saveTargets(companyId, ticket, memberIds);
+		saveTargets(companyId, ticket, memberIds, false);
 	}
 
 	@Transactional
@@ -88,22 +80,17 @@ public class TicketAssignmentTargetService {
 		Ticket ticket,
 		List<UUID> memberIds,
 		RequestedUsageType requestedUsageType,
-		int capacity
+		int capacity,
+		boolean allowDuplicateMembers
 	) {
-		validateUsageTargetPolicy(memberIds, requestedUsageType);
-		if (requestedUsageType == RequestedUsageType.DEPARTMENT) {
-			deleteTargets(companyId, ticket);
-			return;
-		}
 		if (memberIds == null || memberIds.isEmpty()) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "배정 대상자를 입력해야 합니다.");
 		}
 		if (memberIds.size() > capacity) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "배정 대상자 수가 사용 가능한 좌석 수를 초과했습니다.");
 		}
-		validateNoDuplicateMembers(memberIds);
 		deleteTargets(companyId, ticket);
-		saveTargets(companyId, ticket, memberIds);
+		saveTargets(companyId, ticket, memberIds, allowDuplicateMembers);
 	}
 
 	@Transactional
@@ -112,22 +99,17 @@ public class TicketAssignmentTargetService {
 		Ticket ticket,
 		List<UUID> memberIds,
 		RequestedUsageType requestedUsageType,
-		int requiredCount
+		int requiredCount,
+		boolean allowDuplicateMembers
 	) {
-		validateUsageTargetPolicy(memberIds, requestedUsageType);
-		if (requestedUsageType == RequestedUsageType.DEPARTMENT) {
-			deleteTargets(companyId, ticket);
-			return;
-		}
 		if (memberIds == null || memberIds.isEmpty()) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "배정 대상자를 입력해야 합니다.");
 		}
 		if (memberIds.size() != requiredCount) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "배정 대상자 수는 요청 수량과 일치해야 합니다.");
 		}
-		validateNoDuplicateMembers(memberIds);
 		deleteTargets(companyId, ticket);
-		saveTargets(companyId, ticket, memberIds);
+		saveTargets(companyId, ticket, memberIds, allowDuplicateMembers);
 	}
 
 	@Transactional(readOnly = true)
@@ -166,8 +148,10 @@ public class TicketAssignmentTargetService {
 		target.markAssigned(assetType, assetId, assignedAt);
 	}
 
-	private void saveTargets(UUID companyId, Ticket ticket, List<UUID> memberIds) {
-		validateNoDuplicateMembers(memberIds);
+	private void saveTargets(UUID companyId, Ticket ticket, List<UUID> memberIds, boolean allowDuplicateMembers) {
+		if (!allowDuplicateMembers) {
+			validateNoDuplicateMembers(memberIds);
+		}
 		List<TicketAssignmentTarget> targets = new ArrayList<>();
 		for (UUID memberId : memberIds) {
 			Member member = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(memberId, companyId)
@@ -183,9 +167,10 @@ public class TicketAssignmentTargetService {
 		ticketAssignmentTargetRepository.saveAll(targets);
 	}
 
-	private void validateUsageTargetPolicy(List<UUID> memberIds, RequestedUsageType requestedUsageType) {
-		if (requestedUsageType == RequestedUsageType.DEPARTMENT && memberIds != null && !memberIds.isEmpty()) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "부서용 요청에는 개인 배정 대상자를 지정할 수 없습니다.");
+	private void validateNoDuplicateMembers(List<UUID> memberIds) {
+		Set<UUID> uniqueMemberIds = new HashSet<>(memberIds);
+		if (uniqueMemberIds.size() != memberIds.size()) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "배정 대상자를 중복으로 지정할 수 없습니다.");
 		}
 	}
 
@@ -199,13 +184,6 @@ public class TicketAssignmentTargetService {
 			return;
 		}
 		ticketAssignmentTargetRepository.save(TicketAssignmentTarget.create(ticket, ticket.getRequester()));
-	}
-
-	private void validateNoDuplicateMembers(List<UUID> memberIds) {
-		Set<UUID> uniqueMemberIds = new HashSet<>(memberIds);
-		if (uniqueMemberIds.size() != memberIds.size()) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "배정 대상자를 중복으로 지정할 수 없습니다.");
-		}
 	}
 
 	private List<Member> createRequesterFallbackAssignees(Member requester, int quantity) {

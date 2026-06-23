@@ -83,7 +83,8 @@ public class AssetRequestTicketService {
 				request.getAssetItemId(),
 				companyId
 			);
-			validateNonStandardIntangibleInventory(intangibleAssetItem, request.getQuantity(), companyId);
+			validateIntangibleAssignmentTargets(request.getAssignmentTargetMemberIds());
+			validateNonStandardIntangibleInventory(intangibleAssetItem, request.getQuantity(), companyId, requester.getDepartment().getId());
 		}
 
 		Ticket ticket = ticketRepository.save(Ticket.createAssetRequest(
@@ -110,7 +111,8 @@ public class AssetRequestTicketService {
 			ticket,
 			request.getAssignmentTargetMemberIds(),
 			request.getQuantity(),
-			requestedUsageType
+			requestedUsageType,
+			request.getAssetType() == AssetType.TANGIBLE
 		);
 
 		return AssetRequestTicketCreateResponse.from(
@@ -229,17 +231,23 @@ public class AssetRequestTicketService {
 		}
 	}
 
-	private void validateNonStandardIntangibleInventory(IntangibleAssetItem item, int quantity, UUID companyId) {
+	private void validateIntangibleAssignmentTargets(List<UUID> assignmentTargetMemberIds) {
+		if (assignmentTargetMemberIds == null || assignmentTargetMemberIds.isEmpty()) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "무형자산은 배정 대상자를 1명 이상 입력해야 합니다.");
+		}
+	}
+
+	private void validateNonStandardIntangibleInventory(IntangibleAssetItem item, int quantity, UUID companyId, UUID requesterDepartmentId) {
 		if (Boolean.TRUE.equals(item.getIsStandard())) {
 			return;
 		}
 
-		if (getAvailableIntangibleSeatCount(companyId, item.getId()) < quantity) {
+		if (getAvailableIntangibleSeatCount(companyId, item.getId(), requesterDepartmentId) < quantity) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "비표준 무형자산 요청은 재고 좌석이 충분한 품목만 요청할 수 있습니다.");
 		}
 	}
 
-	private int getAvailableIntangibleSeatCount(UUID companyId, UUID itemId) {
+	private int getAvailableIntangibleSeatCount(UUID companyId, UUID itemId, UUID requesterDepartmentId) {
 		List<IntangibleAsset> assets = intangibleAssetRepository.findAllByCompany_IdAndIntangibleAssetItem_IdAndIntangibleAssetStatusIn(
 			companyId,
 			itemId,
@@ -248,6 +256,10 @@ public class AssetRequestTicketService {
 
 		int availableSeatCount = 0;
 		for (IntangibleAsset asset : assets) {
+			if (asset.getDepartment() != null
+				&& !asset.getDepartment().getId().equals(requesterDepartmentId)) {
+				continue;
+			}
 			long activeAssignmentCount = intangibleAssetAssignmentRepository
 				.countByCompany_IdAndIntangibleAsset_IdAndAssignmentStatus(
 					companyId,
