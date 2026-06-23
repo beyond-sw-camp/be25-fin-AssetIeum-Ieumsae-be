@@ -9,6 +9,7 @@ import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -57,4 +58,6 @@ public class DirectPurchaseResultCreateRequest {
 	private LocalDateTime expiredAt;
 
 	private BillingCycle billingCycle;
+
+	private List<UUID> assignmentTargetMemberIds;
 }

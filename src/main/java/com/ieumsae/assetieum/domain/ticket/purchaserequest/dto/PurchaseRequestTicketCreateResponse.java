@@ -48,7 +48,7 @@ public class PurchaseRequestTicketCreateResponse {
 			.ticketType(ticket.getTicketType())
 			.ticketStatus(ticket.getTicketStatus())
 			.purchaseRequestStatus(purchaseRequestTicket.getStatus())
-			.requestedUsageType(purchaseRequestTicket.getRequestedUsageType())
+			.requestedUsageType(assetType == AssetType.INTANGIBLE ? null : purchaseRequestTicket.getRequestedUsageType())
 			.requestMethod(purchaseRequestTicket.getRequestMethod())
 			.assetType(assetType)
 			.isStandard(purchaseRequestTicket.getIsStandard())

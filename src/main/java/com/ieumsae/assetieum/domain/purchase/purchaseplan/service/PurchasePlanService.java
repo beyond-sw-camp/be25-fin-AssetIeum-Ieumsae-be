@@ -37,6 +37,7 @@ import com.ieumsae.assetieum.domain.purchase.purchaseplanitem.dto.PurchasePlanIt
 import com.ieumsae.assetieum.domain.purchase.purchaseplanitem.dto.PurchasePlanItemResponse;
 import com.ieumsae.assetieum.domain.purchase.purchaseplanitem.repository.PurchasePlanItemRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.dto.TangibleAssetCreateRequest;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.dto.TangibleAssetResponse;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.service.TangibleAssetService;
 import com.ieumsae.assetieum.domain.tangibleasset.category.entity.TangibleAssetCategory;
 import com.ieumsae.assetieum.domain.tangibleasset.category.repository.TangibleAssetCategoryRepository;
@@ -47,7 +48,9 @@ import com.ieumsae.assetieum.domain.tangibleasset.item.service.TangibleAssetItem
 import com.ieumsae.assetieum.domain.ticket.assetrequest.repository.AssetRequestTicketRepository;
 import com.ieumsae.assetieum.domain.ticket.assetrequest.entity.AssetRequestTicket;
 import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
+import com.ieumsae.assetieum.domain.ticket.common.entity.TicketAssignmentTarget;
 import com.ieumsae.assetieum.domain.ticket.common.repository.TicketRepository;
+import com.ieumsae.assetieum.domain.ticket.common.service.TicketAssignmentTargetService;
 import com.ieumsae.assetieum.domain.ticket.common.type.AssetType;
 import com.ieumsae.assetieum.domain.ticket.common.type.RequestMethod;
 import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
@@ -97,6 +100,7 @@ public class PurchasePlanService {
     private final TangibleAssetService tangibleAssetService;
     private final IntangibleAssetService intangibleAssetService;
     private final IntangibleAssetAssignmentService intangibleAssetAssignmentService;
+    private final TicketAssignmentTargetService ticketAssignmentTargetService;
     private final BudgetExecutionService budgetExecutionService;
 
     @Transactional
@@ -669,10 +673,11 @@ public class PurchasePlanService {
 
         TangibleAssetItem item = resolveTangibleItemForAssetCreation(purchasePlanItem);
         List<UUID> memberIds = resolveTangibleAssetMemberIds(purchasePlanItem, request);
+        List<TicketAssignmentTarget> assignmentTargets = resolveLinkedAssignmentTargets(purchasePlanItem, companyId);
         UUID departmentId = resolveAssetDepartmentId(purchasePlanItem, request.getDepartmentId());
 
         for (int i = 0; i < purchasePlanItem.getQuantity(); i++) {
-            tangibleAssetService.createAsset(TangibleAssetCreateRequest.builder()
+            TangibleAssetResponse asset = tangibleAssetService.createAsset(TangibleAssetCreateRequest.builder()
                     .tangibleItemId(item.getId())
                     .serialNumber(request.getSerialNumbers().get(i).trim())
                     .usageType(request.getUsageType())
@@ -687,6 +692,12 @@ public class PurchasePlanService {
                     .purchaseVendor(request.getPurchaseVendor())
                     .warrantyExpiredAt(request.getWarrantyExpiredAt())
                     .build(), companyId);
+            markLinkedAssignmentTargetAssigned(
+                    assignmentTargets,
+                    i,
+                    AssetType.TANGIBLE,
+                    asset.getTangibleAssetId()
+            );
         }
 
         purchasePlanItem.markAssetRegistered(request.getPurchasePrice());
@@ -711,7 +722,9 @@ public class PurchasePlanService {
 
         List<String> licenseCodes = normalizeLicenseCodes(request, purchasePlanItem.getQuantity());
         List<List<UUID>> memberIdsByAsset = resolveIntangibleAssetMemberIds(purchasePlanItem, request);
+        List<TicketAssignmentTarget> assignmentTargets = resolveLinkedAssignmentTargets(purchasePlanItem, companyId);
         UUID departmentId = resolveAssetDepartmentId(purchasePlanItem, request.getDepartmentId());
+        int assignmentTargetIndex = 0;
         for (int i = 0; i < purchasePlanItem.getQuantity(); i++) {
             IntangibleAssetResponse asset = intangibleAssetService.createAsset(IntangibleAssetCreateRequest.builder()
                     .intangibleItemId(item.getId())
@@ -729,6 +742,15 @@ public class PurchasePlanService {
                     .build(), companyId);
 
             assignAdditionalIntangibleAssetMembers(asset.getIntangibleAssetId(), memberIdsByAsset.get(i), request, companyId);
+            for (int j = 0; j < memberIdsByAsset.get(i).size() && assignmentTargetIndex < assignmentTargets.size(); j++) {
+                markLinkedAssignmentTargetAssigned(
+                        assignmentTargets,
+                        assignmentTargetIndex,
+                        AssetType.INTANGIBLE,
+                        asset.getIntangibleAssetId()
+                );
+                assignmentTargetIndex++;
+            }
         }
 
         purchasePlanItem.markAssetRegistered(request.getPurchasePrice());
@@ -790,13 +812,18 @@ public class PurchasePlanService {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "품목 수량만큼만 자산을 등록할 수 있습니다.");
         }
 
+        long providedLicenseCodeCount = request.getLicenseCodes().stream()
+                .filter(StringUtils::hasText)
+                .map(String::trim)
+                .count();
+
         long distinctLicenseCodeCount = request.getLicenseCodes().stream()
                 .filter(StringUtils::hasText)
                 .map(String::trim)
                 .distinct()
                 .count();
 
-        if (distinctLicenseCodeCount != purchasePlanItem.getQuantity()) {
+        if (distinctLicenseCodeCount != providedLicenseCodeCount) {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
         }
     }
@@ -830,7 +857,7 @@ public class PurchasePlanService {
         }
 
         return request.getLicenseCodes().stream()
-                .map(String::trim)
+                .map(value -> StringUtils.hasText(value) ? value.trim() : null)
                 .toList();
     }
 
@@ -859,6 +886,19 @@ public class PurchasePlanService {
             return normalizeMemberIds(request.getMemberIds(), purchasePlanItem.getQuantity());
         }
 
+        List<TicketAssignmentTarget> targets = ticketAssignmentTargetService.findTargets(
+                purchasePlanItem.getCompany().getId(),
+                linkedTicket
+        );
+        if (!targets.isEmpty()) {
+            if (targets.size() != purchasePlanItem.getQuantity()) {
+                throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "배정 대상자 수는 요청 수량과 일치해야 합니다.");
+            }
+            return targets.stream()
+                    .map(target -> target.getMember().getId())
+                    .toList();
+        }
+
         List<UUID> ticketRequesterIds = new ArrayList<>();
         for (int i = 0; i < purchasePlanItem.getQuantity(); i++) {
             ticketRequesterIds.add(linkedTicket.getRequester().getId());
@@ -879,6 +919,16 @@ public class PurchasePlanService {
             );
         }
 
+        List<TicketAssignmentTarget> targets = ticketAssignmentTargetService.findTargets(
+                purchasePlanItem.getCompany().getId(),
+                linkedTicket
+        );
+        if (!targets.isEmpty()) {
+            int capacity = purchasePlanItem.getQuantity() * request.getSeatCount();
+            ticketAssignmentTargetService.validateCapacity(targets, capacity);
+            return distributeAssignmentTargetsByAsset(targets, purchasePlanItem.getQuantity(), request.getSeatCount());
+        }
+
         List<List<UUID>> ticketRequesterIds = new ArrayList<>();
         for (int i = 0; i < purchasePlanItem.getQuantity(); i++) {
             ticketRequesterIds.add(List.of(linkedTicket.getRequester().getId()));
@@ -886,10 +936,48 @@ public class PurchasePlanService {
         return ticketRequesterIds;
     }
 
+    private List<List<UUID>> distributeAssignmentTargetsByAsset(
+            List<TicketAssignmentTarget> targets,
+            int quantity,
+            int seatCount
+    ) {
+        List<List<UUID>> memberIdsByAsset = new ArrayList<>();
+        int targetIndex = 0;
+        for (int i = 0; i < quantity; i++) {
+            List<UUID> memberIds = new ArrayList<>();
+            for (int seat = 0; seat < seatCount && targetIndex < targets.size(); seat++) {
+                memberIds.add(targets.get(targetIndex).getMember().getId());
+                targetIndex++;
+            }
+            memberIdsByAsset.add(memberIds);
+        }
+        return memberIdsByAsset;
+    }
+
+    private List<TicketAssignmentTarget> resolveLinkedAssignmentTargets(PurchasePlanItem purchasePlanItem, UUID companyId) {
+        Ticket linkedTicket = purchasePlanItem.getTicket();
+        if (linkedTicket == null || linkedTicket.getTicketType() != TicketType.ASSET_REQUEST) {
+            return List.of();
+        }
+        return ticketAssignmentTargetService.findTargets(companyId, linkedTicket);
+    }
+
+    private void markLinkedAssignmentTargetAssigned(
+            List<TicketAssignmentTarget> targets,
+            int index,
+            AssetType assetType,
+            UUID assetId
+    ) {
+        if (targets.isEmpty()) {
+            return;
+        }
+        ticketAssignmentTargetService.markAssigned(targets.get(index), assetType, assetId, java.time.LocalDateTime.now());
+    }
+
     private UUID resolveAssetDepartmentId(PurchasePlanItem purchasePlanItem, UUID requestedDepartmentId) {
         Ticket linkedTicket = purchasePlanItem.getTicket();
         if (linkedTicket != null && linkedTicket.getTicketType() == TicketType.ASSET_REQUEST) {
-            return linkedTicket.getDepartment().getId();
+            return null;
         }
 
         return requestedDepartmentId;

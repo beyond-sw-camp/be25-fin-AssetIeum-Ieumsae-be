@@ -9,6 +9,7 @@ import com.ieumsae.assetieum.domain.tangibleasset.category.entity.TangibleAssetC
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
 import com.ieumsae.assetieum.domain.ticket.assetrequest.entity.AssetRequestTicket;
 import com.ieumsae.assetieum.domain.ticket.assetrequest.type.AssetRequestTicketStatus;
+import com.ieumsae.assetieum.domain.ticket.common.dto.TicketAssignmentTargetResponse;
 import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
 import com.ieumsae.assetieum.domain.ticket.common.type.AssetType;
 import com.ieumsae.assetieum.domain.ticket.common.type.RequestedUsageType;
@@ -56,6 +57,7 @@ public class AssetRequestTicketDetailResponse {
 	private final CategorySummary assetCategory;
 	private final ItemSummary assetItem;
 	private final int quantity;
+	private final List<TicketAssignmentTargetResponse> assignmentTargets;
 	private final MemberRole viewerRole;
 	private final ViewOptions viewOptions;
 	private final Actions actions;
@@ -66,6 +68,7 @@ public class AssetRequestTicketDetailResponse {
 		AssetRequestTicket assetRequestTicket,
 		MemberRole viewerRole,
 		boolean requesterView,
+		List<TicketAssignmentTargetResponse> assignmentTargets,
 		Actions actions
 	) {
 		AssetType assetType = resolveAssetType(assetRequestTicket);
@@ -89,11 +92,12 @@ public class AssetRequestTicketDetailResponse {
 			.assetRegisteredAt(null)
 			.processedAt(ticket.getUpdatedAt())
 			.completedAt(ticket.getCompletedAt())
-			.requestedUsageType(assetRequestTicket.getRequestedUsageType())
+			.requestedUsageType(resolveRequestedUsageType(assetRequestTicket))
 			.assetType(assetType)
 			.assetCategory(CategorySummary.from(assetRequestTicket))
 			.assetItem(ItemSummary.from(assetRequestTicket))
 			.quantity(assetRequestTicket.getQuantity())
+			.assignmentTargets(assignmentTargets)
 			.viewerRole(viewerRole)
 			.viewOptions(ViewOptions.from(requesterView))
 			.actions(actions)
@@ -106,6 +110,13 @@ public class AssetRequestTicketDetailResponse {
 			return AssetType.TANGIBLE;
 		}
 		return AssetType.INTANGIBLE;
+	}
+
+	private static RequestedUsageType resolveRequestedUsageType(AssetRequestTicket ticket) {
+		if (resolveAssetType(ticket) == AssetType.INTANGIBLE) {
+			return null;
+		}
+		return ticket.getRequestedUsageType();
 	}
 
 	private static LocalDateTime resolveDepartmentProcessedAt(Ticket ticket) {

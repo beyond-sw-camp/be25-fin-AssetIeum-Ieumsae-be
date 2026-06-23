@@ -55,5 +55,9 @@ public class AssetRequestAssignResponse {
 
 		private final UUID assetId;
 		private final String assetCode;
+		private final UUID assigneeId;
+		private final String assigneeName;
+		private final UUID departmentId;
+		private final String departmentName;
 	}
 }

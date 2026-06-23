@@ -37,7 +37,7 @@ public class AssetRequestTicketCreateResponse {
 			.ticketType(ticket.getTicketType())
 			.ticketStatus(ticket.getTicketStatus())
 			.assetRequestStatus(assetRequestTicket.getStatus())
-			.requestedUsageType(assetRequestTicket.getRequestedUsageType())
+			.requestedUsageType(assetType == AssetType.INTANGIBLE ? null : assetRequestTicket.getRequestedUsageType())
 			.assetType(assetType)
 			.assetItemId(assetItemId)
 			.quantity(assetRequestTicket.getQuantity())

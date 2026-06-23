@@ -20,7 +20,6 @@ import org.hibernate.validator.constraints.URL;
 @NoArgsConstructor
 public class PurchaseRequestTicketCreateRequest {
 
-	@NotNull(message = "요청 사용 유형은 필수입니다.")
 	private RequestedUsageType requestedUsageType;
 
 	@NotNull(message = "자산 유형은 필수입니다.")
@@ -52,7 +51,7 @@ public class PurchaseRequestTicketCreateRequest {
 	@DecimalMin(value = "0.00", message = "예상 금액은 0 이상이어야 합니다.")
 	private BigDecimal expectedPrice;
 
-	@NotBlank(message = "신청 사유는 필수입니다.")
-	@Size(max = 255, message = "신청 사유는 255자 이하여야 합니다.")
+	@NotBlank(message = "요청 사유는 필수입니다.")
+	@Size(max = 255, message = "요청 사유는 255자 이하여야 합니다.")
 	private String requestReason;
 }
