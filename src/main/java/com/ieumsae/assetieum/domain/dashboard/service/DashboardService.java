@@ -163,6 +163,9 @@ public class DashboardService {
 	) {
 		LocalDateTime now = LocalDateTime.now();
 		LocalDateTime limit = now.plusDays(EXPIRING_DAYS);
+		if (request.getAssetType() == null) {
+			return getAllExpiringAssetDetails(companyId, null, request.getDepartmentId(), request.getKeyword(), now, limit, request);
+		}
 		if (request.getAssetType() == AssetType.TANGIBLE) {
 			return getExpiringTangibleAssetDetails(
 				companyId,
@@ -192,6 +195,9 @@ public class DashboardService {
 	) {
 		LocalDateTime now = LocalDateTime.now();
 		LocalDateTime limit = now.plusDays(EXPIRING_DAYS);
+		if (request.getAssetType() == null) {
+			return getAllExpiringAssetDetails(companyId, memberId, null, request.getKeyword(), now, limit, request);
+		}
 		if (request.getAssetType() == AssetType.TANGIBLE) {
 			return getExpiringTangibleAssetDetails(
 				companyId,
@@ -494,11 +500,16 @@ public class DashboardService {
 			.getSingleResult();
 		List<OwnedAssetDetailResponse> content = rows.stream()
 			.map(row -> OwnedAssetDetailResponse.builder()
+				.assetType(AssetType.TANGIBLE)
 				.assetId((UUID) row[0])
 				.assetName((String) row[1])
 				.categoryName((String) row[2])
+				.categoryOrProvider((String) row[2])
 				.assetCode((String) row[3])
 				.warrantyExpiredAt((LocalDateTime) row[4])
+				.dueDate((LocalDateTime) row[4])
+				.dayCount(calculateDashboardDayCount((LocalDateTime) row[4], LocalDateTime.now()))
+				.dayStatusLabel(resolveDashboardDayStatusLabel((LocalDateTime) row[4], LocalDateTime.now()))
 				.build())
 			.toList();
 		return toPaginationResponse(content, request, total);
@@ -513,11 +524,12 @@ public class DashboardService {
 	) {
 		String keywordPattern = toKeywordPattern(normalizeKeyword(keyword));
 		List<Object[]> rows = entityManager.createQuery("""
-				select a.id, i.productName, d.id, d.name, m.id, m.name, rt.rentalStartDate, rt.requestedDueDate
+				select a.id, i.productName, a.assetCode, c.name, d.id, d.name, m.id, m.name, rt.rentalStartDate, rt.requestedDueDate
 				from RentalTicket rt
 				join rt.ticket t
 				join rt.tangibleAsset a
 				join a.tangibleAssetItem i
+				join i.tangibleAssetCategory c
 				join t.department d
 				join t.requester m
 				where rt.company.id = :companyId
@@ -542,16 +554,26 @@ public class DashboardService {
 			.getResultList();
 		Long total = countRentalScheduledAssetDetails(companyId, memberId, departmentId, keywordPattern);
 		List<OwnedAssetDetailResponse> content = rows.stream()
-			.map(row -> OwnedAssetDetailResponse.builder()
-				.assetId((UUID) row[0])
-				.assetName((String) row[1])
-				.departmentId((UUID) row[2])
-				.departmentName((String) row[3])
-				.renterId((UUID) row[4])
-				.renterName((String) row[5])
-				.usedStartedAt((LocalDateTime) row[6])
-				.returnDueDate((LocalDateTime) row[7])
-				.build())
+			.map(row -> {
+				LocalDateTime returnDueDate = (LocalDateTime) row[9];
+				return OwnedAssetDetailResponse.builder()
+					.assetType(AssetType.TANGIBLE)
+					.assetId((UUID) row[0])
+					.assetName((String) row[1])
+					.assetCode((String) row[2])
+					.categoryName((String) row[3])
+					.categoryOrProvider((String) row[3])
+					.departmentId((UUID) row[4])
+					.departmentName((String) row[5])
+					.renterId((UUID) row[6])
+					.renterName((String) row[7])
+					.usedStartedAt((LocalDateTime) row[8])
+					.returnDueDate(returnDueDate)
+					.dueDate(returnDueDate)
+					.dayCount(calculateDashboardDayCount(returnDueDate, LocalDateTime.now()))
+					.dayStatusLabel(resolveDashboardDayStatusLabel(returnDueDate, LocalDateTime.now()))
+					.build();
+			})
 			.toList();
 		return toPaginationResponse(content, request, total);
 	}
@@ -615,9 +637,10 @@ public class DashboardService {
 		LocalDateTime now = LocalDateTime.now();
 		String keywordPattern = toKeywordPattern(normalizeKeyword(keyword));
 		List<Object[]> rows = entityManager.createQuery("""
-				select a.id, i.productName, d.id, d.name, m.id, m.name, a.usedStartedAt, a.returnDueDate
+				select a.id, i.productName, a.assetCode, c.name, d.id, d.name, m.id, m.name, a.usedStartedAt, a.returnDueDate
 				from TangibleAsset a
 				join a.tangibleAssetItem i
+				join i.tangibleAssetCategory c
 				join a.department d
 				join a.member m
 				where a.company.id = :companyId
@@ -625,7 +648,10 @@ public class DashboardService {
 					and a.usageType = :usageType
 					and (:memberId is null or m.id = :memberId)
 					and (:departmentId is null or d.id = :departmentId)
-					and (:overdueOnly = false or a.returnDueDate < :now)
+					and (
+						(:overdueOnly = true and a.returnDueDate < :now)
+						or (:overdueOnly = false and (a.returnDueDate is null or a.returnDueDate >= :now))
+					)
 					and (:keyword is null
 						or lower(i.productName) like :keyword
 						or lower(a.assetCode) like :keyword
@@ -647,16 +673,23 @@ public class DashboardService {
 		Long total = countInUseTemporaryAssetDetails(companyId, memberId, departmentId, keywordPattern, overdueOnly, now);
 		List<OwnedAssetDetailResponse> content = rows.stream()
 			.map(row -> {
-				LocalDateTime returnDueDate = (LocalDateTime) row[7];
+				LocalDateTime returnDueDate = (LocalDateTime) row[9];
 				return OwnedAssetDetailResponse.builder()
+					.assetType(AssetType.TANGIBLE)
 					.assetId((UUID) row[0])
 					.assetName((String) row[1])
-					.departmentId((UUID) row[2])
-					.departmentName((String) row[3])
-					.renterId((UUID) row[4])
-					.renterName((String) row[5])
-					.usedStartedAt((LocalDateTime) row[6])
+					.assetCode((String) row[2])
+					.categoryName((String) row[3])
+					.categoryOrProvider((String) row[3])
+					.departmentId((UUID) row[4])
+					.departmentName((String) row[5])
+					.renterId((UUID) row[6])
+					.renterName((String) row[7])
+					.usedStartedAt((LocalDateTime) row[8])
 					.returnDueDate(returnDueDate)
+					.dueDate(returnDueDate)
+					.dayCount(calculateDashboardDayCount(returnDueDate, now))
+					.dayStatusLabel(resolveDashboardDayStatusLabel(returnDueDate, now))
 					.overdueDays(overdueOnly && returnDueDate != null ? ChronoUnit.DAYS.between(returnDueDate, now) : null)
 					.build();
 			})
@@ -683,7 +716,10 @@ public class DashboardService {
 					and a.usageType = :usageType
 					and (:memberId is null or m.id = :memberId)
 					and (:departmentId is null or d.id = :departmentId)
-					and (:overdueOnly = false or a.returnDueDate < :now)
+					and (
+						(:overdueOnly = true and a.returnDueDate < :now)
+						or (:overdueOnly = false and (a.returnDueDate is null or a.returnDueDate >= :now))
+					)
 					and (:keyword is null
 						or lower(i.productName) like :keyword
 						or lower(a.assetCode) like :keyword
@@ -865,6 +901,45 @@ public class DashboardService {
 			.getSingleResult();
 	}
 
+	private PaginationResponse<ExpiringAssetDetailResponse> getAllExpiringAssetDetails(
+		UUID companyId,
+		UUID memberId,
+		UUID departmentId,
+		String keyword,
+		LocalDateTime now,
+		LocalDateTime limit,
+		PaginationRequest request
+	) {
+		PaginationRequest allRequest = new PaginationRequest();
+		allRequest.setPage(0);
+		allRequest.setSize(Integer.MAX_VALUE);
+
+		List<ExpiringAssetDetailResponse> content = new ArrayList<>();
+		content.addAll(getExpiringTangibleAssetDetails(
+			companyId,
+			memberId,
+			departmentId,
+			keyword,
+			now,
+			limit,
+			allRequest
+		).getContent());
+		content.addAll(getExpiringIntangibleAssetDetails(
+			companyId,
+			memberId,
+			departmentId,
+			keyword,
+			now,
+			limit,
+			allRequest
+		).getContent());
+		content.sort(Comparator.comparing(
+			ExpiringAssetDetailResponse::getDueDate,
+			Comparator.nullsLast(Comparator.naturalOrder())
+		));
+		return toPaginationResponse(content, request);
+	}
+
 	private PaginationResponse<ExpiringAssetDetailResponse> getExpiringTangibleAssetDetails(
 		UUID companyId,
 		UUID memberId,
@@ -876,9 +951,10 @@ public class DashboardService {
 	) {
 		String keywordPattern = toKeywordPattern(normalizeKeyword(keyword));
 		List<Object[]> rows = entityManager.createQuery("""
-				select a.id, i.productName, d.id, d.name, m.id, m.name, a.warrantyExpiredAt, a.assetCode, i.manufacturer
+				select a.id, i.productName, d.id, d.name, m.id, m.name, a.warrantyExpiredAt, a.assetCode, i.manufacturer, c.name
 				from TangibleAsset a
 				join a.tangibleAssetItem i
+				join i.tangibleAssetCategory c
 				left join a.department d
 				left join a.member m
 				where a.company.id = :companyId
@@ -889,6 +965,7 @@ public class DashboardService {
 					and (:keyword is null
 						or lower(i.productName) like :keyword
 						or lower(a.assetCode) like :keyword
+						or lower(c.name) like :keyword
 						or lower(i.manufacturer) like :keyword
 						or lower(d.name) like :keyword
 						or lower(m.name) like :keyword)
@@ -918,7 +995,14 @@ public class DashboardService {
 					.userName((String) row[5])
 					.expiredAt(expiredAt)
 					.remainingDays(ChronoUnit.DAYS.between(now, expiredAt))
+					.expirationDate(expiredAt)
+					.remainingPeriodDays(calculateDashboardDayCount(expiredAt, now))
+					.remainingPeriodStatus(resolveExpirationPeriodStatus(expiredAt, now))
+					.dueDate(expiredAt)
+					.dayCount(ChronoUnit.DAYS.between(now, expiredAt))
+					.dayStatusLabel("REMAINING")
 					.assetCode((String) row[7])
+					.categoryOrProvider((String) row[9])
 					.manufacturer((String) row[8])
 					.build();
 			})
@@ -938,6 +1022,7 @@ public class DashboardService {
 				select count(a)
 				from TangibleAsset a
 				join a.tangibleAssetItem i
+				join i.tangibleAssetCategory c
 				left join a.department d
 				left join a.member m
 				where a.company.id = :companyId
@@ -948,6 +1033,7 @@ public class DashboardService {
 					and (:keyword is null
 						or lower(i.productName) like :keyword
 						or lower(a.assetCode) like :keyword
+						or lower(c.name) like :keyword
 						or lower(i.manufacturer) like :keyword
 						or lower(d.name) like :keyword
 						or lower(m.name) like :keyword)
@@ -1038,7 +1124,14 @@ public class DashboardService {
 					.userName((String) row[5])
 					.expiredAt(expiredAt)
 					.remainingDays(ChronoUnit.DAYS.between(now, expiredAt))
+					.expirationDate(expiredAt)
+					.remainingPeriodDays(calculateDashboardDayCount(expiredAt, now))
+					.remainingPeriodStatus(resolveExpirationPeriodStatus(expiredAt, now))
+					.dueDate(expiredAt)
+					.dayCount(ChronoUnit.DAYS.between(now, expiredAt))
+					.dayStatusLabel("REMAINING")
 					.assetCode((String) row[7])
+					.categoryOrProvider((String) row[8])
 					.issuer((String) row[8])
 					.build();
 			})
@@ -1866,6 +1959,34 @@ public class DashboardService {
 
 	private String toKeywordPattern(String keyword) {
 		return keyword;
+	}
+
+	private Long calculateDashboardDayCount(LocalDateTime dueDate, LocalDateTime now) {
+		if (dueDate == null) {
+			return null;
+		}
+		return Math.abs(ChronoUnit.DAYS.between(now, dueDate));
+	}
+
+	private String resolveDashboardDayStatusLabel(LocalDateTime dueDate, LocalDateTime now) {
+		if (dueDate == null) {
+			return null;
+		}
+		return dueDate.isBefore(now) ? "OVERDUE" : "REMAINING";
+	}
+
+	private String resolveExpirationPeriodStatus(LocalDateTime expirationDate, LocalDateTime now) {
+		if (expirationDate == null) {
+			return null;
+		}
+		long days = ChronoUnit.DAYS.between(now.toLocalDate(), expirationDate.toLocalDate());
+		if (days < 0) {
+			return "EXPIRED";
+		}
+		if (days == 0) {
+			return "EXPIRES_TODAY";
+		}
+		return "REMAINING";
 	}
 
 	private UUID getMemberDepartmentId(UUID companyId, UUID memberId) {
