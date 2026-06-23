@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface InspectionFollowUpRepository extends JpaRepository<InspectionFollowUp, UUID> {
+public interface InspectionFollowUpRepository extends JpaRepository<InspectionFollowUp, UUID>, InspectionFollowUpRepositoryCustom {
 
     List<InspectionFollowUp> findAllByInspectionResult_IdInAndCompany_Id(List<UUID> inspectionResultIds, UUID companyId);
 
