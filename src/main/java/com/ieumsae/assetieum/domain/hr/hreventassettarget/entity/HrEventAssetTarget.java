@@ -72,6 +72,10 @@ public class HrEventAssetTarget extends BaseEntity {
     @JoinColumn(name = "intangible_assignment_id")
     private IntangibleAssetAssignment intangibleAssetAssignment;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "transfer_member_id")
+    private Member transferMember;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "action_type", nullable = false, length = 50)
     private HrEventAssetActionType actionType;
@@ -86,5 +90,15 @@ public class HrEventAssetTarget extends BaseEntity {
 
     public void cancel() {
         this.targetStatus = HrEventAssetTargetStatus.CANCELLED;
+    }
+
+    public void complete(LocalDateTime processedAt) {
+        this.targetStatus = HrEventAssetTargetStatus.COMPLETED;
+        this.processedAt = processedAt;
+    }
+
+    public void process(LocalDateTime processedAt) {
+        this.targetStatus = HrEventAssetTargetStatus.IN_PROGRESS;
+        this.processedAt = processedAt;
     }
 }

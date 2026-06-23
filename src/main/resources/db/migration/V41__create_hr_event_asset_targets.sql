@@ -8,6 +8,7 @@ CREATE TABLE `hr_event_asset_targets`
     `tangible_asset_id`        CHAR(36)     NULL,
     `intangible_asset_id`      CHAR(36)     NULL,
     `intangible_assignment_id` CHAR(36)     NULL,
+    `transfer_member_id`       CHAR(36)     NULL,
     `action_type`              VARCHAR(50)  NOT NULL,
     `target_status`            VARCHAR(50)  NOT NULL DEFAULT 'PENDING',
     `processed_at`             DATETIME     NULL,
@@ -21,6 +22,8 @@ CREATE TABLE `hr_event_asset_targets`
         FOREIGN KEY (`hr_event_id`) REFERENCES `hr_events` (`hr_event_id`),
     CONSTRAINT `FK_hr_evt_asset_targets_member`
         FOREIGN KEY (`member_id`) REFERENCES `members` (`member_id`),
+    CONSTRAINT `FK_hr_evt_asset_targets_transfer`
+        FOREIGN KEY (`transfer_member_id`) REFERENCES `members` (`member_id`),
     CONSTRAINT `FK_hr_evt_asset_targets_tangible`
         FOREIGN KEY (`tangible_asset_id`) REFERENCES `tangible_assets` (`tangible_asset_id`),
     CONSTRAINT `FK_hr_evt_asset_targets_intangible`
@@ -37,7 +40,12 @@ CREATE TABLE `hr_event_asset_targets`
     CONSTRAINT `CK_hr_event_asset_targets_asset_xor_4`
         CHECK (((`tangible_asset_id` IS NOT NULL) + (`intangible_asset_id` IS NOT NULL)) = 1),
     CONSTRAINT `CK_hr_event_asset_targets_intangible_assignment_5`
-        CHECK (`intangible_assignment_id` IS NULL OR `intangible_asset_id` IS NOT NULL)
+        CHECK (`intangible_assignment_id` IS NULL OR `intangible_asset_id` IS NOT NULL),
+    CONSTRAINT `CK_hr_event_asset_targets_transfer_6`
+        CHECK (
+            (`action_type` = 'TRANSFER_REQUIRED' AND `transfer_member_id` IS NOT NULL)
+                OR (`action_type` <> 'TRANSFER_REQUIRED' AND `transfer_member_id` IS NULL)
+            )
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci;
@@ -53,3 +61,6 @@ CREATE INDEX `IDX_hr_evt_asset_targets_event_status`
 
 CREATE INDEX `IDX_hr_evt_asset_targets_member`
     ON `hr_event_asset_targets` (`member_id`);
+
+CREATE INDEX `IDX_hr_evt_asset_targets_transfer`
+    ON `hr_event_asset_targets` (`transfer_member_id`);

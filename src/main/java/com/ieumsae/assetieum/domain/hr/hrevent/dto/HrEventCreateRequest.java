@@ -19,6 +19,8 @@ public class HrEventCreateRequest {
     @NotNull
     private UUID memberId;
 
+    private UUID targetDepartmentId;
+
     @NotNull
     private HrEventType eventType;
 

@@ -22,4 +22,6 @@ public class HrEventAssetTargetCreateRequest {
     @NotNull
     private HrEventAssetActionType actionType;
 
+    private UUID transferMemberId;
+
 }
