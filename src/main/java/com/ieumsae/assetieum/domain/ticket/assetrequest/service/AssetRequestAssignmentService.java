@@ -73,11 +73,13 @@ public class AssetRequestAssignmentService {
 		assetRequestValidator.validateAssignable(ticket, assignee);
 		assetRequestValidator.validateAssignmentTarget(assetRequestTicket, request);
 		List<TicketAssignmentTarget> assignmentTargets = ticketAssignmentTargetService.resolveTargetsOrEmpty(companyId, ticket);
+		int capacity = assetRequestTicket.getQuantity();
+
 		List<Member> targetAssignees = resolveTargetAssignees(
 			companyId,
 			ticket,
 			assetRequestTicket,
-			assetRequestTicket.getQuantity(),
+			capacity,
 			request,
 			assignmentTargets
 		);
@@ -247,12 +249,12 @@ public class AssetRequestAssignmentService {
 		UUID companyId,
 		Ticket ticket,
 		AssetRequestTicket assetRequestTicket,
-		int quantity,
+		int capacity,
 		AssetRequestAssignRequest request,
 		List<TicketAssignmentTarget> assignmentTargets
 	) {
 		if (!assignmentTargets.isEmpty()) {
-			if (assignmentTargets.size() != quantity) {
+			if (assignmentTargets.size() != capacity) {
                 throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "배정 대상자 수는 요청 수량과 일치해야 합니다.");
 			}
 			return assignmentTargets.stream()
@@ -260,12 +262,12 @@ public class AssetRequestAssignmentService {
 				.toList();
 		}
 		if (request.getAssigneeIds() == null || request.getAssigneeIds().isEmpty()) {
-			return createRequesterAssignees(ticket.getRequester(), quantity);
+			return createRequesterAssignees(ticket.getRequester(), capacity);
 		}
 		if (assetRequestTicket.getRequestedUsageType() == RequestedUsageType.DEPARTMENT) {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "부서용 요청에는 개인 배정 대상자를 지정할 수 없습니다.");
 		}
-		if (request.getAssigneeIds().size() != quantity) {
+		if (request.getAssigneeIds().size() != capacity) {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "할당 대상자 수는 요청 수량과 일치해야 합니다.");
 		}
 		Set<UUID> uniqueAssigneeIds = new HashSet<>(request.getAssigneeIds());

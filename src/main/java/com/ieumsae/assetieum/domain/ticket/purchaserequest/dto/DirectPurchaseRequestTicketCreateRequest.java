@@ -44,6 +44,8 @@ public class DirectPurchaseRequestTicketCreateRequest {
 	@Min(value = 1, message = "수량은 1 이상이어야 합니다.")
 	private Integer quantity;
 
+	private Integer seatCount;
+
 	@NotNull(message = "예상 금액은 필수입니다.")
 	@DecimalMin(value = "0.00", message = "예상 금액은 0 이상이어야 합니다.")
 	private BigDecimal expectedPrice;

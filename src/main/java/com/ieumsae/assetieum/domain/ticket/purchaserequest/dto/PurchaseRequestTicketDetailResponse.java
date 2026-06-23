@@ -66,6 +66,7 @@ public class PurchaseRequestTicketDetailResponse {
 	private final LicenseType licenseType;
 	private final String purchaseUrl;
 	private final int quantity;
+	private final Integer seatCount;
 	private final List<TicketAssignmentTargetResponse> assignmentTargets;
 	private final BigDecimal expectedPrice;
 	private final BigDecimal expectedTotalPrice;   // 예상 합계금액 (단가 × 수량)
@@ -126,6 +127,7 @@ public class PurchaseRequestTicketDetailResponse {
 			.licenseType(purchaseRequestTicket.getLicenseType())
 			.purchaseUrl(purchaseRequestTicket.getPurchaseUrl())
 			.quantity(purchaseRequestTicket.getQuantity())
+			.seatCount(purchaseRequestTicket.getSeatCount())
 			.assignmentTargets(assignmentTargets)
 			.expectedPrice(purchaseRequestTicket.getExpectedPrice())
 			.expectedTotalPrice(resolveExpectedTotalPrice(purchaseRequestTicket))

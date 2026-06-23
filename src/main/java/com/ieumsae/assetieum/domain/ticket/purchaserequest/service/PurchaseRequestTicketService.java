@@ -121,9 +121,10 @@ public class PurchaseRequestTicketService {
 			request.getLicenseType(),
 			request.getPurchaseUrl(),
 			request.getQuantity(),
+			request.getSeatCount(),
 			request.getExpectedPrice(),
 			request.getRequestReason(),
-			null
+			request.getAssignmentTargetMemberIds()
 		);
 	}
 
@@ -148,6 +149,7 @@ public class PurchaseRequestTicketService {
 			target.licenseType(),
 			null,
 			request.getQuantity(),
+			request.getSeatCount(),
 			request.getExpectedPrice(),
 			request.getRequestReason(),
 			request.getAssignmentTargetMemberIds()
@@ -173,7 +175,7 @@ public class PurchaseRequestTicketService {
 
 		validateDirectPurchaseResultTarget(purchaseRequestTicket, ticket, submitter);
 		validateDirectPurchaseResultRequest(companyId, assetType, purchaseRequestTicket.getQuantity(), request, null);
-		replaceDirectPurchaseAssignmentTargets(companyId, ticket, purchaseRequestTicket, assetType, request);
+		validateActualSeatCapacity(companyId, ticket, purchaseRequestTicket, assetType, request);
 
 		DirectPurchaseResult result = directPurchaseResultRepository.save(DirectPurchaseResult.create(
 			purchaseRequestTicket,
@@ -222,7 +224,7 @@ public class PurchaseRequestTicketService {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "이미 확인 완료된 직접구매 정보는 수정할 수 없습니다.");
 		}
 		validateDirectPurchaseResultRequest(companyId, assetType, purchaseRequestTicket.getQuantity(), request, result);
-		replaceDirectPurchaseAssignmentTargets(companyId, ticket, purchaseRequestTicket, assetType, request);
+		validateActualSeatCapacity(companyId, ticket, purchaseRequestTicket, assetType, request);
 
 		BigDecimal previousActualPrice = result.getActualPrice();
 		result.update(
@@ -364,7 +366,7 @@ public class PurchaseRequestTicketService {
 			.orElse(null);
 	}
 
-	private void replaceDirectPurchaseAssignmentTargets(
+	private void validateActualSeatCapacity(
 		UUID companyId,
 		Ticket ticket,
 		PurchaseRequestTicket purchaseRequestTicket,
@@ -372,21 +374,11 @@ public class PurchaseRequestTicketService {
 		DirectPurchaseResultCreateRequest request
 	) {
 		if (assetType == AssetType.TANGIBLE) {
-			ticketAssignmentTargetService.replaceRequiredTargets(
-				companyId,
-				ticket,
-				request.getAssignmentTargetMemberIds(),
-				purchaseRequestTicket.getRequestedUsageType(),
-				purchaseRequestTicket.getQuantity()
-			);
 			return;
 		}
 		int capacity = purchaseRequestTicket.getQuantity() * request.getSeatCount();
-		ticketAssignmentTargetService.replaceRequiredTargetsWithinCapacity(
-			companyId,
-			ticket,
-			request.getAssignmentTargetMemberIds(),
-			purchaseRequestTicket.getRequestedUsageType(),
+		ticketAssignmentTargetService.validateCapacity(
+			ticketAssignmentTargetService.findTargets(companyId, ticket),
 			capacity
 		);
 	}
@@ -930,6 +922,7 @@ public class PurchaseRequestTicketService {
 		LicenseType licenseType,
 		String purchaseUrl,
 		int quantity,
+		Integer seatCount,
 		BigDecimal expectedPrice,
 		String requestReason,
 		List<UUID> assignmentTargetMemberIds
@@ -942,12 +935,14 @@ public class PurchaseRequestTicketService {
 
 		if (assetType == AssetType.TANGIBLE) {
 			validateTangiblePurchaseRequest(licenseType);
+			validateNoSeatCountForTangible(seatCount);
 			tangibleAssetCategory = findTangibleAssetCategory(
 				categoryId,
 				companyId
 			);
 		} else {
 			validateIntangiblePurchaseRequest(licenseType);
+			validateIntangibleSeatCount(seatCount);
 			intangibleAssetCategory = findIntangibleAssetCategory(
 				categoryId,
 				companyId
@@ -979,9 +974,11 @@ public class PurchaseRequestTicketService {
 				licenseType,
 				normalize(purchaseUrl),
 				quantity,
+				seatCount,
 				expectedPrice
 			)
 		);
+		savePurchaseAssignmentTargets(companyId, ticket, requestedUsageType, assetType, quantity, seatCount, assignmentTargetMemberIds);
 		return PurchaseRequestTicketCreateResponse.from(
 			ticket,
 			purchaseRequestTicket,
@@ -1005,6 +1002,7 @@ public class PurchaseRequestTicketService {
 		LicenseType licenseType,
 		String purchaseUrl,
 		int quantity,
+		Integer seatCount,
 		BigDecimal expectedPrice,
 		String requestReason,
 		List<UUID> assignmentTargetMemberIds
@@ -1012,6 +1010,11 @@ public class PurchaseRequestTicketService {
 		UUID companyId = authenticatedMember.companyId();
 		Member requester = ticketRequesterResolver.resolveActiveRequester(authenticatedMember.id(), companyId);
 		Member approver = ticketApprovalResolver.resolveDepartmentApprover(requester);
+		if (assetType == AssetType.TANGIBLE) {
+			validateNoSeatCountForTangible(seatCount);
+		} else {
+			validateIntangibleSeatCount(seatCount);
+		}
 
 		Ticket ticket = ticketRepository.save(Ticket.createPurchaseRequest(
 			requester.getCompany(),
@@ -1038,15 +1041,57 @@ public class PurchaseRequestTicketService {
 				licenseType,
 				normalize(purchaseUrl),
 				quantity,
+				seatCount,
 				expectedPrice
 			)
 		);
+		savePurchaseAssignmentTargets(companyId, ticket, requestedUsageType, assetType, quantity, seatCount, assignmentTargetMemberIds);
 		return PurchaseRequestTicketCreateResponse.from(
 			ticket,
 			purchaseRequestTicket,
 			assetType,
 			resolveCategoryId(tangibleAssetCategory, intangibleAssetCategory)
 		);
+	}
+
+	private void savePurchaseAssignmentTargets(
+		UUID companyId,
+		Ticket ticket,
+		RequestedUsageType requestedUsageType,
+		AssetType assetType,
+		int quantity,
+		Integer seatCount,
+		List<UUID> assignmentTargetMemberIds
+	) {
+		if (assetType == AssetType.TANGIBLE) {
+			ticketAssignmentTargetService.replaceRequiredTargets(
+				companyId,
+				ticket,
+				assignmentTargetMemberIds,
+				requestedUsageType,
+				quantity
+			);
+			return;
+		}
+		ticketAssignmentTargetService.replaceRequiredTargetsWithinCapacity(
+			companyId,
+			ticket,
+			assignmentTargetMemberIds,
+			requestedUsageType,
+			quantity * seatCount
+		);
+	}
+
+	private void validateIntangibleSeatCount(Integer seatCount) {
+		if (seatCount == null || seatCount < 1) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "무형자산은 라이선스 1개당 사용 가능 인원 수가 1 이상이어야 합니다.");
+		}
+	}
+
+	private void validateNoSeatCountForTangible(Integer seatCount) {
+		if (seatCount != null) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "유형자산 요청에는 사용 가능 인원 수를 입력할 수 없습니다.");
+		}
 	}
 
 	private TangibleAssetCategory findTangibleAssetCategory(UUID categoryId, UUID companyId) {

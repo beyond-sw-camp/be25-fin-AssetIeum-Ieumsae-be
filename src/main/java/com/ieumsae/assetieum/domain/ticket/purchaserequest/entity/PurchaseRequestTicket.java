@@ -101,6 +101,9 @@ public class PurchaseRequestTicket {
 	@Column(nullable = false)
 	private int quantity;
 
+	@Column(name = "seat_count")
+	private Integer seatCount;
+
 	@Column(name = "expected_price", precision = 15, scale = 2)
 	private BigDecimal expectedPrice;
 
@@ -122,6 +125,7 @@ public class PurchaseRequestTicket {
 		LicenseType licenseType,
 		String purchaseUrl,
 		int quantity,
+		Integer seatCount,
 		BigDecimal expectedPrice
 	) {
 		return PurchaseRequestTicket.builder()
@@ -140,6 +144,7 @@ public class PurchaseRequestTicket {
 			.licenseType(licenseType)
 			.purchaseUrl(purchaseUrl)
 			.quantity(quantity)
+			.seatCount(seatCount)
 			.expectedPrice(expectedPrice)
 			.build();
 	}

@@ -34,6 +34,7 @@ public class PurchaseRequestTicketCreateResponse {
 	private final LicenseType licenseType;
 	private final String purchaseUrl;
 	private final int quantity;
+	private final Integer seatCount;
 	private final BigDecimal expectedPrice;
 
 	public static PurchaseRequestTicketCreateResponse from(
@@ -59,6 +60,7 @@ public class PurchaseRequestTicketCreateResponse {
 			.licenseType(purchaseRequestTicket.getLicenseType())
 			.purchaseUrl(purchaseRequestTicket.getPurchaseUrl())
 			.quantity(purchaseRequestTicket.getQuantity())
+			.seatCount(purchaseRequestTicket.getSeatCount())
 			.expectedPrice(purchaseRequestTicket.getExpectedPrice())
 			.build();
 	}
