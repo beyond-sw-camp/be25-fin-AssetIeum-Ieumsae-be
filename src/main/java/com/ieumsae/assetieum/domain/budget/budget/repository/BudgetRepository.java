@@ -27,4 +27,10 @@ public interface BudgetRepository extends JpaRepository<Budget, UUID> {
             UUID companyId,
             Integer budgetYear
     );
+
+    Optional<Budget> findAllByCompany_IdAndBudgetYearAndDepartment_Id(
+            UUID companyId,
+            Integer budgetYear,
+            UUID departmentId
+    );
 }

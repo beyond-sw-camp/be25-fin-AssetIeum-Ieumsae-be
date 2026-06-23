@@ -20,6 +20,8 @@ import java.util.UUID;
         "hrEventNo",
         "departmentId",
         "departmentName",
+        "targetDepartmentId",
+        "targetDepartmentName",
         "memberId",
         "memberName",
         "hrEventStatus",
@@ -40,6 +42,10 @@ public class HrEventResponse {
     private UUID departmentId;
 
     private String departmentName;
+
+    private UUID targetDepartmentId;
+
+    private String targetDepartmentName;
 
     private UUID memberId;
 
@@ -73,6 +79,8 @@ public class HrEventResponse {
                 .hrEventNo(hrEvent.getHrEventNo())
                 .departmentId(hrEvent.getDepartment().getId())
                 .departmentName(hrEvent.getDepartment().getName())
+                .targetDepartmentId(hrEvent.getTargetDepartment() == null ? null : hrEvent.getTargetDepartment().getId())
+                .targetDepartmentName(hrEvent.getTargetDepartment() == null ? null : hrEvent.getTargetDepartment().getName())
                 .memberId(hrEvent.getMember().getId())
                 .memberName(hrEvent.getMember().getName())
                 .hrEventStatus(hrEvent.getHrEventStatus())

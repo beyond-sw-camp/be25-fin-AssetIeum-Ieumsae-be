@@ -139,6 +139,10 @@ public class IntangibleAsset extends BaseEntity {
         this.department = null;
     }
 
+    public void transferDepartment(Department department) {
+        this.department = department;
+    }
+
     public void cancel() {
         clearAssignee();
         this.intangibleAssetStatus = IntangibleAssetStatus.CANCELLED;

@@ -169,6 +169,124 @@ public class IntangibleAssetAssignmentService {
                 .toList();
     }
 
+    @Transactional
+    public void reassignAsset(
+            UUID assetId,
+            UUID currentMemberId,
+            UUID newMemberId,
+            UUID companyId
+    ) {
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
+
+        IntangibleAsset asset = intangibleAssetRepository.findByIdAndCompany_Id(assetId, companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.INTANGIBLE_ASSET_NOT_FOUND));
+
+        Member newMember = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(newMemberId, companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+
+        if (currentMemberId.equals(newMemberId)) {
+            throw new BusinessException(ErrorCode.INTANGIBLE_ASSET_INVALID_REQUEST);
+        }
+
+        IntangibleAssetAssignment currentAssignment = intangibleAssetAssignmentRepository
+                .findByCompany_IdAndIntangibleAsset_IdAndMember_IdAndAssignmentStatus(
+                        companyId,
+                        assetId,
+                        currentMemberId,
+                        AssignmentStatus.ACTIVE
+                )
+                .orElseThrow(() -> new BusinessException(ErrorCode.INTANGIBLE_ASSET_ASSIGNMENT_NOT_FOUND));
+
+        if (!currentAssignment.getDepartment().getId().equals(newMember.getDepartment().getId())) {
+            throw new BusinessException(ErrorCode.INTANGIBLE_ASSET_INVALID_REQUEST);
+        }
+
+        LocalDateTime originalEndedAt = currentAssignment.getEndedAt();
+        LocalDateTime reassignedAt = LocalDateTime.now();
+        currentAssignment.end(reassignedAt);
+
+        Department department = departmentRepository.findByIdAndCompany_IdAndDeletedAtIsNull(
+                        newMember.getDepartment().getId(),
+                        companyId
+                )
+                .orElseThrow(() -> new BusinessException(ErrorCode.DEPARTMENT_NOT_FOUND));
+
+        IntangibleAssetAssignment assignment = IntangibleAssetAssignment.builder()
+                .company(company)
+                .intangibleAsset(asset)
+                .member(newMember)
+                .department(department)
+                .assignedAt(reassignedAt)
+                .endedAt(originalEndedAt)
+                .assignmentStatus(AssignmentStatus.ACTIVE)
+                .build();
+
+        IntangibleAssetAssignment savedAssignment = intangibleAssetAssignmentRepository.save(assignment);
+
+        if (asset.getSeatCount() == 1) {
+            asset.assignTo(newMember, department);
+        } else {
+            asset.markInUse();
+        }
+
+    }
+
+    @Transactional
+    public IntangibleAssetAssignmentResponse transferDepartment(
+            UUID assetId,
+            UUID memberId,
+            Department targetDepartment,
+            UUID companyId
+    ) {
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
+
+        IntangibleAsset asset = intangibleAssetRepository.findByIdAndCompany_Id(assetId, companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.INTANGIBLE_ASSET_NOT_FOUND));
+
+        Member member = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(memberId, companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+
+        IntangibleAssetAssignment currentAssignment = intangibleAssetAssignmentRepository
+                .findByCompany_IdAndIntangibleAsset_IdAndMember_IdAndAssignmentStatus(
+                        companyId,
+                        assetId,
+                        memberId,
+                        AssignmentStatus.ACTIVE
+                )
+                .orElseThrow(() -> new BusinessException(ErrorCode.INTANGIBLE_ASSET_ASSIGNMENT_NOT_FOUND));
+
+        if (targetDepartment == null || !targetDepartment.getCompany().getId().equals(companyId)) {
+            throw new BusinessException(ErrorCode.DEPARTMENT_NOT_FOUND);
+        }
+
+        LocalDateTime movedAt = LocalDateTime.now();
+        LocalDateTime originalEndedAt = currentAssignment.getEndedAt();
+        currentAssignment.end(movedAt);
+
+        asset.transferDepartment(targetDepartment);
+        if (asset.getSeatCount() == 1) {
+            asset.assignTo(member, targetDepartment);
+        } else {
+            asset.markInUse();
+        }
+
+        IntangibleAssetAssignment assignment = IntangibleAssetAssignment.builder()
+                .company(company)
+                .intangibleAsset(asset)
+                .member(member)
+                .department(targetDepartment)
+                .assignedAt(movedAt)
+                .endedAt(originalEndedAt)
+                .assignmentStatus(AssignmentStatus.ACTIVE)
+                .build();
+
+        IntangibleAssetAssignment savedAssignment = intangibleAssetAssignmentRepository.save(assignment);
+
+        return IntangibleAssetAssignmentResponse.from(savedAssignment);
+    }
+
     private void validateAssignableSeat(IntangibleAsset asset, UUID companyId) {
         if (asset.getSeatCount() <= 1) {
             if (asset.getIntangibleAssetStatus() != IntangibleAssetStatus.AVAILABLE) {
