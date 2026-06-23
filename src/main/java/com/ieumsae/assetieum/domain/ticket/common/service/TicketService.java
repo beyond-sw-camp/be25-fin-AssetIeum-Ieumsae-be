@@ -478,6 +478,23 @@ public class TicketService {
 				if (ticket.getAssignee() == null || !ticket.getAssignee().getId().equals(member.getId())) {
 					throw new BusinessException(ErrorCode.ACCESS_DENIED);
 				}
+
+				if (ticket.getTicketType() == TicketType.ASSET_RETURN) {
+					assetReturnTicketRepository.findByIdAndCompany_IdAndDeletedAtIsNull(ticket.getId(), ticket.getCompany().getId())
+						.ifPresent(returnTicket -> {
+							if (returnTicket.getStatus() == com.ieumsae.assetieum.domain.ticket.assetreturn.type.AssetReturnTicketStatus.COLLECTED) {
+								throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "이미 회수 처리된 반납/해지 티켓은 취소할 수 없습니다.");
+							}
+						});
+				}
+				if (ticket.getTicketType() == TicketType.PURCHASE_RETURN) {
+					purchaseReturnTicketRepository.findByIdAndCompany_IdAndDeletedAtIsNull(ticket.getId(), ticket.getCompany().getId())
+						.ifPresent(returnTicket -> {
+							if (returnTicket.getStatus() == com.ieumsae.assetieum.domain.ticket.purchasereturn.type.PurchaseReturnTicketStatus.COLLECTED) {
+								throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "이미 회수 처리된 반품/환불 티켓은 취소할 수 없습니다.");
+							}
+						});
+				}
 			}
 			return;
 		}

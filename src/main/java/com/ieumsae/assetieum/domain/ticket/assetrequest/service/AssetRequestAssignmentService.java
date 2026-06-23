@@ -195,54 +195,80 @@ public class AssetRequestAssignmentService {
 			List.of(IntangibleAssetStatus.AVAILABLE, IntangibleAssetStatus.IN_USE),
 			PageRequest.of(0, Math.max(quantity * 5, 10))
 		);
-		List<AssetRequestAssignResponse.AssignedAssetSummary> assignedAssets = new ArrayList<>();
-		int assigneeIndex = 0;
+
+		java.util.Map<UUID, Long> remainingSeatsMap = new java.util.HashMap<>();
 		for (IntangibleAsset asset : candidates) {
-			while (assignedAssets.size() < quantity && hasAvailableSeat(asset, companyId)) {
-				Member targetAssignee = targetAssignees.get(assigneeIndex);
-				if (intangibleAssetAssignmentRepository.existsByCompany_IdAndIntangibleAsset_IdAndMember_IdAndAssignmentStatus(
+			long activeCount = intangibleAssetAssignmentRepository
+				.countByCompany_IdAndIntangibleAsset_IdAndAssignmentStatus(
 					companyId,
 					asset.getId(),
-					targetAssignee.getId(),
 					AssignmentStatus.ACTIVE
-				)) {
-					break;
-				}
-				IntangibleAssetAssignment assignment = IntangibleAssetAssignment.builder()
-					.company(ticket.getCompany())
-					.intangibleAsset(asset)
-					.member(targetAssignee)
-					.department(targetAssignee.getDepartment())
-					.assignmentStatus(AssignmentStatus.ACTIVE)
-					.build();
-				intangibleAssetAssignmentRepository.save(assignment);
-				if (asset.getSeatCount() == 1) {
-					asset.assignTo(targetAssignee, targetAssignee.getDepartment());
-				} else {
-					asset.markInUse();
-				}
-				markAssignmentTargetAssigned(
-					assignmentTargets,
-					assigneeIndex,
-					AssetType.INTANGIBLE,
-					asset.getId(),
-					assignment.getAssignedAt()
 				);
-				assignedAssets.add(AssetRequestAssignResponse.AssignedAssetSummary.builder()
-					.assetId(asset.getId())
-					.assetCode(asset.getAssetCode())
-					.assigneeId(targetAssignee.getId())
-					.assigneeName(targetAssignee.getName())
-					.departmentId(targetAssignee.getDepartment().getId())
-					.departmentName(targetAssignee.getDepartment().getName())
-					.build());
-				assigneeIndex++;
-			}
-			if (assignedAssets.size() == quantity) {
-				return assignedAssets;
-			}
+			remainingSeatsMap.put(asset.getId(), asset.getSeatCount() - activeCount);
 		}
-        throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "할당 가능한 무형자산 좌석이 부족합니다.");
+
+		List<AssetRequestAssignResponse.AssignedAssetSummary> assignedAssets = new ArrayList<>();
+		int assigneeIndex = 0;
+
+		for (Member targetAssignee : targetAssignees) {
+			boolean assigned = false;
+			for (IntangibleAsset asset : candidates) {
+				long remaining = remainingSeatsMap.getOrDefault(asset.getId(), 0L);
+				if (remaining > 0) {
+					boolean isAlreadyAssigned = intangibleAssetAssignmentRepository
+						.existsByCompany_IdAndIntangibleAsset_IdAndMember_IdAndAssignmentStatus(
+							companyId,
+							asset.getId(),
+							targetAssignee.getId(),
+							AssignmentStatus.ACTIVE
+						);
+					
+					if (!isAlreadyAssigned) {
+						IntangibleAssetAssignment assignment = IntangibleAssetAssignment.builder()
+							.company(ticket.getCompany())
+							.intangibleAsset(asset)
+							.member(targetAssignee)
+							.department(targetAssignee.getDepartment())
+							.assignmentStatus(AssignmentStatus.ACTIVE)
+							.build();
+						intangibleAssetAssignmentRepository.save(assignment);
+						
+						if (asset.getSeatCount() == 1) {
+							asset.assignTo(targetAssignee, targetAssignee.getDepartment());
+						} else {
+							asset.markInUse();
+						}
+						
+						markAssignmentTargetAssigned(
+							assignmentTargets,
+							assigneeIndex,
+							AssetType.INTANGIBLE,
+							asset.getId(),
+							assignment.getAssignedAt()
+						);
+						
+						assignedAssets.add(AssetRequestAssignResponse.AssignedAssetSummary.builder()
+							.assetId(asset.getId())
+							.assetCode(asset.getAssetCode())
+							.assigneeId(targetAssignee.getId())
+							.assigneeName(targetAssignee.getName())
+							.departmentId(targetAssignee.getDepartment().getId())
+							.departmentName(targetAssignee.getDepartment().getName())
+							.build());
+						
+						remainingSeatsMap.put(asset.getId(), remaining - 1);
+						assigned = true;
+						break;
+					}
+				}
+			}
+			if (!assigned) {
+				throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "할당 가능한 무형자산 좌석이 부족합니다.");
+			}
+			assigneeIndex++;
+		}
+		
+		return assignedAssets;
 	}
 
 	private List<Member> resolveTargetAssignees(
