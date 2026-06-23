@@ -73,6 +73,10 @@ public class DashboardRepository {
 			.build();
 	}
 
+	public TicketProgressSummaryResponse getDepartmentTicketProgressSummary(UUID companyId, UUID memberId) {
+		return getTicketProgressSummary(companyId, getMemberDepartmentId(companyId, memberId));
+	}
+
 	public OwnedAssetSummaryResponse getOwnedAssetSummary(UUID companyId, UUID departmentId) {
 		LocalDateTime now = LocalDateTime.now();
 		return OwnedAssetSummaryResponse.builder()
@@ -83,6 +87,10 @@ public class DashboardRepository {
 			.build();
 	}
 
+	public OwnedAssetSummaryResponse getDepartmentOwnedAssetSummary(UUID companyId, UUID memberId) {
+		return getOwnedAssetSummary(companyId, getMemberDepartmentId(companyId, memberId));
+	}
+
 	public ExpiringAssetSummaryResponse getExpiringAssetSummary(UUID companyId, UUID departmentId) {
 		LocalDateTime now = LocalDateTime.now();
 		LocalDateTime limit = now.plusDays(EXPIRING_DAYS);
@@ -90,6 +98,10 @@ public class DashboardRepository {
 			.tangibleAssetCount(countExpiringTangibleAssets(companyId, departmentId, now, limit))
 			.intangibleAssetCount(countExpiringIntangibleAssets(companyId, departmentId, now, limit))
 			.build();
+	}
+
+	public ExpiringAssetSummaryResponse getDepartmentExpiringAssetSummary(UUID companyId, UUID memberId) {
+		return getExpiringAssetSummary(companyId, getMemberDepartmentId(companyId, memberId));
 	}
 
 	public TicketProgressSummaryResponse getEmployeeTicketProgressSummary(UUID companyId, UUID memberId) {

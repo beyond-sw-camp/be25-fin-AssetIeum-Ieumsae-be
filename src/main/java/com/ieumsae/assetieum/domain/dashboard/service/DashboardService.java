@@ -33,12 +33,24 @@ public class DashboardService {
 		return dashboardRepository.getTicketProgressSummary(companyId, departmentId);
 	}
 
+	public TicketProgressSummaryResponse getDepartmentTicketProgressSummary(UUID companyId, UUID memberId) {
+		return dashboardRepository.getDepartmentTicketProgressSummary(companyId, memberId);
+	}
+
 	public OwnedAssetSummaryResponse getOwnedAssetSummary(UUID companyId, UUID departmentId) {
 		return dashboardRepository.getOwnedAssetSummary(companyId, departmentId);
 	}
 
+	public OwnedAssetSummaryResponse getDepartmentOwnedAssetSummary(UUID companyId, UUID memberId) {
+		return dashboardRepository.getDepartmentOwnedAssetSummary(companyId, memberId);
+	}
+
 	public ExpiringAssetSummaryResponse getExpiringAssetSummary(UUID companyId, UUID departmentId) {
 		return dashboardRepository.getExpiringAssetSummary(companyId, departmentId);
+	}
+
+	public ExpiringAssetSummaryResponse getDepartmentExpiringAssetSummary(UUID companyId, UUID memberId) {
+		return dashboardRepository.getDepartmentExpiringAssetSummary(companyId, memberId);
 	}
 
 	public TicketProgressSummaryResponse getEmployeeTicketProgressSummary(UUID companyId, UUID memberId) {
