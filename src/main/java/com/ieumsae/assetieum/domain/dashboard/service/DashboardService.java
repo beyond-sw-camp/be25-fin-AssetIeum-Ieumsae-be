@@ -8,8 +8,13 @@ import com.ieumsae.assetieum.domain.dashboard.dto.BudgetLedgerResponse;
 import com.ieumsae.assetieum.domain.dashboard.dto.BudgetLedgerSearchRequest;
 import com.ieumsae.assetieum.domain.dashboard.dto.BudgetOverviewResponse;
 import com.ieumsae.assetieum.domain.dashboard.dto.EmployeeDepartmentBudgetResponse;
+import com.ieumsae.assetieum.domain.dashboard.dto.ExpiringAssetDetailResponse;
+import com.ieumsae.assetieum.domain.dashboard.dto.ExpiringAssetDetailSearchRequest;
 import com.ieumsae.assetieum.domain.dashboard.dto.ExpiringAssetSummaryResponse;
 import com.ieumsae.assetieum.domain.dashboard.dto.LifecycleEventResponse;
+import com.ieumsae.assetieum.domain.dashboard.dto.OwnedAssetDetailResponse;
+import com.ieumsae.assetieum.domain.dashboard.dto.OwnedAssetDetailSearchRequest;
+import com.ieumsae.assetieum.domain.dashboard.dto.OwnedAssetDetailStatus;
 import com.ieumsae.assetieum.domain.dashboard.dto.OwnedAssetSummaryResponse;
 import com.ieumsae.assetieum.domain.dashboard.dto.RentalAssetSummaryResponse;
 import com.ieumsae.assetieum.domain.dashboard.dto.TicketProgressSummaryResponse;
@@ -21,6 +26,7 @@ import com.ieumsae.assetieum.domain.tangibleasset.asset.type.TangibleAssetStatus
 import com.ieumsae.assetieum.domain.tangibleasset.asset.type.UsageType;
 import com.ieumsae.assetieum.domain.ticket.assetrequest.type.AssetRequestTicketStatus;
 import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
+import com.ieumsae.assetieum.domain.ticket.common.type.AssetType;
 import com.ieumsae.assetieum.domain.ticket.rental.type.RentalTicketStatus;
 import com.ieumsae.assetieum.global.common.page.PaginationRequest;
 import com.ieumsae.assetieum.global.common.page.PaginationResponse;
@@ -124,6 +130,88 @@ public class DashboardService {
 			.tangibleAssetCount(countMemberExpiringTangibleAssets(companyId, memberId, now, limit))
 			.intangibleAssetCount(countMemberExpiringIntangibleAssets(companyId, memberId, now, limit))
 			.build();
+	}
+
+	public PaginationResponse<OwnedAssetDetailResponse> getOwnedAssetDetails(
+		UUID companyId,
+		OwnedAssetDetailSearchRequest request
+	) {
+		return switch (request.getStatus()) {
+			case UNASSIGNED -> getUnassignedAssetDetails(companyId, request.getDepartmentId(), request.getKeyword(), request);
+			case RENTAL_SCHEDULED -> getRentalScheduledAssetDetails(companyId, null, request.getDepartmentId(), request.getKeyword(), request);
+			case RENTED -> getRentedAssetDetails(companyId, null, request.getDepartmentId(), request.getKeyword(), request);
+			case OVERDUE -> getOverdueAssetDetails(companyId, null, request.getDepartmentId(), request.getKeyword(), request);
+		};
+	}
+
+	public PaginationResponse<OwnedAssetDetailResponse> getEmployeeOwnedAssetDetails(
+		UUID companyId,
+		UUID memberId,
+		OwnedAssetDetailSearchRequest request
+	) {
+		return switch (request.getStatus()) {
+			case UNASSIGNED -> toPaginationResponse(List.of(), request);
+			case RENTAL_SCHEDULED -> getRentalScheduledAssetDetails(companyId, memberId, null, request.getKeyword(), request);
+			case RENTED -> getRentedAssetDetails(companyId, memberId, null, request.getKeyword(), request);
+			case OVERDUE -> getOverdueAssetDetails(companyId, memberId, null, request.getKeyword(), request);
+		};
+	}
+
+	public PaginationResponse<ExpiringAssetDetailResponse> getExpiringAssetDetails(
+		UUID companyId,
+		ExpiringAssetDetailSearchRequest request
+	) {
+		LocalDateTime now = LocalDateTime.now();
+		LocalDateTime limit = now.plusDays(EXPIRING_DAYS);
+		if (request.getAssetType() == AssetType.TANGIBLE) {
+			return getExpiringTangibleAssetDetails(
+				companyId,
+				null,
+				request.getDepartmentId(),
+				request.getKeyword(),
+				now,
+				limit,
+				request
+			);
+		}
+		return getExpiringIntangibleAssetDetails(
+			companyId,
+			null,
+			request.getDepartmentId(),
+			request.getKeyword(),
+			now,
+			limit,
+			request
+		);
+	}
+
+	public PaginationResponse<ExpiringAssetDetailResponse> getEmployeeExpiringAssetDetails(
+		UUID companyId,
+		UUID memberId,
+		ExpiringAssetDetailSearchRequest request
+	) {
+		LocalDateTime now = LocalDateTime.now();
+		LocalDateTime limit = now.plusDays(EXPIRING_DAYS);
+		if (request.getAssetType() == AssetType.TANGIBLE) {
+			return getExpiringTangibleAssetDetails(
+				companyId,
+				memberId,
+				null,
+				request.getKeyword(),
+				now,
+				limit,
+				request
+			);
+		}
+		return getExpiringIntangibleAssetDetails(
+			companyId,
+			memberId,
+			null,
+			request.getKeyword(),
+			now,
+			limit,
+			request
+		);
 	}
 
 	public PaginationResponse<AssetDemandResponse> getEmployeeDepartmentAssetDemands(
@@ -357,6 +445,262 @@ public class DashboardService {
 			.getSingleResult();
 	}
 
+	private PaginationResponse<OwnedAssetDetailResponse> getUnassignedAssetDetails(
+		UUID companyId,
+		UUID departmentId,
+		String keyword,
+		PaginationRequest request
+	) {
+		String normalizedKeyword = normalizeKeyword(keyword);
+		String keywordPattern = toKeywordPattern(normalizedKeyword);
+		List<Object[]> rows = entityManager.createQuery("""
+				select a.id, i.productName, c.name, a.assetCode, a.warrantyExpiredAt
+				from TangibleAsset a
+				join a.tangibleAssetItem i
+				join i.tangibleAssetCategory c
+				where a.company.id = :companyId
+					and (:departmentId is null or a.department.id = :departmentId)
+					and a.tangibleAssetStatus = :status
+					and (:keyword is null
+						or lower(i.productName) like :keyword
+						or lower(c.name) like :keyword
+						or lower(a.assetCode) like :keyword)
+				order by a.createdAt desc
+				""", Object[].class)
+			.setParameter("companyId", companyId)
+			.setParameter("departmentId", departmentId)
+			.setParameter("status", TangibleAssetStatus.AVAILABLE)
+			.setParameter("keyword", keywordPattern)
+			.setFirstResult((int) request.toPageable().getOffset())
+			.setMaxResults(request.getSize())
+			.getResultList();
+		Long total = entityManager.createQuery("""
+				select count(a)
+				from TangibleAsset a
+				join a.tangibleAssetItem i
+				join i.tangibleAssetCategory c
+				where a.company.id = :companyId
+					and (:departmentId is null or a.department.id = :departmentId)
+					and a.tangibleAssetStatus = :status
+					and (:keyword is null
+						or lower(i.productName) like :keyword
+						or lower(c.name) like :keyword
+						or lower(a.assetCode) like :keyword)
+				""", Long.class)
+			.setParameter("companyId", companyId)
+			.setParameter("departmentId", departmentId)
+			.setParameter("status", TangibleAssetStatus.AVAILABLE)
+			.setParameter("keyword", keywordPattern)
+			.getSingleResult();
+		List<OwnedAssetDetailResponse> content = rows.stream()
+			.map(row -> OwnedAssetDetailResponse.builder()
+				.assetId((UUID) row[0])
+				.assetName((String) row[1])
+				.categoryName((String) row[2])
+				.assetCode((String) row[3])
+				.warrantyExpiredAt((LocalDateTime) row[4])
+				.build())
+			.toList();
+		return toPaginationResponse(content, request, total);
+	}
+
+	private PaginationResponse<OwnedAssetDetailResponse> getRentalScheduledAssetDetails(
+		UUID companyId,
+		UUID memberId,
+		UUID departmentId,
+		String keyword,
+		PaginationRequest request
+	) {
+		String keywordPattern = toKeywordPattern(normalizeKeyword(keyword));
+		List<Object[]> rows = entityManager.createQuery("""
+				select a.id, i.productName, d.id, d.name, m.id, m.name, rt.rentalStartDate, rt.requestedDueDate
+				from RentalTicket rt
+				join rt.ticket t
+				join rt.tangibleAsset a
+				join a.tangibleAssetItem i
+				join t.department d
+				join t.requester m
+				where rt.company.id = :companyId
+					and rt.status = :status
+					and rt.deletedAt is null
+					and (:memberId is null or m.id = :memberId)
+					and (:departmentId is null or d.id = :departmentId)
+					and (:keyword is null
+						or lower(i.productName) like :keyword
+						or lower(a.assetCode) like :keyword
+						or lower(d.name) like :keyword
+						or lower(m.name) like :keyword)
+				order by rt.rentalStartDate asc
+				""", Object[].class)
+			.setParameter("companyId", companyId)
+			.setParameter("status", RentalTicketStatus.RESERVED)
+			.setParameter("memberId", memberId)
+			.setParameter("departmentId", departmentId)
+			.setParameter("keyword", keywordPattern)
+			.setFirstResult((int) request.toPageable().getOffset())
+			.setMaxResults(request.getSize())
+			.getResultList();
+		Long total = countRentalScheduledAssetDetails(companyId, memberId, departmentId, keywordPattern);
+		List<OwnedAssetDetailResponse> content = rows.stream()
+			.map(row -> OwnedAssetDetailResponse.builder()
+				.assetId((UUID) row[0])
+				.assetName((String) row[1])
+				.departmentId((UUID) row[2])
+				.departmentName((String) row[3])
+				.renterId((UUID) row[4])
+				.renterName((String) row[5])
+				.usedStartedAt((LocalDateTime) row[6])
+				.returnDueDate((LocalDateTime) row[7])
+				.build())
+			.toList();
+		return toPaginationResponse(content, request, total);
+	}
+
+	private Long countRentalScheduledAssetDetails(UUID companyId, UUID memberId, UUID departmentId, String keywordPattern) {
+		return entityManager.createQuery("""
+				select count(rt)
+				from RentalTicket rt
+				join rt.ticket t
+				join rt.tangibleAsset a
+				join a.tangibleAssetItem i
+				join t.department d
+				join t.requester m
+				where rt.company.id = :companyId
+					and rt.status = :status
+					and rt.deletedAt is null
+					and (:memberId is null or m.id = :memberId)
+					and (:departmentId is null or d.id = :departmentId)
+					and (:keyword is null
+						or lower(i.productName) like :keyword
+						or lower(a.assetCode) like :keyword
+						or lower(d.name) like :keyword
+						or lower(m.name) like :keyword)
+				""", Long.class)
+			.setParameter("companyId", companyId)
+			.setParameter("status", RentalTicketStatus.RESERVED)
+			.setParameter("memberId", memberId)
+			.setParameter("departmentId", departmentId)
+			.setParameter("keyword", keywordPattern)
+			.getSingleResult();
+	}
+
+	private PaginationResponse<OwnedAssetDetailResponse> getRentedAssetDetails(
+		UUID companyId,
+		UUID memberId,
+		UUID departmentId,
+		String keyword,
+		PaginationRequest request
+	) {
+		return getInUseTemporaryAssetDetails(companyId, memberId, departmentId, keyword, false, request);
+	}
+
+	private PaginationResponse<OwnedAssetDetailResponse> getOverdueAssetDetails(
+		UUID companyId,
+		UUID memberId,
+		UUID departmentId,
+		String keyword,
+		PaginationRequest request
+	) {
+		return getInUseTemporaryAssetDetails(companyId, memberId, departmentId, keyword, true, request);
+	}
+
+	private PaginationResponse<OwnedAssetDetailResponse> getInUseTemporaryAssetDetails(
+		UUID companyId,
+		UUID memberId,
+		UUID departmentId,
+		String keyword,
+		boolean overdueOnly,
+		PaginationRequest request
+	) {
+		LocalDateTime now = LocalDateTime.now();
+		String keywordPattern = toKeywordPattern(normalizeKeyword(keyword));
+		List<Object[]> rows = entityManager.createQuery("""
+				select a.id, i.productName, d.id, d.name, m.id, m.name, a.usedStartedAt, a.returnDueDate
+				from TangibleAsset a
+				join a.tangibleAssetItem i
+				join a.department d
+				join a.member m
+				where a.company.id = :companyId
+					and a.tangibleAssetStatus = :status
+					and a.usageType = :usageType
+					and (:memberId is null or m.id = :memberId)
+					and (:departmentId is null or d.id = :departmentId)
+					and (:overdueOnly = false or a.returnDueDate < :now)
+					and (:keyword is null
+						or lower(i.productName) like :keyword
+						or lower(a.assetCode) like :keyword
+						or lower(d.name) like :keyword
+						or lower(m.name) like :keyword)
+				order by a.returnDueDate asc
+				""", Object[].class)
+			.setParameter("companyId", companyId)
+			.setParameter("status", TangibleAssetStatus.IN_USE)
+			.setParameter("usageType", UsageType.TEMPORARY)
+			.setParameter("memberId", memberId)
+			.setParameter("departmentId", departmentId)
+			.setParameter("overdueOnly", overdueOnly)
+			.setParameter("now", now)
+			.setParameter("keyword", keywordPattern)
+			.setFirstResult((int) request.toPageable().getOffset())
+			.setMaxResults(request.getSize())
+			.getResultList();
+		Long total = countInUseTemporaryAssetDetails(companyId, memberId, departmentId, keywordPattern, overdueOnly, now);
+		List<OwnedAssetDetailResponse> content = rows.stream()
+			.map(row -> {
+				LocalDateTime returnDueDate = (LocalDateTime) row[7];
+				return OwnedAssetDetailResponse.builder()
+					.assetId((UUID) row[0])
+					.assetName((String) row[1])
+					.departmentId((UUID) row[2])
+					.departmentName((String) row[3])
+					.renterId((UUID) row[4])
+					.renterName((String) row[5])
+					.usedStartedAt((LocalDateTime) row[6])
+					.returnDueDate(returnDueDate)
+					.overdueDays(overdueOnly && returnDueDate != null ? ChronoUnit.DAYS.between(returnDueDate, now) : null)
+					.build();
+			})
+			.toList();
+		return toPaginationResponse(content, request, total);
+	}
+
+	private Long countInUseTemporaryAssetDetails(
+		UUID companyId,
+		UUID memberId,
+		UUID departmentId,
+		String keywordPattern,
+		boolean overdueOnly,
+		LocalDateTime now
+	) {
+		return entityManager.createQuery("""
+				select count(a)
+				from TangibleAsset a
+				join a.tangibleAssetItem i
+				join a.department d
+				join a.member m
+				where a.company.id = :companyId
+					and a.tangibleAssetStatus = :status
+					and a.usageType = :usageType
+					and (:memberId is null or m.id = :memberId)
+					and (:departmentId is null or d.id = :departmentId)
+					and (:overdueOnly = false or a.returnDueDate < :now)
+					and (:keyword is null
+						or lower(i.productName) like :keyword
+						or lower(a.assetCode) like :keyword
+						or lower(d.name) like :keyword
+						or lower(m.name) like :keyword)
+				""", Long.class)
+			.setParameter("companyId", companyId)
+			.setParameter("status", TangibleAssetStatus.IN_USE)
+			.setParameter("usageType", UsageType.TEMPORARY)
+			.setParameter("memberId", memberId)
+			.setParameter("departmentId", departmentId)
+			.setParameter("overdueOnly", overdueOnly)
+			.setParameter("now", now)
+			.setParameter("keyword", keywordPattern)
+			.getSingleResult();
+	}
+
 	private long countMemberRentedTangibleAssets(UUID companyId, UUID memberId) {
 		return entityManager.createQuery("""
 				select count(a)
@@ -521,6 +865,103 @@ public class DashboardService {
 			.getSingleResult();
 	}
 
+	private PaginationResponse<ExpiringAssetDetailResponse> getExpiringTangibleAssetDetails(
+		UUID companyId,
+		UUID memberId,
+		UUID departmentId,
+		String keyword,
+		LocalDateTime now,
+		LocalDateTime limit,
+		PaginationRequest request
+	) {
+		String keywordPattern = toKeywordPattern(normalizeKeyword(keyword));
+		List<Object[]> rows = entityManager.createQuery("""
+				select a.id, i.productName, d.id, d.name, m.id, m.name, a.warrantyExpiredAt, a.assetCode, i.manufacturer
+				from TangibleAsset a
+				join a.tangibleAssetItem i
+				left join a.department d
+				left join a.member m
+				where a.company.id = :companyId
+					and (:memberId is null or m.id = :memberId)
+					and (:departmentId is null or d.id = :departmentId)
+					and a.warrantyExpiredAt between :now and :limit
+					and a.tangibleAssetStatus <> :disposed
+					and (:keyword is null
+						or lower(i.productName) like :keyword
+						or lower(a.assetCode) like :keyword
+						or lower(i.manufacturer) like :keyword
+						or lower(d.name) like :keyword
+						or lower(m.name) like :keyword)
+				order by a.warrantyExpiredAt asc
+				""", Object[].class)
+			.setParameter("companyId", companyId)
+			.setParameter("memberId", memberId)
+			.setParameter("departmentId", departmentId)
+			.setParameter("now", now)
+			.setParameter("limit", limit)
+			.setParameter("disposed", TangibleAssetStatus.DISPOSED)
+			.setParameter("keyword", keywordPattern)
+			.setFirstResult((int) request.toPageable().getOffset())
+			.setMaxResults(request.getSize())
+			.getResultList();
+		Long total = countExpiringTangibleAssetDetails(companyId, memberId, departmentId, keywordPattern, now, limit);
+		List<ExpiringAssetDetailResponse> content = rows.stream()
+			.map(row -> {
+				LocalDateTime expiredAt = (LocalDateTime) row[6];
+				return ExpiringAssetDetailResponse.builder()
+					.assetType(AssetType.TANGIBLE)
+					.assetId((UUID) row[0])
+					.assetName((String) row[1])
+					.departmentId((UUID) row[2])
+					.departmentName((String) row[3])
+					.userId((UUID) row[4])
+					.userName((String) row[5])
+					.expiredAt(expiredAt)
+					.remainingDays(ChronoUnit.DAYS.between(now, expiredAt))
+					.assetCode((String) row[7])
+					.manufacturer((String) row[8])
+					.build();
+			})
+			.toList();
+		return toPaginationResponse(content, request, total);
+	}
+
+	private Long countExpiringTangibleAssetDetails(
+		UUID companyId,
+		UUID memberId,
+		UUID departmentId,
+		String keywordPattern,
+		LocalDateTime now,
+		LocalDateTime limit
+	) {
+		return entityManager.createQuery("""
+				select count(a)
+				from TangibleAsset a
+				join a.tangibleAssetItem i
+				left join a.department d
+				left join a.member m
+				where a.company.id = :companyId
+					and (:memberId is null or m.id = :memberId)
+					and (:departmentId is null or d.id = :departmentId)
+					and a.warrantyExpiredAt between :now and :limit
+					and a.tangibleAssetStatus <> :disposed
+					and (:keyword is null
+						or lower(i.productName) like :keyword
+						or lower(a.assetCode) like :keyword
+						or lower(i.manufacturer) like :keyword
+						or lower(d.name) like :keyword
+						or lower(m.name) like :keyword)
+				""", Long.class)
+			.setParameter("companyId", companyId)
+			.setParameter("memberId", memberId)
+			.setParameter("departmentId", departmentId)
+			.setParameter("now", now)
+			.setParameter("limit", limit)
+			.setParameter("disposed", TangibleAssetStatus.DISPOSED)
+			.setParameter("keyword", keywordPattern)
+			.getSingleResult();
+	}
+
 	private long countExpiringIntangibleAssets(UUID companyId, UUID departmentId, LocalDateTime now, LocalDateTime limit) {
 		return entityManager.createQuery("""
 				select count(a)
@@ -538,6 +979,109 @@ public class DashboardService {
 				IntangibleAssetStatus.EXPIRED,
 				IntangibleAssetStatus.CANCELLED
 			))
+			.getSingleResult();
+	}
+
+	private PaginationResponse<ExpiringAssetDetailResponse> getExpiringIntangibleAssetDetails(
+		UUID companyId,
+		UUID memberId,
+		UUID departmentId,
+		String keyword,
+		LocalDateTime now,
+		LocalDateTime limit,
+		PaginationRequest request
+	) {
+		String keywordPattern = toKeywordPattern(normalizeKeyword(keyword));
+		List<Object[]> rows = entityManager.createQuery("""
+				select a.id, i.productName, d.id, d.name, m.id, m.name, a.expiredAt, a.assetCode, i.provider
+				from IntangibleAsset a
+				join a.intangibleAssetItem i
+				left join a.department d
+				left join a.member m
+				where a.company.id = :companyId
+					and (:memberId is null or m.id = :memberId)
+					and (:departmentId is null or d.id = :departmentId)
+					and a.expiredAt between :now and :limit
+					and a.intangibleAssetStatus not in :excludedStatuses
+					and (:keyword is null
+						or lower(i.productName) like :keyword
+						or lower(a.assetCode) like :keyword
+						or lower(i.provider) like :keyword
+						or lower(d.name) like :keyword
+						or lower(m.name) like :keyword)
+				order by a.expiredAt asc
+				""", Object[].class)
+			.setParameter("companyId", companyId)
+			.setParameter("memberId", memberId)
+			.setParameter("departmentId", departmentId)
+			.setParameter("now", now)
+			.setParameter("limit", limit)
+			.setParameter("excludedStatuses", List.of(
+				IntangibleAssetStatus.EXPIRED,
+				IntangibleAssetStatus.CANCELLED
+			))
+			.setParameter("keyword", keywordPattern)
+			.setFirstResult((int) request.toPageable().getOffset())
+			.setMaxResults(request.getSize())
+			.getResultList();
+		Long total = countExpiringIntangibleAssetDetails(companyId, memberId, departmentId, keywordPattern, now, limit);
+		List<ExpiringAssetDetailResponse> content = rows.stream()
+			.map(row -> {
+				LocalDateTime expiredAt = (LocalDateTime) row[6];
+				return ExpiringAssetDetailResponse.builder()
+					.assetType(AssetType.INTANGIBLE)
+					.assetId((UUID) row[0])
+					.assetName((String) row[1])
+					.departmentId((UUID) row[2])
+					.departmentName((String) row[3])
+					.userId((UUID) row[4])
+					.userName((String) row[5])
+					.expiredAt(expiredAt)
+					.remainingDays(ChronoUnit.DAYS.between(now, expiredAt))
+					.assetCode((String) row[7])
+					.issuer((String) row[8])
+					.build();
+			})
+			.toList();
+		return toPaginationResponse(content, request, total);
+	}
+
+	private Long countExpiringIntangibleAssetDetails(
+		UUID companyId,
+		UUID memberId,
+		UUID departmentId,
+		String keywordPattern,
+		LocalDateTime now,
+		LocalDateTime limit
+	) {
+		return entityManager.createQuery("""
+				select count(a)
+				from IntangibleAsset a
+				join a.intangibleAssetItem i
+				left join a.department d
+				left join a.member m
+				where a.company.id = :companyId
+					and (:memberId is null or m.id = :memberId)
+					and (:departmentId is null or d.id = :departmentId)
+					and a.expiredAt between :now and :limit
+					and a.intangibleAssetStatus not in :excludedStatuses
+					and (:keyword is null
+						or lower(i.productName) like :keyword
+						or lower(a.assetCode) like :keyword
+						or lower(i.provider) like :keyword
+						or lower(d.name) like :keyword
+						or lower(m.name) like :keyword)
+				""", Long.class)
+			.setParameter("companyId", companyId)
+			.setParameter("memberId", memberId)
+			.setParameter("departmentId", departmentId)
+			.setParameter("now", now)
+			.setParameter("limit", limit)
+			.setParameter("excludedStatuses", List.of(
+				IntangibleAssetStatus.EXPIRED,
+				IntangibleAssetStatus.CANCELLED
+			))
+			.setParameter("keyword", keywordPattern)
 			.getSingleResult();
 	}
 
@@ -1320,6 +1864,10 @@ public class DashboardService {
 		return "%" + keyword.trim().toLowerCase() + "%";
 	}
 
+	private String toKeywordPattern(String keyword) {
+		return keyword;
+	}
+
 	private UUID getMemberDepartmentId(UUID companyId, UUID memberId) {
 		return findMember(companyId, memberId).getDepartment().getId();
 	}
@@ -1338,6 +1886,15 @@ public class DashboardService {
 			content.subList(start, end),
 			request.toPageable(),
 			content.size()
+		);
+		return PaginationResponse.from(pageResult);
+	}
+
+	private <T> PaginationResponse<T> toPaginationResponse(List<T> content, PaginationRequest request, long total) {
+		Page<T> pageResult = new PageImpl<>(
+			content,
+			request.toPageable(),
+			total
 		);
 		return PaginationResponse.from(pageResult);
 	}

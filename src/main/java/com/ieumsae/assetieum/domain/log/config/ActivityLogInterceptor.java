@@ -1,6 +1,7 @@
 package com.ieumsae.assetieum.domain.log.config;
 
 import com.ieumsae.assetieum.domain.log.service.LogService;
+import com.ieumsae.assetieum.domain.log.service.LogTargetPathService;
 import com.ieumsae.assetieum.domain.log.type.ActivityLogAction;
 import com.ieumsae.assetieum.domain.log.type.AuditLogAction;
 import com.ieumsae.assetieum.domain.log.type.LogSubjectType;
@@ -25,6 +26,7 @@ public class ActivityLogInterceptor implements HandlerInterceptor {
 	);
 
 	private final LogService logService;
+	private final LogTargetPathService logTargetPathService;
 
 	@Override
 	public void afterCompletion(
@@ -59,6 +61,7 @@ public class ActivityLogInterceptor implements HandlerInterceptor {
 			action,
 			resolveSubjectType(uri),
 			resolveSubjectId(uri),
+			logTargetPathService.resolve(uri, member.companyId()),
 			createDetail(action, uri, request.getQueryString())
 		);
 	}
@@ -70,6 +73,7 @@ public class ActivityLogInterceptor implements HandlerInterceptor {
 			action,
 			resolveSubjectType(uri),
 			resolveSubjectId(uri),
+			logTargetPathService.resolve(uri, member.companyId()),
 			createAuditDetail(action, request.getMethod(), uri)
 		);
 	}
@@ -103,10 +107,16 @@ public class ActivityLogInterceptor implements HandlerInterceptor {
 	}
 
 	private LogSubjectType resolveSubjectType(String uri) {
-		if (uri.contains("/tangible-assets")) {
+		if (uri.contains("/tangible-asset/items")) {
+			return LogSubjectType.TANGIBLE_ASSET_ITEM;
+		}
+		if (uri.contains("/intangible-asset/items")) {
+			return LogSubjectType.INTANGIBLE_ASSET_ITEM;
+		}
+		if (uri.contains("/tangible-asset/assets") || uri.contains("/tangible-assets")) {
 			return LogSubjectType.TANGIBLE_ASSET;
 		}
-		if (uri.contains("/intangible-assets")) {
+		if (uri.contains("/intangible-asset/assets") || uri.contains("/intangible-assets")) {
 			return LogSubjectType.INTANGIBLE_ASSET;
 		}
 		if (uri.contains("/members")) {

@@ -21,6 +21,7 @@ import lombok.Getter;
 	"action",
 	"subjectType",
 	"subjectId",
+	"targetPath",
 	"detail"
 })
 public class ActivityLogResponse {
@@ -42,6 +43,8 @@ public class ActivityLogResponse {
 
 	private final UUID subjectId;
 
+	private final String targetPath;
+
 	private final String detail;
 
 	public static ActivityLogResponse from(ActivityLog log) {
@@ -54,8 +57,16 @@ public class ActivityLogResponse {
 			.action(log.getAction())
 			.subjectType(log.getSubjectType())
 			.subjectId(log.getSubjectId())
+			.targetPath(resolveTargetPath(log))
 			.detail(createDetail(log))
 			.build();
+	}
+
+	private static String resolveTargetPath(ActivityLog log) {
+		if (log.getTargetPath() != null && !log.getTargetPath().isBlank()) {
+			return log.getTargetPath();
+		}
+		return LogTargetPathResolver.resolve(log.getSubjectType(), log.getSubjectId());
 	}
 
 	private static String createDetail(ActivityLog log) {

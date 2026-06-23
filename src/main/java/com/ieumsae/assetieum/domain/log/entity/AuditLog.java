@@ -62,6 +62,9 @@ public class AuditLog {
 	@Column(name = "target_id", nullable = false, columnDefinition = "CHAR(36)")
 	private UUID subjectId;
 
+	@Column(name = "target_path", length = 500)
+	private String targetPath;
+
 	@Column(name = "before_value", nullable = false, columnDefinition = "TEXT")
 	private String beforeValue;
 

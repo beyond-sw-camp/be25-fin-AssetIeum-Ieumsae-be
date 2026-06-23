@@ -122,6 +122,10 @@ public class TicketRepositoryImpl implements TicketRepositoryCustom {
 				ticket.ticketType,
 				purchaseRequestTicket.requestMethod,
 				requestedItemName,
+				ticket.requester.id,
+				ticket.requester.name,
+				ticket.department.id,
+				ticket.department.name,
 				ticket.createdAt,
 				ticket.ticketStatus
 			))
