@@ -22,6 +22,8 @@ import lombok.Getter;
         "hrEventId",
         "memberId",
         "memberName",
+        "transferMemberId",
+        "transferMemberName",
         "assetType",
         "assetId",
         "assetCode",
@@ -41,6 +43,10 @@ public class HrEventAssetTargetResponse {
     private UUID memberId;
 
     private String memberName;
+
+    private UUID transferMemberId;
+
+    private String transferMemberName;
 
     private AssetType assetType;
 
@@ -69,6 +75,8 @@ public class HrEventAssetTargetResponse {
                 .hrEventId(target.getHrEvent().getId())
                 .memberId(target.getMember().getId())
                 .memberName(target.getMember().getName())
+                .transferMemberId(resolveTransferMemberId(target))
+                .transferMemberName(resolveTransferMemberName(target))
                 .assetType(target.getAssetType())
                 .assetId(resolveAssetId(target))
                 .assetCode(resolveAssetCode(target))
@@ -79,6 +87,20 @@ public class HrEventAssetTargetResponse {
                 .createdAt(target.getCreatedAt())
                 .updatedAt(target.getUpdatedAt())
                 .build();
+    }
+
+    private static UUID resolveTransferMemberId(HrEventAssetTarget target) {
+        if (target.getTransferMember() == null) {
+            return null;
+        }
+        return target.getTransferMember().getId();
+    }
+
+    private static String resolveTransferMemberName(HrEventAssetTarget target) {
+        if (target.getTransferMember() == null) {
+            return null;
+        }
+        return target.getTransferMember().getName();
     }
 
     private static UUID resolveAssetId(HrEventAssetTarget target) {

@@ -14,10 +14,20 @@ public interface HrEventAssetTargetRepository extends JpaRepository<HrEventAsset
             "tangibleAsset",
             "tangibleAsset.tangibleAssetItem",
             "intangibleAsset",
-            "intangibleAsset.intangibleAssetItem"
+            "intangibleAsset.intangibleAssetItem",
+            "transferMember"
     })
     List<HrEventAssetTarget> findAllByHrEvent_IdAndCompany_IdOrderByCreatedAtAsc(UUID eventId, UUID companyId);
 
+    @EntityGraph(attributePaths = {
+            "member",
+            "hrEvent",
+            "tangibleAsset",
+            "tangibleAsset.tangibleAssetItem",
+            "intangibleAsset",
+            "intangibleAsset.intangibleAssetItem",
+            "transferMember"
+    })
     List<HrEventAssetTarget> findAllByHrEvent_IdAndCompany_Id(UUID eventId, UUID companyId);
 
 }

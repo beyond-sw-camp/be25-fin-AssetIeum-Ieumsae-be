@@ -36,6 +36,7 @@ public class OnboardingHrEventHandler implements HrEventHandler {
 
     @Override
     public void handle(HrEvent hrEvent) {
+        hrEvent.start();
         HrTemplate hrTemplate = hrTemplateRepository.findByCompany_IdAndDepartment_IdAndDeletedAtIsNull(
                         hrEvent.getCompany().getId(),
                         hrEvent.getDepartment().getId()
@@ -49,8 +50,6 @@ public class OnboardingHrEventHandler implements HrEventHandler {
             AssetRequestTicketCreateResponse ticket = assetRequestTicketService.createAssetRequestTicket(targetMember, createAssetRequest(item));
             ticketService.approveDepartmentForHrEvent(hrEvent.getCompany().getId(), ticket.getTicketId());
         }
-
-        hrEvent.complete();
     }
 
     private AssetRequestTicketCreateRequest createAssetRequest(HrTemplateItem item) {

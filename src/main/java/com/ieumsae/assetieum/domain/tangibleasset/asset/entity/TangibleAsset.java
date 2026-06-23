@@ -222,6 +222,10 @@ public class TangibleAsset extends BaseEntity {
         this.usedStartedAt = reassignedAt;
     }
 
+    public void transferDepartment(Department department) {
+        this.department = department;
+    }
+
     public void updateReturnDueDate(LocalDateTime returnDueDate) {
         this.returnDueDate = returnDueDate;
     }

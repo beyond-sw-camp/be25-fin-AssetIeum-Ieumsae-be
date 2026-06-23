@@ -227,6 +227,58 @@ public class TangibleAssetAssignmentService {
     }
 
     @Transactional
+    public void transferDepartment(
+            UUID assetId,
+            UUID memberId,
+            Department targetDepartment,
+            UUID companyId
+    ) {
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
+
+        TangibleAsset asset = tangibleAssetRepository.findWithLockByIdAndCompany_Id(assetId, companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_NOT_FOUND));
+
+        Member member = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(memberId, companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+
+        TangibleAssetAssignment currentAssignment = tangibleAssetAssignmentRepository.findByCompany_IdAndTangibleAsset_IdAndAssignmentStatus(
+                        companyId,
+                        assetId,
+                        AssignmentStatus.ACTIVE)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_ASSIGNMENT_NOT_FOUND));
+
+        if (!currentAssignment.getMember().getId().equals(memberId)) {
+            throw new BusinessException(ErrorCode.TANGIBLE_ASSET_INVALID_REQUEST);
+        }
+
+        if (targetDepartment == null || !targetDepartment.getCompany().getId().equals(companyId)) {
+            throw new BusinessException(ErrorCode.DEPARTMENT_NOT_FOUND);
+        }
+
+        LocalDateTime movedAt = LocalDateTime.now();
+        LocalDateTime originalEndedAt = currentAssignment.getEndedAt();
+        currentAssignment.end(movedAt);
+
+        asset.transferDepartment(targetDepartment);
+        asset.reassign(member, movedAt);
+
+        TangibleAssetAssignment assignment = TangibleAssetAssignment.builder()
+                .company(company)
+                .tangibleAsset(asset)
+                .member(member)
+                .department(targetDepartment)
+                .assignmentType(currentAssignment.getAssignmentType())
+                .assignedAt(movedAt)
+                .endedAt(originalEndedAt)
+                .assignmentStatus(AssignmentStatus.ACTIVE)
+                .build();
+
+        TangibleAssetAssignment savedAssignment = tangibleAssetAssignmentRepository.save(assignment);
+
+    }
+
+    @Transactional
     public List<TangibleAssetAssignmentResponse> reassignBulkAsset(
             TangibleAssetReassignBulkRequest request,
             UUID companyId

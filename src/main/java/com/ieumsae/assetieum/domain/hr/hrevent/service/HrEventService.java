@@ -11,6 +11,7 @@ import com.ieumsae.assetieum.domain.hr.hrevent.entity.HrEvent;
 import com.ieumsae.assetieum.domain.hr.hrevent.repository.HrEventRepository;
 import com.ieumsae.assetieum.domain.hr.hrevent.service.handler.HrEventHandlerResolver;
 import com.ieumsae.assetieum.domain.hr.hrevent.type.HrEventStatus;
+import com.ieumsae.assetieum.domain.hr.hrevent.type.HrEventType;
 import com.ieumsae.assetieum.domain.hr.hreventassettarget.dto.HrEventAssetTargetCreateRequest;
 import com.ieumsae.assetieum.domain.hr.hreventassettarget.dto.HrEventAssetTargetResponse;
 import com.ieumsae.assetieum.domain.hr.hreventassettarget.entity.HrEventAssetTarget;
@@ -80,6 +81,7 @@ public class HrEventService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
         validateSameDepartment(authenticatedMember, targetMember.getDepartment().getId());
+        Department targetDepartment = resolveTargetDepartment(request, targetMember, member.companyId());
 
         Department department = departmentRepository.findByIdAndCompany_IdAndDeletedAtIsNull(
                         authenticatedMember.getDepartment().getId(),
@@ -90,6 +92,7 @@ public class HrEventService {
         HrEvent hrEvent = HrEvent.builder()
                 .company(company)
                 .department(department)
+                .targetDepartment(targetDepartment)
                 .member(targetMember)
                 .hrEventNo(codeGenerator.generate(HR_EVENT_NO_PREFIX, REDIS_KEY_PREFIX, member.companyId()))
                 .eventType(request.getEventType())
@@ -107,6 +110,35 @@ public class HrEventService {
         hrEventAssetTargetRepository.saveAll(assetTargets);
 
         return HrEventResponse.from(savedHrEvent);
+    }
+
+    private Department resolveTargetDepartment(
+            HrEventCreateRequest request,
+            Member targetMember,
+            UUID companyId
+    ) {
+        if (request.getEventType() != HrEventType.DEPARTMENT_TRANSFER) {
+            if (request.getTargetDepartmentId() != null) {
+                throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+            }
+            return null;
+        }
+
+        if (request.getTargetDepartmentId() == null) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+
+        Department targetDepartment = departmentRepository.findByIdAndCompany_IdAndDeletedAtIsNull(
+                        request.getTargetDepartmentId(),
+                        companyId
+                )
+                .orElseThrow(() -> new BusinessException(ErrorCode.DEPARTMENT_NOT_FOUND));
+
+        if (targetDepartment.getId().equals(targetMember.getDepartment().getId())) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+
+        return targetDepartment;
     }
 
     private List<HrEventAssetTarget> createHrEventAssetTargets(
@@ -132,11 +164,12 @@ public class HrEventService {
             Member targetMember,
             UUID companyId
     ) {
-        validateActionType(request);
+        validateActionType(hrEvent.getEventType(), request);
 
         TangibleAsset tangibleAsset = null;
         IntangibleAsset intangibleAsset = null;
         IntangibleAssetAssignment intangibleAssetAssignment = null;
+        Member transferMember = resolveTransferMember(request, targetMember, companyId);
 
         if (request.getAssetType() == AssetType.TANGIBLE) {
             tangibleAsset = tangibleAssetRepository.findByIdAndCompany_Id(request.getAssetId(), companyId)
@@ -158,6 +191,7 @@ public class HrEventService {
                 .tangibleAsset(tangibleAsset)
                 .intangibleAsset(intangibleAsset)
                 .intangibleAssetAssignment(intangibleAssetAssignment)
+                .transferMember(transferMember)
                 .actionType(request.getActionType())
                 .build();
     }
@@ -183,16 +217,47 @@ public class HrEventService {
         return assignment;
     }
 
-    private void validateActionType(HrEventAssetTargetCreateRequest request) {
-        if (request.getAssetType() == AssetType.TANGIBLE
-                && request.getActionType() == HrEventAssetActionType.UNASSIGN_REQUIRED) {
+    private void validateActionType(HrEventType eventType, HrEventAssetTargetCreateRequest request) {
+        if (eventType == HrEventType.OFFBOARDING
+                && request.getActionType() == HrEventAssetActionType.KEEP) {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
         }
 
-        if (request.getAssetType() == AssetType.INTANGIBLE
-                && request.getActionType() == HrEventAssetActionType.RETURN_REQUIRED) {
+        if (request.getActionType() == HrEventAssetActionType.TRANSFER_REQUIRED
+                && request.getTransferMemberId() == null) {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
         }
+
+        if (request.getActionType() != HrEventAssetActionType.TRANSFER_REQUIRED
+                && request.getTransferMemberId() != null) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+    }
+
+    private Member resolveTransferMember(
+            HrEventAssetTargetCreateRequest request,
+            Member targetMember,
+            UUID companyId
+    ) {
+        if (request.getActionType() != HrEventAssetActionType.TRANSFER_REQUIRED) {
+            return null;
+        }
+
+        Member transferMember = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(
+                        request.getTransferMemberId(),
+                        companyId
+                )
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+
+        if (transferMember.getId().equals(targetMember.getId())) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+
+        if (!transferMember.getDepartment().getId().equals(targetMember.getDepartment().getId())) {
+            throw new BusinessException(ErrorCode.HR_EVENT_MEMBER_DEPARTMENT_MISMATCH);
+        }
+
+        return transferMember;
     }
 
     private void validateTargetMember(Member assetMember, Member targetMember) {
@@ -212,8 +277,7 @@ public class HrEventService {
             UUID eventId,
             AuthenticatedMember member
     ) {
-        // 1. 입력값 검증
-        Company company = companyRepository.findById(member.companyId())
+        companyRepository.findById(member.companyId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
 
         Member authenticatedMember = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(
@@ -231,7 +295,6 @@ public class HrEventService {
             throw new BusinessException(ErrorCode.HR_EVENT_ALREADY_IN_PROGRESS);
         }
 
-        // 2. 이벤트 삭제 (soft delete)
         hrEvent.delete();
 
         List<HrEventAssetTarget> hrEventAssetTargets =
@@ -248,7 +311,6 @@ public class HrEventService {
             HrEventSearchRequest request,
             AuthenticatedMember authenticatedMember
     ) {
-        // 1. 입력값 검증
         companyRepository.findById(authenticatedMember.companyId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
 
@@ -258,7 +320,6 @@ public class HrEventService {
                 )
                 .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
-        // 2. 페이징 처리 및 반환
         Page<HrEventResponse> eventPage = hrEventRepository.search(
                 member.getCompany().getId(),
                 member.getDepartment().getId(),
@@ -291,8 +352,7 @@ public class HrEventService {
             UUID eventId,
             AuthenticatedMember member
     ) {
-        // 1. 입력값 검증
-        Company company = companyRepository.findById(member.companyId())
+        companyRepository.findById(member.companyId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
 
         HrEvent hrEvent = hrEventRepository.findByIdAndCompany_IdAndCancelledAtIsNull(eventId, member.companyId())
@@ -302,7 +362,7 @@ public class HrEventService {
             throw new BusinessException(ErrorCode.HR_EVENT_NOT_IN_PROGRESS);
         }
 
-        // 2. 상태 처리
+        completeRelatedTargets(hrEvent);
         hrEvent.complete();
 
         return HrEventResponse.from(hrEvent);
@@ -324,7 +384,16 @@ public class HrEventService {
     }
 
     private void executeHrEvent(HrEvent hrEvent) {
-        hrEvent.start();
         hrEventHandlerResolver.resolve(hrEvent.getEventType()).handle(hrEvent);
+    }
+
+    private void completeRelatedTargets(HrEvent hrEvent) {
+        List<HrEventAssetTarget> hrEventAssetTargets =
+                hrEventAssetTargetRepository.findAllByHrEvent_IdAndCompany_Id(hrEvent.getId(), hrEvent.getCompany().getId());
+
+        LocalDateTime completedAt = LocalDateTime.now();
+        for (HrEventAssetTarget target : hrEventAssetTargets) {
+            target.complete(completedAt);
+        }
     }
 }
