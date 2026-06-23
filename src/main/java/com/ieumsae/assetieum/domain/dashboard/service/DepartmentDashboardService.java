@@ -216,8 +216,6 @@ public class DepartmentDashboardService {
 			case ONBOARDING -> "입사";
 			case OFFBOARDING -> "퇴사";
 			case DEPARTMENT_TRANSFER -> "부서이동";
-			case LEAVE -> "휴직";
-			case RETURN -> "복직";
 		};
 	}
 

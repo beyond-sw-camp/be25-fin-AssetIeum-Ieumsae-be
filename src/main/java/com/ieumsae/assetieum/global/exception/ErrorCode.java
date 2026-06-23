@@ -99,6 +99,9 @@ public enum ErrorCode {
 	PURCHASE_POLICY_TEAM_PURCHASE_TICKET_IN_PROGRESS(HttpStatus.CONFLICT, "purchase-policy-002", "진행 중인 구매자산팀 전담 티켓이 있어 직접구매 전용으로 변경할 수 없습니다."),
 	PURCHASE_POLICY_DIRECT_PURCHASE_TICKET_IN_PROGRESS(HttpStatus.CONFLICT, "purchase-policy-003", "진행 중인 직접구매 티켓이 있어 구매자산팀 전담으로 변경할 수 없습니다."),
 
+	// 예산
+	BUDGET_NOT_FOUND(HttpStatus.NOT_FOUND, "budget-001", "예산을 찾을 수 없습니다."),
+
 	// HR 템플릿
 	HR_TEMPLATE_NOT_FOUND(HttpStatus.NOT_FOUND, "hr-template-001", "HR 템플릿을 찾을 수 없습니다."),
 
