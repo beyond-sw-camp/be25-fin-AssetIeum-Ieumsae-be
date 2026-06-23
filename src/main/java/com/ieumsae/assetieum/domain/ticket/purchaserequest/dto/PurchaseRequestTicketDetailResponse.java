@@ -47,6 +47,8 @@ public class PurchaseRequestTicketDetailResponse {
 	private final LocalDateTime requestedAt;
 	private final TicketStatus currentStatus;
 	private final PurchaseRequestTicketStatus detailStatus;
+	private final String departmentRejectionReason;
+	private final String purchaseRejectionReason;
 	private final UUID linkedPurchaseId;
 	private final MemberSummary assetAssignee;
 	@JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
@@ -111,6 +113,8 @@ public class PurchaseRequestTicketDetailResponse {
 			.requestedAt(ticket.getCreatedAt())
 			.currentStatus(ticket.getTicketStatus())
 			.detailStatus(requesterView ? purchaseRequestTicket.getStatus() : null)
+			.departmentRejectionReason(ticket.getDepartmentRejectionReason())
+			.purchaseRejectionReason(ticket.getPurchaseRejectionReason())
 			.linkedPurchaseId(requesterView ? null : linkedPurchaseId)
 			.assetAssignee(MemberSummary.from(ticket.getAssignee()))
 			.assetProcessedAt(resolveAssetProcessedAt(ticket))
