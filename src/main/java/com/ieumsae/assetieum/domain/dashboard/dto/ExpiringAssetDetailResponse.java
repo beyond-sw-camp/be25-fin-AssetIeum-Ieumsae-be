@@ -15,13 +15,22 @@ public class ExpiringAssetDetailResponse {
 	private final UUID assetId;
 	private final String assetName;
 	private final long remainingDays;
+	private final Long dayCount;
+	private final String dayStatusLabel;
 	private final UUID departmentId;
 	private final String departmentName;
 	private final UUID userId;
 	private final String userName;
 	@JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
 	private final LocalDateTime expiredAt;
+	@JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+	private final LocalDateTime expirationDate;
+	private final Long remainingPeriodDays;
+	private final String remainingPeriodStatus;
+	@JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+	private final LocalDateTime dueDate;
 	private final String assetCode;
+	private final String categoryOrProvider;
 	private final String manufacturer;
 	private final String issuer;
 }

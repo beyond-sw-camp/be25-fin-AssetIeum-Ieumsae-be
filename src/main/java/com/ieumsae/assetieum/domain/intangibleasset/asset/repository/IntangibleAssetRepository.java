@@ -56,7 +56,7 @@ public interface IntangibleAssetRepository extends JpaRepository<IntangibleAsset
     );
 
     @Query("""
-            select asset.purchasePrice
+            select asset.purchasePrice / asset.seatCount
             from IntangibleAsset asset
             where asset.company.id = :companyId
               and asset.intangibleAssetItem.id = :itemId

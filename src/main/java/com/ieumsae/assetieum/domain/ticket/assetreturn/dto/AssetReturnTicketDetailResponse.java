@@ -42,6 +42,8 @@ public class AssetReturnTicketDetailResponse {
 	private final LocalDateTime requestedAt;
 	private final TicketStatus currentStatus;
 	private final AssetReturnTicketStatus detailStatus;
+	private final String departmentRejectionReason;
+	private final String purchaseRejectionReason;
 	private final MemberSummary assetAssignee;
 	@JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
 	private final LocalDateTime collectedAt;
@@ -91,6 +93,8 @@ public class AssetReturnTicketDetailResponse {
 			.requestedAt(ticket.getCreatedAt())
 			.currentStatus(ticket.getTicketStatus())
 			.detailStatus(assetReturnTicket.getStatus())
+			.departmentRejectionReason(ticket.getDepartmentRejectionReason())
+			.purchaseRejectionReason(ticket.getPurchaseRejectionReason())
 			.assetAssignee(MemberSummary.from(ticket.getAssignee()))
 			.collectedAt(assetReturnTicket.getCollectedAt())
 			.returnProcessedAt(assetReturnTicket.getProcessedAt())

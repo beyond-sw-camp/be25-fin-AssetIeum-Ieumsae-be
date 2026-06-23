@@ -31,6 +31,7 @@ public class DirectPurchaseAssetAssignResponse {
 	private final UUID assignmentId;
 	private final int quantity;
 	private final List<AssignedAssetResponse> assets;
+	private final List<RegisteredAssetResponse> registeredAssets;
 	private final BigDecimal actualPrice;
 	private final ConfirmationStatus confirmationStatus;
 
@@ -52,7 +53,8 @@ public class DirectPurchaseAssetAssignResponse {
 			assetType,
 			itemId,
 			itemName,
-			List.of(AssignedAssetResponse.of(assetId, assetCode, assignmentId))
+			List.of(AssignedAssetResponse.of(assetId, assetCode, assignmentId)),
+			List.of(RegisteredAssetResponse.of(assetId, assetCode, null, null, 1))
 		);
 	}
 
@@ -64,6 +66,19 @@ public class DirectPurchaseAssetAssignResponse {
 		UUID itemId,
 		String itemName,
 		List<AssignedAssetResponse> assets
+	) {
+		return from(ticket, purchaseRequestTicket, result, assetType, itemId, itemName, assets, List.of());
+	}
+
+	public static DirectPurchaseAssetAssignResponse from(
+		Ticket ticket,
+		PurchaseRequestTicket purchaseRequestTicket,
+		DirectPurchaseResult result,
+		AssetType assetType,
+		UUID itemId,
+		String itemName,
+		List<AssignedAssetResponse> assets,
+		List<RegisteredAssetResponse> registeredAssets
 	) {
 		AssignedAssetResponse firstAsset = assets.isEmpty() ? null : assets.get(0);
 		return DirectPurchaseAssetAssignResponse.builder()
@@ -81,6 +96,7 @@ public class DirectPurchaseAssetAssignResponse {
 			.assignmentId(firstAsset == null ? null : firstAsset.getAssignmentId())
 			.quantity(purchaseRequestTicket.getQuantity())
 			.assets(assets)
+			.registeredAssets(registeredAssets)
 			.actualPrice(result.getActualPrice())
 			.confirmationStatus(result.getConfirmationStatus())
 			.build();
@@ -95,9 +111,13 @@ public class DirectPurchaseAssetAssignResponse {
 		private final UUID assignmentId;
 		private final String serialNumber;
 		private final String licenseCode;
+		private final UUID assigneeId;
+		private final String assigneeName;
+		private final UUID departmentId;
+		private final String departmentName;
 
 		public static AssignedAssetResponse of(UUID assetId, String assetCode, UUID assignmentId) {
-			return of(assetId, assetCode, assignmentId, null, null);
+			return of(assetId, assetCode, assignmentId, null, null, null, null, null, null);
 		}
 
 		public static AssignedAssetResponse of(
@@ -107,12 +127,57 @@ public class DirectPurchaseAssetAssignResponse {
 			String serialNumber,
 			String licenseCode
 		) {
+			return of(assetId, assetCode, assignmentId, serialNumber, licenseCode, null, null, null, null);
+		}
+
+		public static AssignedAssetResponse of(
+			UUID assetId,
+			String assetCode,
+			UUID assignmentId,
+			String serialNumber,
+			String licenseCode,
+			UUID assigneeId,
+			String assigneeName,
+			UUID departmentId,
+			String departmentName
+		) {
 			return AssignedAssetResponse.builder()
 				.assetId(assetId)
 				.assetCode(assetCode)
 				.assignmentId(assignmentId)
 				.serialNumber(serialNumber)
 				.licenseCode(licenseCode)
+				.assigneeId(assigneeId)
+				.assigneeName(assigneeName)
+				.departmentId(departmentId)
+				.departmentName(departmentName)
+				.build();
+		}
+	}
+
+	@Getter
+	@Builder
+	public static class RegisteredAssetResponse {
+
+		private final UUID assetId;
+		private final String assetCode;
+		private final String serialNumber;
+		private final String licenseCode;
+		private final int assignedSeatCount;
+
+		public static RegisteredAssetResponse of(
+			UUID assetId,
+			String assetCode,
+			String serialNumber,
+			String licenseCode,
+			int assignedSeatCount
+		) {
+			return RegisteredAssetResponse.builder()
+				.assetId(assetId)
+				.assetCode(assetCode)
+				.serialNumber(serialNumber)
+				.licenseCode(licenseCode)
+				.assignedSeatCount(assignedSeatCount)
 				.build();
 		}
 	}

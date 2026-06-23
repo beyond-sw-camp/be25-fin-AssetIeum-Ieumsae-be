@@ -21,12 +21,15 @@ import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.AssetRequestTicketCr
 import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.AssetRequestTicketDetailResponse;
 import com.ieumsae.assetieum.domain.ticket.assetrequest.entity.AssetRequestTicket;
 import com.ieumsae.assetieum.domain.ticket.assetrequest.repository.AssetRequestTicketRepository;
+import com.ieumsae.assetieum.domain.ticket.common.dto.TicketAssignmentTargetResponse;
 import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
 import com.ieumsae.assetieum.domain.ticket.common.repository.TicketRepository;
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketApprovalResolver;
+import com.ieumsae.assetieum.domain.ticket.common.service.TicketAssignmentTargetService;
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketNoGenerator;
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketRequesterResolver;
 import com.ieumsae.assetieum.domain.ticket.common.type.AssetType;
+import com.ieumsae.assetieum.domain.ticket.common.type.RequestedUsageType;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
@@ -55,6 +58,7 @@ public class AssetRequestTicketService {
 	private final AssetRequestAssignmentService assetRequestAssignmentService;
 	private final AssetRequestAvailabilityService assetRequestAvailabilityService;
 	private final AssetRequestActionResolver assetRequestActionResolver;
+	private final TicketAssignmentTargetService ticketAssignmentTargetService;
 
 	@Transactional
 	public AssetRequestTicketCreateResponse createAssetRequestTicket(
@@ -66,6 +70,10 @@ public class AssetRequestTicketService {
 		Member approver = ticketApprovalResolver.resolveDepartmentApprover(requester);
 		TangibleAssetItem tangibleAssetItem = null;
 		IntangibleAssetItem intangibleAssetItem = null;
+		RequestedUsageType requestedUsageType = resolveRequestedUsageType(
+			request.getAssetType(),
+			request.getRequestedUsageType()
+		);
 
 		if (request.getAssetType() == AssetType.TANGIBLE) {
 			tangibleAssetItem = findTangibleAssetItem(request.getAssetItemId(), companyId);
@@ -91,11 +99,18 @@ public class AssetRequestTicketService {
 			AssetRequestTicket.createRequest(
 				ticket,
 				requester.getCompany(),
-				request.getRequestedUsageType(),
+				requestedUsageType,
 				tangibleAssetItem,
 				intangibleAssetItem,
 				request.getQuantity()
 			)
+		);
+		ticketAssignmentTargetService.saveRequiredTargets(
+			companyId,
+			ticket,
+			request.getAssignmentTargetMemberIds(),
+			request.getQuantity(),
+			requestedUsageType
 		);
 
 		return AssetRequestTicketCreateResponse.from(
@@ -123,8 +138,28 @@ public class AssetRequestTicketService {
 			assetRequestTicket,
 			viewer.getRole(),
 			requesterView,
+			getAssignmentTargetResponses(companyId, ticket),
 			assetRequestActionResolver.createActions(ticket, viewer)
 		);
+	}
+
+	private List<TicketAssignmentTargetResponse> getAssignmentTargetResponses(UUID companyId, Ticket ticket) {
+		return ticketAssignmentTargetService.findTargets(companyId, ticket).stream()
+			.map(TicketAssignmentTargetResponse::from)
+			.toList();
+	}
+
+	private RequestedUsageType resolveRequestedUsageType(AssetType assetType, RequestedUsageType requestedUsageType) {
+		if (assetType == null) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "자산 유형은 필수입니다.");
+		}
+		if (assetType == AssetType.INTANGIBLE) {
+			return RequestedUsageType.PERSONAL;
+		}
+		if (requestedUsageType == null) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "유형자산은 요청 용도가 필수입니다.");
+		}
+		return requestedUsageType;
 	}
 
 	public AssetRequestAssignableItemsResponse getAssignableItems(

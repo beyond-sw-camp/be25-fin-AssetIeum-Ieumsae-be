@@ -10,6 +10,7 @@ import com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.PurchasePlanIte
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.type.PurchasePlanItemStatus;
 import com.ieumsae.assetieum.domain.tangibleasset.category.entity.TangibleAssetCategory;
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
+import com.ieumsae.assetieum.domain.ticket.common.dto.TicketAssignmentTargetResponse;
 import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
 import com.ieumsae.assetieum.domain.ticket.common.type.AssetType;
 import com.ieumsae.assetieum.domain.ticket.common.type.RequestMethod;
@@ -46,6 +47,8 @@ public class PurchaseRequestTicketDetailResponse {
 	private final LocalDateTime requestedAt;
 	private final TicketStatus currentStatus;
 	private final PurchaseRequestTicketStatus detailStatus;
+	private final String departmentRejectionReason;
+	private final String purchaseRejectionReason;
 	private final UUID linkedPurchaseId;
 	private final MemberSummary assetAssignee;
 	@JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
@@ -65,6 +68,8 @@ public class PurchaseRequestTicketDetailResponse {
 	private final LicenseType licenseType;
 	private final String purchaseUrl;
 	private final int quantity;
+	private final Integer seatCount;
+	private final List<TicketAssignmentTargetResponse> assignmentTargets;
 	private final BigDecimal expectedPrice;
 	private final BigDecimal expectedTotalPrice;   // 예상 합계금액 (단가 × 수량)
 	private final BigDecimal actualPrice;
@@ -92,6 +97,7 @@ public class PurchaseRequestTicketDetailResponse {
 		UUID linkedPurchaseId,
 		PurchasePlanItem linkedPurchasePlanItem,
 		DirectPurchaseResult directPurchaseResult,
+		List<TicketAssignmentTargetResponse> assignmentTargets,
 		Actions actions
 	) {
 		return PurchaseRequestTicketDetailResponse.builder()
@@ -107,12 +113,14 @@ public class PurchaseRequestTicketDetailResponse {
 			.requestedAt(ticket.getCreatedAt())
 			.currentStatus(ticket.getTicketStatus())
 			.detailStatus(requesterView ? purchaseRequestTicket.getStatus() : null)
+			.departmentRejectionReason(ticket.getDepartmentRejectionReason())
+			.purchaseRejectionReason(ticket.getPurchaseRejectionReason())
 			.linkedPurchaseId(requesterView ? null : linkedPurchaseId)
 			.assetAssignee(MemberSummary.from(ticket.getAssignee()))
 			.assetProcessedAt(resolveAssetProcessedAt(ticket))
 			.processedAt(ticket.getUpdatedAt())
 			.completedAt(ticket.getCompletedAt())
-			.requestedUsageType(purchaseRequestTicket.getRequestedUsageType())
+			.requestedUsageType(resolveRequestedUsageType(purchaseRequestTicket))
 			.requestMethod(purchaseRequestTicket.getRequestMethod())
 			.assetType(resolveAssetType(purchaseRequestTicket))
 			.isStandard(purchaseRequestTicket.getIsStandard())
@@ -123,6 +131,8 @@ public class PurchaseRequestTicketDetailResponse {
 			.licenseType(purchaseRequestTicket.getLicenseType())
 			.purchaseUrl(purchaseRequestTicket.getPurchaseUrl())
 			.quantity(purchaseRequestTicket.getQuantity())
+			.seatCount(purchaseRequestTicket.getSeatCount())
+			.assignmentTargets(assignmentTargets)
 			.expectedPrice(purchaseRequestTicket.getExpectedPrice())
 			.expectedTotalPrice(resolveExpectedTotalPrice(purchaseRequestTicket))
 			.actualPrice(resolveActualPrice(linkedPurchasePlanItem, directPurchaseResult))
@@ -207,6 +217,13 @@ public class PurchaseRequestTicketDetailResponse {
 			return AssetType.TANGIBLE;
 		}
 		return AssetType.INTANGIBLE;
+	}
+
+	private static RequestedUsageType resolveRequestedUsageType(PurchaseRequestTicket ticket) {
+		if (resolveAssetType(ticket) == AssetType.INTANGIBLE) {
+			return null;
+		}
+		return ticket.getRequestedUsageType();
 	}
 
 	private static UUID resolveAssetItemId(PurchaseRequestTicket ticket) {
