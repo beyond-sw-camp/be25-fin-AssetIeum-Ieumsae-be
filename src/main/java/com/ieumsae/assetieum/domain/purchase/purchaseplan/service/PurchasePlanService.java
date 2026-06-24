@@ -36,6 +36,7 @@ import com.ieumsae.assetieum.domain.purchase.purchaseplan.type.PurchasePlanItemS
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.type.PurchaseRequestStatus;
 import com.ieumsae.assetieum.domain.purchase.purchaseplanitem.dto.PurchasePlanItemCreateRequest;
 import com.ieumsae.assetieum.domain.purchase.purchaseplanitem.dto.PurchasePlanItemResponse;
+import com.ieumsae.assetieum.domain.purchase.purchaseplanitem.dto.PurchasePlanItemDetailResponse;
 import com.ieumsae.assetieum.domain.purchase.purchaseplanitem.repository.PurchasePlanItemRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.dto.TangibleAssetCreateRequest;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.dto.TangibleAssetResponse;
@@ -403,7 +404,15 @@ public class PurchasePlanService {
                 purchasePlanItemRepository.findAllByPurchasePlan_IdAndCompany_Id(planId, companyId)
                         .orElseThrow(() -> new BusinessException(ErrorCode.PURCHASE_PLAN_ITEM_NOT_FOUND));
 
-        return PurchasePlanDetailResponse.from(purchasePlan, purchasePlanItems);
+        return PurchasePlanDetailResponse.from(
+                purchasePlan,
+                purchasePlanItems.stream()
+                        .map(item -> PurchasePlanItemDetailResponse.from(
+                                item,
+                                resolvePurchasePlanItemCategoryName(item, companyId)
+                        ))
+                        .toList()
+        );
     }
 
     @Transactional
@@ -448,7 +457,36 @@ public class PurchasePlanService {
                 purchasePlanItemRepository.findAllByPurchasePlan_IdAndCompany_Id(planId, companyId)
                         .orElseThrow(() -> new BusinessException(ErrorCode.PURCHASE_PLAN_ITEM_NOT_FOUND));
 
-        return PurchasePlanDetailResponse.from(purchasePlan, purchasePlanItems);
+        return PurchasePlanDetailResponse.from(
+                purchasePlan,
+                purchasePlanItems.stream()
+                        .map(item -> PurchasePlanItemDetailResponse.from(
+                                item,
+                                resolvePurchasePlanItemCategoryName(item, companyId)
+                        ))
+                        .toList()
+        );
+    }
+
+    private String resolvePurchasePlanItemCategoryName(PurchasePlanItem item, UUID companyId) {
+        UUID categoryId = item.getCategoryId();
+        if (categoryId == null) {
+            return null;
+        }
+
+        if (item.getAssetType() == AssetType.TANGIBLE) {
+            return tangibleAssetCategoryRepository.findByIdAndCompany_Id(categoryId, companyId)
+                    .map(TangibleAssetCategory::getName)
+                    .orElse(null);
+        }
+
+        if (item.getAssetType() == AssetType.INTANGIBLE) {
+            return intangibleAssetCategoryRepository.findByIdAndCompany_Id(categoryId, companyId)
+                    .map(IntangibleAssetCategory::getName)
+                    .orElse(null);
+        }
+
+        return null;
     }
 
     private void validatePurchasePlanCompletionReady(
