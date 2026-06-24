@@ -1,7 +1,5 @@
 package com.ieumsae.assetieum.domain.notification.controller;
 
-import com.ieumsae.assetieum.domain.notification.dto.NotificationCreateRequest;
-import com.ieumsae.assetieum.domain.notification.dto.NotificationCreateResponse;
 import com.ieumsae.assetieum.domain.notification.dto.NotificationListItemResponse;
 import com.ieumsae.assetieum.domain.notification.dto.NotificationReadAllResponse;
 import com.ieumsae.assetieum.domain.notification.dto.NotificationReadResponse;
@@ -20,9 +18,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -44,7 +40,7 @@ public class NotificationController {
 			authenticatedMember,
 			request
 		);
-		return ApiResponse.ok("알림 목록 조회에 성공했습니다.", response);
+		return ApiResponse.ok("?뚮┝ 紐⑸줉 議고쉶???깃났?덉뒿?덈떎.", response);
 	}
 
 	@GetMapping("/unread-count")
@@ -52,7 +48,7 @@ public class NotificationController {
 		@AuthenticationPrincipal AuthenticatedMember authenticatedMember
 	) {
 		NotificationUnreadCountResponse response = notificationService.getUnreadCount(authenticatedMember);
-		return ApiResponse.ok("읽지 않은 알림 개수 조회에 성공했습니다.", response);
+		return ApiResponse.ok("?쎌? ?딆? ?뚮┝ 媛쒖닔 議고쉶???깃났?덉뒿?덈떎.", response);
 	}
 
 	@GetMapping("/subscribe")
@@ -62,38 +58,13 @@ public class NotificationController {
 		return notificationSseService.subscribe(authenticatedMember);
 	}
 
-	@GetMapping("/{notificationId}")
-	public ApiResponse<NotificationListItemResponse> getNotification(
-		@AuthenticationPrincipal AuthenticatedMember authenticatedMember,
-		@PathVariable Long notificationId
-	) {
-		NotificationListItemResponse response = notificationService.getNotification(
-			authenticatedMember,
-			notificationId
-		);
-		return ApiResponse.ok("알림 단건 조회에 성공했습니다.", response);
-	}
-
-	@PreAuthorize("hasRole('ADMIN')")
-	@PostMapping
-	public ApiResponse<NotificationCreateResponse> createNotification(
-		@AuthenticationPrincipal AuthenticatedMember authenticatedMember,
-		@Valid @RequestBody NotificationCreateRequest request
-	) {
-		NotificationCreateResponse response = notificationService.createNotification(
-			authenticatedMember,
-			request
-		);
-		return ApiResponse.ok("알림 생성에 성공했습니다.", response);
-	}
-
 	@PatchMapping("/{notificationId}/read")
 	public ApiResponse<NotificationReadResponse> markAsRead(
 		@AuthenticationPrincipal AuthenticatedMember authenticatedMember,
 		@PathVariable Long notificationId
 	) {
 		NotificationReadResponse response = notificationService.markAsRead(authenticatedMember, notificationId);
-		return ApiResponse.ok("알림 읽음 처리에 성공했습니다.", response);
+		return ApiResponse.ok("?뚮┝ ?쎌쓬 泥섎━???깃났?덉뒿?덈떎.", response);
 	}
 
 	@PatchMapping("/read-all")
@@ -101,6 +72,6 @@ public class NotificationController {
 		@AuthenticationPrincipal AuthenticatedMember authenticatedMember
 	) {
 		NotificationReadAllResponse response = notificationService.markAllAsRead(authenticatedMember);
-		return ApiResponse.ok("전체 알림 읽음 처리에 성공했습니다.", response);
+		return ApiResponse.ok("?꾩껜 ?뚮┝ ?쎌쓬 泥섎━???깃났?덉뒿?덈떎.", response);
 	}
 }
