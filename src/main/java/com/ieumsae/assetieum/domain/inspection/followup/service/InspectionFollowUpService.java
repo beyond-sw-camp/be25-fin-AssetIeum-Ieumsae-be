@@ -1,17 +1,22 @@
 package com.ieumsae.assetieum.domain.inspection.followup.service;
 
 import com.ieumsae.assetieum.domain.inspection.followup.dto.InspectionFollowUpResponse;
+import com.ieumsae.assetieum.domain.inspection.followup.dto.InspectionFollowUpSearchRequest;
+import com.ieumsae.assetieum.domain.inspection.followup.dto.InspectionFollowUpSearchResponse;
 import com.ieumsae.assetieum.domain.inspection.followup.dto.InspectionFollowUpStatusRequest;
 import com.ieumsae.assetieum.domain.inspection.followup.entity.InspectionFollowUp;
 import com.ieumsae.assetieum.domain.inspection.followup.repository.InspectionFollowUpRepository;
 import com.ieumsae.assetieum.domain.inspection.followup.type.InspectionFollowUpStatus;
 import com.ieumsae.assetieum.domain.inspection.inspection.service.InspectionService;
+import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -84,5 +89,24 @@ public class InspectionFollowUpService {
         }
 
         throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+    }
+
+    public PaginationResponse<InspectionFollowUpSearchResponse> getInspectionFollowUps(
+            InspectionFollowUpSearchRequest request,
+            AuthenticatedMember member
+    ) {
+        String keyword = StringUtils.hasText(request.getKeyword())
+                ? request.getKeyword().trim()
+                : null;
+
+        Page<InspectionFollowUpSearchResponse> page = inspectionFollowUpRepository.searchFollowUps(
+                member.companyId(),
+                member.id(),
+                request.getStatus(),
+                keyword,
+                request.toPageable()
+        ).map(InspectionFollowUpSearchResponse::from);
+
+        return PaginationResponse.from(page);
     }
 }
