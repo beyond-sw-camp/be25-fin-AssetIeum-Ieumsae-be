@@ -84,6 +84,14 @@ public class DashboardService {
 		return dashboardRepository.getEmployeeOwnedAssetDetails(companyId, memberId, request);
 	}
 
+	public PaginationResponse<OwnedAssetDetailResponse> getDepartmentOwnedAssetDetails(
+		UUID companyId,
+		UUID memberId,
+		OwnedAssetDetailSearchRequest request
+	) {
+		return dashboardRepository.getDepartmentOwnedAssetDetails(companyId, memberId, request);
+	}
+
 	public PaginationResponse<ExpiringAssetDetailResponse> getExpiringAssetDetails(
 		UUID companyId,
 		ExpiringAssetDetailSearchRequest request
@@ -97,6 +105,14 @@ public class DashboardService {
 		ExpiringAssetDetailSearchRequest request
 	) {
 		return dashboardRepository.getEmployeeExpiringAssetDetails(companyId, memberId, request);
+	}
+
+	public PaginationResponse<ExpiringAssetDetailResponse> getDepartmentExpiringAssetDetails(
+		UUID companyId,
+		UUID memberId,
+		ExpiringAssetDetailSearchRequest request
+	) {
+		return dashboardRepository.getDepartmentExpiringAssetDetails(companyId, memberId, request);
 	}
 
 	public PaginationResponse<AssetDemandResponse> getEmployeeDepartmentAssetDemands(

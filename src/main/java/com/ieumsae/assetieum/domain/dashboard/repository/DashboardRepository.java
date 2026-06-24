@@ -169,6 +169,20 @@ public class DashboardRepository {
 		};
 	}
 
+	public PaginationResponse<OwnedAssetDetailResponse> getDepartmentOwnedAssetDetails(
+		UUID companyId,
+		UUID memberId,
+		OwnedAssetDetailSearchRequest request
+	) {
+		UUID departmentId = getMemberDepartmentId(companyId, memberId);
+		return switch (request.getStatus()) {
+			case UNASSIGNED -> getUnassignedAssetDetails(companyId, departmentId, request.getKeyword(), request);
+			case RENTAL_SCHEDULED -> getRentalScheduledAssetDetails(companyId, null, departmentId, request.getKeyword(), request);
+			case RENTED -> getRentedAssetDetails(companyId, null, departmentId, request.getKeyword(), request);
+			case OVERDUE -> getOverdueAssetDetails(companyId, null, departmentId, request.getKeyword(), request);
+		};
+	}
+
 	public PaginationResponse<ExpiringAssetDetailResponse> getExpiringAssetDetails(
 		UUID companyId,
 		ExpiringAssetDetailSearchRequest request
@@ -225,6 +239,39 @@ public class DashboardRepository {
 			companyId,
 			memberId,
 			null,
+			request.getKeyword(),
+			now,
+			limit,
+			request
+		);
+	}
+
+	public PaginationResponse<ExpiringAssetDetailResponse> getDepartmentExpiringAssetDetails(
+		UUID companyId,
+		UUID memberId,
+		ExpiringAssetDetailSearchRequest request
+	) {
+		UUID departmentId = getMemberDepartmentId(companyId, memberId);
+		LocalDateTime now = LocalDateTime.now();
+		LocalDateTime limit = now.plusDays(EXPIRING_DAYS);
+		if (request.getAssetType() == null) {
+			return getAllExpiringAssetDetails(companyId, null, departmentId, request.getKeyword(), now, limit, request);
+		}
+		if (request.getAssetType() == AssetType.TANGIBLE) {
+			return getExpiringTangibleAssetDetails(
+				companyId,
+				null,
+				departmentId,
+				request.getKeyword(),
+				now,
+				limit,
+				request
+			);
+		}
+		return getExpiringIntangibleAssetDetails(
+			companyId,
+			null,
+			departmentId,
 			request.getKeyword(),
 			now,
 			limit,
