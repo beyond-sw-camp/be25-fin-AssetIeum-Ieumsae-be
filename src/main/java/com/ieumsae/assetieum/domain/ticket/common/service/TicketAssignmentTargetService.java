@@ -35,7 +35,8 @@ public class TicketAssignmentTargetService {
 		RequestedUsageType requestedUsageType,
 		boolean allowDuplicateMembers
 	) {
-		if (memberIds == null || memberIds.isEmpty()) {
+		List<UUID> normalizedMemberIds = compactMemberIds(memberIds);
+		if (normalizedMemberIds.isEmpty()) {
 			// 개별 자산 할당 대상이 흐려지지 않도록 요청 시점에 배정 대상자를 반드시 받는다.
 			if (requiredCount >= 1) {
 				throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "배정 대상자를 1명 이상 입력해야 합니다.");
@@ -43,10 +44,10 @@ public class TicketAssignmentTargetService {
 			saveRequesterFallbackTargets(ticket, requiredCount);
 			return;
 		}
-		if (memberIds.size() != requiredCount) {
+		if (normalizedMemberIds.size() != requiredCount) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "배정 대상자 수는 요청 수량과 일치해야 합니다.");
 		}
-		saveTargets(companyId, ticket, memberIds, allowDuplicateMembers);
+		saveTargets(companyId, ticket, normalizedMemberIds, allowDuplicateMembers);
 	}
 
 	@Transactional
@@ -84,14 +85,15 @@ public class TicketAssignmentTargetService {
 		int capacity,
 		boolean allowDuplicateMembers
 	) {
-		if (memberIds == null || memberIds.isEmpty()) {
+		List<UUID> normalizedMemberIds = compactMemberIds(memberIds);
+		if (normalizedMemberIds.isEmpty()) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "배정 대상자를 입력해야 합니다.");
 		}
-		if (memberIds.size() > capacity) {
+		if (normalizedMemberIds.size() > capacity) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "배정 대상자 수가 사용 가능한 좌석 수를 초과했습니다.");
 		}
 		deleteTargets(companyId, ticket);
-		saveTargets(companyId, ticket, memberIds, allowDuplicateMembers);
+		saveTargets(companyId, ticket, normalizedMemberIds, allowDuplicateMembers);
 	}
 
 	@Transactional
@@ -173,6 +175,15 @@ public class TicketAssignmentTargetService {
 		if (uniqueMemberIds.size() != memberIds.size()) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "배정 대상자를 중복으로 지정할 수 없습니다.");
 		}
+	}
+
+	private List<UUID> compactMemberIds(List<UUID> memberIds) {
+		if (memberIds == null || memberIds.isEmpty()) {
+			return List.of();
+		}
+		return memberIds.stream()
+			.filter(memberId -> memberId != null)
+			.toList();
 	}
 
 	private void deleteTargets(UUID companyId, Ticket ticket) {
