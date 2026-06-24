@@ -18,6 +18,7 @@ import com.ieumsae.assetieum.domain.intangibleasset.item.type.LicenseType;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.type.MemberRole;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.PurchasePlanItem;
+import com.ieumsae.assetieum.domain.purchase.purchaseplan.type.PurchaseRequestStatus;
 import com.ieumsae.assetieum.domain.purchase.purchaseplanitem.repository.PurchasePlanItemRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.entity.TangibleAsset;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.repository.TangibleAssetRepository;
@@ -362,7 +363,13 @@ public class PurchaseRequestTicketService {
 	}
 
 	private PurchasePlanItem findLinkedPurchasePlanItem(UUID ticketId, UUID companyId) {
-		return purchasePlanItemRepository.findFirstByTicket_IdAndCompany_IdOrderByIdAsc(ticketId, companyId)
+		// 반려/취소된 과거 구매계획 연결은 이력으로만 남기고, 상세조회에는 현재 유효한 구매계획만 노출한다.
+		return purchasePlanItemRepository
+			.findFirstByTicket_IdAndCompany_IdAndPurchasePlan_PurchaseRequestStatusNotInOrderByIdDesc(
+				ticketId,
+				companyId,
+				List.of(PurchaseRequestStatus.REJECTED, PurchaseRequestStatus.CANCELLED)
+			)
 			.orElse(null);
 	}
 
