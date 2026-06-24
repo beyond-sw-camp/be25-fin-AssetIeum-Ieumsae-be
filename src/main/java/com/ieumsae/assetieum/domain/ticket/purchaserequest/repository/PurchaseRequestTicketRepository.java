@@ -41,7 +41,12 @@ public interface PurchaseRequestTicketRepository extends JpaRepository<PurchaseR
             and not exists (
                 select 1
                 from PurchasePlanItem ppi
+                join ppi.purchasePlan pp
                 where ppi.ticket = t
+                    and pp.purchaseRequestStatus not in (
+                        com.ieumsae.assetieum.domain.purchase.purchaseplan.type.PurchaseRequestStatus.REJECTED,
+                        com.ieumsae.assetieum.domain.purchase.purchaseplan.type.PurchaseRequestStatus.CANCELLED
+                    )
             )
         """)
     List<PurchaseRequestTicket> findPurchasePlanCandidates(@Param("companyId") UUID companyId);
