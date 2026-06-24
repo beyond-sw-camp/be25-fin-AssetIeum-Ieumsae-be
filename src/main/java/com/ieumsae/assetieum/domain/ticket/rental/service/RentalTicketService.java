@@ -2,6 +2,9 @@ package com.ieumsae.assetieum.domain.ticket.rental.service;
 
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.type.MemberRole;
+import com.ieumsae.assetieum.domain.notification.service.NotificationService;
+import com.ieumsae.assetieum.domain.notification.type.NotificationTargetType;
+import com.ieumsae.assetieum.domain.notification.type.NotificationType;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.entity.TangibleAsset;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.repository.TangibleAssetRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.type.AssetUsageType;
@@ -68,6 +71,7 @@ public class RentalTicketService {
 	private final AssignedAssetValidator assignedAssetValidator;
 	private final TangibleAssetTicketConflictValidator tangibleAssetTicketConflictValidator;
 	private final RentalTicketActionResolver rentalTicketActionResolver;
+	private final NotificationService notificationService;
 
 	public PaginationResponse<AvailableRentalItemResponse> getAvailableRentalItems(
 		AuthenticatedMember authenticatedMember,
@@ -235,6 +239,7 @@ public class RentalTicketService {
 		// 배정됨 상태를 거친 뒤 공통 티켓과 상세 티켓을 모두 완료 처리한다.
 		ticket.changeProcessingStatus(TicketStatus.COMPLETED, LocalDateTime.now());
 		rentalTicket.complete();
+		notifyMember(ticket.getRequester(), "대여 자산이 배정되었습니다.", "요청하신 대여 자산이 배정되었습니다.", ticket);
 
 		return RentalAssetAssignResponse.from(ticket, rentalTicket, selectedAsset);
 	}
@@ -268,6 +273,7 @@ public class RentalTicketService {
 		assignment.updateEndedAt(request.getReturnDueDate());
 		ticket.changeProcessingStatus(TicketStatus.COMPLETED, LocalDateTime.now());
 		rentalTicket.complete();
+		notifyMember(ticket.getRequester(), "대여 연장 처리가 완료되었습니다.", "반납 예정일이 변경되었습니다.", ticket);
 
 		return RentalExtensionDueDateUpdateResponse.from(ticket, rentalTicket, asset, previousReturnDueDate);
 	}
@@ -302,6 +308,7 @@ public class RentalTicketService {
 			request.getRentalStartDate(),
 			request.getRequestedDueDate()
 		));
+		notifyMember(approver, "대여 요청이 접수되었습니다.", "대여 요청을 확인하고 승인 여부를 처리하세요.", ticket);
 
 		return RentalTicketCreateResponse.from(ticket, rentalTicket);
 	}
@@ -347,6 +354,7 @@ public class RentalTicketService {
 			asset.getReturnDueDate(),
 			request.getRequestedDueDate()
 		));
+		notifyMember(approver, "대여 연장 요청이 접수되었습니다.", "대여 연장 요청을 확인하고 승인 여부를 처리하세요.", ticket);
 
 		return RentalExtensionTicketCreateResponse.from(ticket, rentalTicket, assignment);
 	}
@@ -544,5 +552,20 @@ public class RentalTicketService {
 			return null;
 		}
 		return value.trim();
+	}
+
+	private void notifyMember(Member receiver, String title, String content, Ticket ticket) {
+		if (receiver == null || !receiver.isActive()) {
+			return;
+		}
+
+		notificationService.createNotification(
+			receiver,
+			NotificationType.TICKET_STATUS_CHANGED,
+			title,
+			content,
+			NotificationTargetType.TICKET,
+			ticket.getId()
+		);
 	}
 }
