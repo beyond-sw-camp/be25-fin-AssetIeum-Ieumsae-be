@@ -23,9 +23,12 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Getter
 @Entity
@@ -75,6 +78,10 @@ public class PurchasePlanItem extends BaseEntity {
 
     @Column(name = "is_standard", nullable = false)
     private Boolean isStandard;
+
+    @JdbcTypeCode(SqlTypes.CHAR)
+    @Column(name = "category_id", columnDefinition = "CHAR(36)")
+    private UUID categoryId;
 
     @Column(nullable = false)
     private Integer quantity;

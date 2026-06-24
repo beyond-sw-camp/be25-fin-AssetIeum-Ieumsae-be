@@ -20,7 +20,8 @@ import java.util.UUID;
     "assetType",
     "status",
     "isStandard",
-    "category",
+    "categoryId",
+    "categoryName",
     "productName",
     "quantity",
     "estimatedUnitPrice",
@@ -34,7 +35,9 @@ public class PurchasePlanItemDetailResponse {
 
     private Boolean isStandard;
 
-    private String category;
+    private UUID categoryId;
+
+    private String categoryName;
 
     private String productName;
 
@@ -52,12 +55,13 @@ public class PurchasePlanItemDetailResponse {
 
     private String ticketDepartmentName;
 
-    public static PurchasePlanItemDetailResponse from(PurchasePlanItem item) {
+    public static PurchasePlanItemDetailResponse from(PurchasePlanItem item, String categoryName) {
         return PurchasePlanItemDetailResponse.builder()
                 .assetType(item.getAssetType())
                 .status(item.getPurchasePlanItemStatus())
                 .isStandard(item.getIsStandard())
-                .category(resolveCategory(item))
+                .categoryId(item.getCategoryId())
+                .categoryName(categoryName)
                 .productName(item.getProductName())
                 .quantity(item.getQuantity())
                 .estimatedUnitPrice(item.getEstimatedUnitPrice())
@@ -68,17 +72,5 @@ public class PurchasePlanItemDetailResponse {
                 .ticketDepartmentId(item.getTicket() != null ? item.getTicket().getDepartment().getId() : null)
                 .ticketDepartmentName(item.getTicket() != null ? item.getTicket().getDepartment().getName() : null)
                 .build();
-    }
-
-    private static String resolveCategory(PurchasePlanItem item) {
-        if (item.getTangibleAssetItem() != null) {
-            return item.getTangibleAssetItem().getTangibleAssetCategory().getName();
-        }
-
-        if (item.getIntangibleAssetItem() != null) {
-            return item.getIntangibleAssetItem().getIntangibleAssetCategory().getName();
-        }
-
-        return null;
     }
 }

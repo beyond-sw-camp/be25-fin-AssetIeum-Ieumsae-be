@@ -3,7 +3,6 @@ package com.ieumsae.assetieum.domain.purchase.purchaseplan.dto;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.PurchasePlan;
-import com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.PurchasePlanItem;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.type.PurchaseRequestStatus;
 import com.ieumsae.assetieum.domain.purchase.purchaseplanitem.dto.PurchasePlanItemDetailResponse;
 import lombok.AllArgsConstructor;
@@ -56,7 +55,10 @@ public class PurchasePlanDetailResponse {
 
     private List<PurchasePlanItemDetailResponse> items;
 
-    public static PurchasePlanDetailResponse from(PurchasePlan purchasePlan, List<PurchasePlanItem> items) {
+    public static PurchasePlanDetailResponse from(
+            PurchasePlan purchasePlan,
+            List<PurchasePlanItemDetailResponse> items
+    ) {
         return PurchasePlanDetailResponse.builder()
                 .planId(purchasePlan.getId())
                 .planNo(purchasePlan.getPlanNo())
@@ -67,9 +69,7 @@ public class PurchasePlanDetailResponse {
                 .updatedAt(purchasePlan.getUpdatedAt())
                 .estimatedAmount(purchasePlan.getEstimatedAmount())
                 .actualAmount(purchasePlan.getActualAmount())
-                .items(items.stream()
-                        .map(PurchasePlanItemDetailResponse::from)
-                        .toList())
+                .items(items)
                 .build();
     }
 }
