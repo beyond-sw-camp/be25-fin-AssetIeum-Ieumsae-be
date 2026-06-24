@@ -70,6 +70,7 @@ public class AssetRequestTicketDetailResponse {
 		AssetRequestTicket assetRequestTicket,
 		MemberRole viewerRole,
 		boolean requesterView,
+		UUID linkedPurchaseId,
 		List<TicketAssignmentTargetResponse> assignmentTargets,
 		Actions actions
 	) {
@@ -89,7 +90,7 @@ public class AssetRequestTicketDetailResponse {
 			.detailStatus(requesterView ? assetRequestTicket.getStatus() : null)
 			.departmentRejectionReason(ticket.getDepartmentRejectionReason())
 			.purchaseRejectionReason(ticket.getPurchaseRejectionReason())
-			.linkedPurchaseId(null)
+			.linkedPurchaseId(requesterView ? null : linkedPurchaseId)
 			.assetAssignee(MemberSummary.from(ticket.getAssignee()))
 			.assetProcessedAt(resolveAssetProcessedAt(ticket))
 			.assetAssignedAt(resolveAssetAssignedAt(ticket, assetRequestTicket, viewerRole))

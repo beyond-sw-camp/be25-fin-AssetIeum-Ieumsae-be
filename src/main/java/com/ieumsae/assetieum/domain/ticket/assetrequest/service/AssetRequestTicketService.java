@@ -8,6 +8,8 @@ import com.ieumsae.assetieum.domain.intangibleasset.assignment.type.AssignmentSt
 import com.ieumsae.assetieum.domain.intangibleasset.item.entity.IntangibleAssetItem;
 import com.ieumsae.assetieum.domain.intangibleasset.item.repository.IntangibleAssetItemRepository;
 import com.ieumsae.assetieum.domain.member.entity.Member;
+import com.ieumsae.assetieum.domain.purchase.purchaseplan.type.PurchaseRequestStatus;
+import com.ieumsae.assetieum.domain.purchase.purchaseplanitem.repository.PurchasePlanItemRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.repository.TangibleAssetRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.type.TangibleAssetStatus;
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
@@ -59,6 +61,7 @@ public class AssetRequestTicketService {
 	private final AssetRequestAvailabilityService assetRequestAvailabilityService;
 	private final AssetRequestActionResolver assetRequestActionResolver;
 	private final TicketAssignmentTargetService ticketAssignmentTargetService;
+	private final PurchasePlanItemRepository purchasePlanItemRepository;
 
 	@Transactional
 	public AssetRequestTicketCreateResponse createAssetRequestTicket(
@@ -140,9 +143,22 @@ public class AssetRequestTicketService {
 			assetRequestTicket,
 			viewer.getRole(),
 			requesterView,
+			resolveLinkedPurchasePlanId(companyId, ticket),
 			getAssignmentTargetResponses(companyId, ticket),
 			assetRequestActionResolver.createActions(ticket, viewer)
 		);
+	}
+
+	private UUID resolveLinkedPurchasePlanId(UUID companyId, Ticket ticket) {
+		// 반려/취소된 구매계획 연결은 이력으로만 남기고, 현재 유효한 구매계획만 상세 이동 대상으로 사용한다.
+		return purchasePlanItemRepository
+			.findFirstByTicket_IdAndCompany_IdAndPurchasePlan_PurchaseRequestStatusNotInOrderByIdDesc(
+				ticket.getId(),
+				companyId,
+				List.of(PurchaseRequestStatus.REJECTED, PurchaseRequestStatus.CANCELLED)
+			)
+			.map(purchasePlanItem -> purchasePlanItem.getPurchasePlan().getId())
+			.orElse(null);
 	}
 
 	private List<TicketAssignmentTargetResponse> getAssignmentTargetResponses(UUID companyId, Ticket ticket) {
