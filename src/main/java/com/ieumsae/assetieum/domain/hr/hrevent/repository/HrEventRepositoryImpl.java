@@ -1,5 +1,6 @@
 package com.ieumsae.assetieum.domain.hr.hrevent.repository;
 
+import com.ieumsae.assetieum.domain.department.entity.QDepartment;
 import com.ieumsae.assetieum.domain.hr.hrevent.dto.HrEventResponse;
 import com.ieumsae.assetieum.domain.hr.hrevent.type.HrEventStatus;
 import com.ieumsae.assetieum.domain.hr.hrevent.type.HrEventType;
@@ -38,6 +39,7 @@ public class HrEventRepositoryImpl implements HrEventRepositoryCustom {
             Pageable pageable
     ) {
 
+        QDepartment targetDepartment = new QDepartment("targetDepartment");
         BooleanBuilder condition = new BooleanBuilder();
         condition.and(hrEvent.company.id.eq(companyId));
         condition.and(hrEvent.department.id.eq(departmentId));
@@ -57,6 +59,8 @@ public class HrEventRepositoryImpl implements HrEventRepositoryCustom {
                         hrEvent.hrEventNo,
                         hrEvent.department.id,
                         hrEvent.department.name,
+                        targetDepartment.id,
+                        targetDepartment.name,
                         hrEvent.member.id,
                         hrEvent.member.name,
                         hrEvent.hrEventStatus,
@@ -70,6 +74,7 @@ public class HrEventRepositoryImpl implements HrEventRepositoryCustom {
                 ))
                 .from(hrEvent)
                 .join(hrEvent.department, department)
+                .leftJoin(hrEvent.targetDepartment, targetDepartment)
                 .join(hrEvent.member, member)
                 .where(condition)
                 .orderBy(hrEvent.createdAt.desc())
