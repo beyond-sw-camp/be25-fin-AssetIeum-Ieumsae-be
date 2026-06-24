@@ -213,6 +213,10 @@ public class AssetRequestAssignmentService {
 		for (Member targetAssignee : targetAssignees) {
 			boolean assigned = false;
 			for (IntangibleAsset asset : candidates) {
+				if (asset.getDepartment() != null
+					&& !asset.getDepartment().getId().equals(ticket.getDepartment().getId())) {
+					continue;
+				}
 				long remaining = remainingSeatsMap.getOrDefault(asset.getId(), 0L);
 				if (remaining > 0) {
 					boolean isAlreadyAssigned = intangibleAssetAssignmentRepository
@@ -237,6 +241,7 @@ public class AssetRequestAssignmentService {
 							asset.assignTo(targetAssignee, targetAssignee.getDepartment());
 						} else {
 							asset.markInUse();
+							asset.transferDepartment(ticket.getDepartment());
 						}
 						
 						markAssignmentTargetAssigned(
@@ -288,7 +293,8 @@ public class AssetRequestAssignmentService {
 				.toList();
 		}
 		if (request.getAssigneeIds() == null || request.getAssigneeIds().isEmpty()) {
-			return createRequesterAssignees(ticket.getRequester(), capacity);
+			// 과거 데이터나 수동 호출에서도 대상자 없는 자동 배정을 허용하지 않는다.
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "배정 대상자를 1명 이상 입력해야 합니다.");
 		}
 		if (assetRequestTicket.getRequestedUsageType() == RequestedUsageType.DEPARTMENT) {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "부서용 요청에는 개인 배정 대상자를 지정할 수 없습니다.");

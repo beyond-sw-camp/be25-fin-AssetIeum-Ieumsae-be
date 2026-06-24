@@ -1,8 +1,13 @@
 package com.ieumsae.assetieum.domain.ticket.common.service;
 
 import com.ieumsae.assetieum.domain.company.repository.CompanyRepository;
+import com.ieumsae.assetieum.domain.intangibleasset.asset.entity.IntangibleAsset;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.repository.IntangibleAssetRepository;
+import com.ieumsae.assetieum.domain.intangibleasset.asset.type.IntangibleAssetStatus;
+import com.ieumsae.assetieum.domain.intangibleasset.assignment.repository.IntangibleAssetAssignmentRepository;
+import com.ieumsae.assetieum.domain.intangibleasset.assignment.type.AssignmentStatus;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.repository.TangibleAssetRepository;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.type.TangibleAssetStatus;
 import com.ieumsae.assetieum.domain.ticket.assetrequest.entity.AssetRequestTicket;
 import com.ieumsae.assetieum.domain.ticket.assetrequest.repository.AssetRequestTicketRepository;
 import com.ieumsae.assetieum.domain.ticket.common.dto.PurchasePlanCandidateTicketResponse;
@@ -31,6 +36,7 @@ public class PurchasePlanCandidateTicketService {
     private final CompanyRepository companyRepository;
     private final TangibleAssetRepository tangibleAssetRepository;
     private final IntangibleAssetRepository intangibleAssetRepository;
+    private final IntangibleAssetAssignmentRepository intangibleAssetAssignmentRepository;
     private final AssetRequestTicketRepository assetRequestTicketRepository;
     private final PurchaseRequestTicketRepository purchaseRequestTicketRepository;
 
@@ -44,6 +50,7 @@ public class PurchasePlanCandidateTicketService {
         List<PurchasePlanCandidateTicketResponse> candidates = new ArrayList<>();
         candidates.addAll(assetRequestTicketRepository.findPurchasePlanCandidates(companyId)
                 .stream()
+                .filter(ticket -> !hasEnoughInventory(ticket, companyId))
                 .map(ticket -> PurchasePlanCandidateTicketResponse.from(
                         ticket,
                         resolveRecentPurchasePrice(ticket, companyId)
@@ -90,5 +97,46 @@ public class PurchasePlanCandidateTicketService {
                 .stream()
                 .findFirst()
                 .orElse(null);
+    }
+
+    private boolean hasEnoughInventory(AssetRequestTicket ticket, UUID companyId) {
+        if (ticket.getTangibleAssetItem() != null) {
+            long availableCount = tangibleAssetRepository.countByCompany_IdAndTangibleAssetItem_IdAndTangibleAssetStatus(
+                    companyId,
+                    ticket.getTangibleAssetItem().getId(),
+                    TangibleAssetStatus.AVAILABLE
+            );
+            return availableCount >= ticket.getQuantity();
+        }
+
+        return getAvailableIntangibleSeatCount(
+                companyId,
+                ticket.getIntangibleAssetItem().getId(),
+                ticket.getTicket().getDepartment().getId()
+        ) >= ticket.getQuantity();
+    }
+
+    private int getAvailableIntangibleSeatCount(UUID companyId, UUID itemId, UUID requesterDepartmentId) {
+        List<IntangibleAsset> assets = intangibleAssetRepository.findAllByCompany_IdAndIntangibleAssetItem_IdAndIntangibleAssetStatusIn(
+                companyId,
+                itemId,
+                List.of(IntangibleAssetStatus.AVAILABLE, IntangibleAssetStatus.IN_USE)
+        );
+
+        int availableSeatCount = 0;
+        for (IntangibleAsset asset : assets) {
+            if (asset.getDepartment() != null
+                    && !asset.getDepartment().getId().equals(requesterDepartmentId)) {
+                continue;
+            }
+            long activeAssignmentCount = intangibleAssetAssignmentRepository
+                    .countByCompany_IdAndIntangibleAsset_IdAndAssignmentStatus(
+                            companyId,
+                            asset.getId(),
+                            AssignmentStatus.ACTIVE
+                    );
+            availableSeatCount += Math.max(asset.getSeatCount() - Math.toIntExact(activeAssignmentCount), 0);
+        }
+        return availableSeatCount;
     }
 }

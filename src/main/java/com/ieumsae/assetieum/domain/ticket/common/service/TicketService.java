@@ -113,6 +113,7 @@ public class TicketService {
 		Ticket ticket = findActiveTicket(ticketId, companyId);
 		validateCancellable(ticket, member);
 		validateDirectPurchaseResultNotRegisteredForCancel(ticket, companyId);
+		validatePurchasePlanNotLinkedForCancel(ticket, companyId);
 
 		releaseReservedRentalAssetIfNeeded(ticket, companyId);
 		budgetExecutionService.releaseHoldForCancellation(ticket, companyId);
@@ -131,6 +132,7 @@ public class TicketService {
 	public TicketCancelResponse cancelTicketForOffboarding(UUID companyId, UUID ticketId) {
 		Ticket ticket = findActiveTicket(ticketId, companyId);
 		validateDirectPurchaseResultNotRegisteredForCancel(ticket, companyId);
+		validatePurchasePlanNotLinkedForCancel(ticket, companyId);
 
 		releaseReservedRentalAssetIfNeeded(ticket, companyId);
 		budgetExecutionService.releaseHoldForCancellation(ticket, companyId);
@@ -257,21 +259,23 @@ public class TicketService {
 		UUID companyId = authenticatedMember.companyId();
 		Member member = findActiveMember(authenticatedMember.id(), companyId);
 		Ticket ticket = findActiveTicket(ticketId, companyId);
-
 		validateProcessingStatusChangeable(ticket, member, request.getTicketStatus());
+
 		if (request.getTicketStatus() == TicketStatus.CANCELLED) {
 			validateDirectPurchaseResultNotRegisteredForCancel(ticket, companyId);
+			validatePurchasePlanNotLinkedForCancel(ticket, companyId);
 		}
+
+		ticket.changeProcessingStatus(request.getTicketStatus(), LocalDateTime.now());
+
 		releaseReservedRentalAssetForProcessingCancelIfNeeded(ticket, companyId, request.getTicketStatus());
 		releaseBudgetForProcessingCancelIfNeeded(ticket, companyId, request.getTicketStatus());
-		ticket.changeProcessingStatus(request.getTicketStatus(), LocalDateTime.now());
 		syncAssetRequestStatusIfNeeded(ticket, companyId, request.getTicketStatus());
 		syncPurchaseRequestStatusIfNeeded(ticket, companyId, request.getTicketStatus());
 		syncRentalStatusIfNeeded(ticket, companyId, request.getTicketStatus());
 		syncMaintenanceStatusIfNeeded(ticket, companyId, request.getTicketStatus());
 		syncAssetReturnStatusIfNeeded(ticket, companyId, request.getTicketStatus());
 		syncPurchaseReturnStatusIfNeeded(ticket, companyId, request.getTicketStatus());
-
 		return TicketProcessingStatusUpdateResponse.from(ticket);
 	}
 
@@ -530,6 +534,21 @@ public class TicketService {
 		}
 		if (directPurchaseResultRepository.existsByPurchaseRequestTicket_Id(ticket.getId())) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "직접구매 결과가 등록된 티켓은 취소할 수 없습니다.");
+		}
+	}
+
+	private void validatePurchasePlanNotLinkedForCancel(Ticket ticket, UUID companyId) {
+		if (ticket.getTicketType() != TicketType.PURCHASE_REQUEST && ticket.getTicketType() != TicketType.ASSET_REQUEST) {
+			return;
+		}
+		List<com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.PurchasePlanItem> linkedItems = purchasePlanItemRepository.findAllByTicket_IdAndCompany_Id(ticket.getId(), companyId);
+		for (com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.PurchasePlanItem item : linkedItems) {
+			com.ieumsae.assetieum.domain.purchase.purchaseplan.type.PurchaseRequestStatus planStatus = item.getPurchasePlan().getPurchaseRequestStatus();
+			if (item.getPurchasePlan().getDeletedAt() == null &&
+				planStatus != com.ieumsae.assetieum.domain.purchase.purchaseplan.type.PurchaseRequestStatus.CANCELLED &&
+				planStatus != com.ieumsae.assetieum.domain.purchase.purchaseplan.type.PurchaseRequestStatus.REJECTED) {
+				throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "현재 구매계획에 포함되어 진행 중인 요청은 취소할 수 없습니다. 구매계획을 먼저 취소하거나 품목을 제외하세요.");
+			}
 		}
 	}
 

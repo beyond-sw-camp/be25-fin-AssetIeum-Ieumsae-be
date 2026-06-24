@@ -17,6 +17,8 @@ import com.ieumsae.assetieum.domain.intangibleasset.item.dto.IntangibleAssetItem
 import com.ieumsae.assetieum.domain.intangibleasset.item.entity.IntangibleAssetItem;
 import com.ieumsae.assetieum.domain.intangibleasset.item.repository.IntangibleAssetItemRepository;
 import com.ieumsae.assetieum.domain.intangibleasset.item.type.LicenseType;
+import com.ieumsae.assetieum.domain.member.entity.Member;
+import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
 import com.ieumsae.assetieum.global.common.csv.CsvFileReader;
 import com.ieumsae.assetieum.global.common.csv.CsvValueParser;
 import com.ieumsae.assetieum.global.common.page.PaginationResponse;
@@ -42,6 +44,7 @@ public class IntangibleAssetItemService {
     private final IntangibleAssetAssignmentRepository intangibleAssetAssignmentRepository;
     private final IntangibleAssetCategoryRepository intangibleAssetCategoryRepository;
     private final CompanyRepository companyRepository;
+    private final MemberRepository memberRepository;
     private final CsvFileReader csvFileReader;
 
     /**
@@ -158,6 +161,7 @@ public class IntangibleAssetItemService {
      */
     public PaginationResponse<IntangibleAssetItemResponse> getItems(
             IntangibleAssetItemSearchRequest request,
+            UUID memberId,
             UUID companyId
     ) {
         // 1. 입력값 검증
@@ -165,16 +169,33 @@ public class IntangibleAssetItemService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
 
         // 2. 페이징 처리 및 필터링 후 품목 목록 반환
+        // 구매/요청 화면에서만 로그인 사용자의 부서 기준으로 남은 seat을 계산한다.
+        UUID availableDepartmentId = resolveAvailableDepartmentId(request, memberId, companyId);
+
         Page<IntangibleAssetItemResponse> responsePage =
                 intangibleAssetItemRepository.search(
                         companyId,
                         request.getCategoryId(),
                         request.getKeyword(),
                         request.getIsStandard(),
+                        availableDepartmentId,
                         request.toPageable()
                 );
 
         return PaginationResponse.from(responsePage);
+    }
+
+    private UUID resolveAvailableDepartmentId(
+            IntangibleAssetItemSearchRequest request,
+            UUID memberId,
+            UUID companyId
+    ) {
+        if (!Boolean.TRUE.equals(request.getDepartmentScopedAvailableCount())) {
+            return null;
+        }
+        Member member = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(memberId, companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+        return member.getDepartment().getId();
     }
 
     @Transactional

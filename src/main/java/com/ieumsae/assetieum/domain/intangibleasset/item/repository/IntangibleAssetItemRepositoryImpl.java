@@ -44,6 +44,7 @@ public class IntangibleAssetItemRepositoryImpl implements IntangibleAssetItemRep
             UUID categoryId,
             String keyword,
             Boolean isStandard,
+            UUID availableDepartmentId,
             Pageable pageable
     ) {
         BooleanBuilder condition = new BooleanBuilder();
@@ -79,7 +80,7 @@ public class IntangibleAssetItemRepositoryImpl implements IntangibleAssetItemRep
                 .fetch();
 
         Map<UUID, BigDecimal> prePurchasePriceByItemId = findPrePurchasePriceByItemId(companyId, items);
-        Map<UUID, Integer> availableSeatCountByItemId = findAvailableSeatCountByItemId(companyId, items);
+        Map<UUID, Integer> availableSeatCountByItemId = findAvailableSeatCountByItemId(companyId, items, availableDepartmentId);
 
         List<IntangibleAssetItemResponse> content = items.stream()
                 .map(item -> IntangibleAssetItemResponse.from(
@@ -101,7 +102,8 @@ public class IntangibleAssetItemRepositoryImpl implements IntangibleAssetItemRep
 
     private Map<UUID, Integer> findAvailableSeatCountByItemId(
             UUID companyId,
-            List<IntangibleAssetItem> items
+            List<IntangibleAssetItem> items,
+            UUID availableDepartmentId
     ) {
         if (items.isEmpty()) {
             return Map.of();
@@ -115,7 +117,8 @@ public class IntangibleAssetItemRepositoryImpl implements IntangibleAssetItemRep
                 .select(
                         intangibleAsset.intangibleAssetItem.id,
                         intangibleAsset.id,
-                        intangibleAsset.seatCount
+                        intangibleAsset.seatCount,
+                        intangibleAsset.department.id
                 )
                 .from(intangibleAsset)
                 .where(
@@ -140,6 +143,13 @@ public class IntangibleAssetItemRepositoryImpl implements IntangibleAssetItemRep
             UUID itemId = asset.get(intangibleAsset.intangibleAssetItem.id);
             UUID assetId = asset.get(intangibleAsset.id);
             Integer seatCount = asset.get(intangibleAsset.seatCount);
+            UUID assetDepartmentId = asset.get(intangibleAsset.department.id);
+            // 부서 기준 조회에서는 미소속 seat과 같은 부서 seat만 할당 가능 수에 포함한다.
+            if (availableDepartmentId != null
+                    && assetDepartmentId != null
+                    && !assetDepartmentId.equals(availableDepartmentId)) {
+                continue;
+            }
             long activeAssignmentCount = activeAssignmentCountByAssetId.getOrDefault(assetId, 0L);
             int availableSeatCount = Math.max((seatCount == null ? 0 : seatCount) - Math.toIntExact(activeAssignmentCount), 0);
             availableSeatCountByItemId.merge(itemId, availableSeatCount, Integer::sum);

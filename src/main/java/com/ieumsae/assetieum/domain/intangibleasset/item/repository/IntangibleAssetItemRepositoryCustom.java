@@ -12,6 +12,7 @@ public interface IntangibleAssetItemRepositoryCustom {
             UUID categoryId,
             String keyword,
             Boolean isStandard,
+            UUID availableDepartmentId,
             Pageable pageable
     );
 }

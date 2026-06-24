@@ -71,11 +71,11 @@ public class AssetRequestAvailabilityService {
 				normalize(request.getKeyword()),
 				request.toPageable()
 			)
-			.map(item -> AssetRequestAssignableItemResponse.from(
-				item,
-				requestedItemId,
-				getAvailableIntangibleSeatCount(companyId, item.getId())
-			));
+				.map(item -> AssetRequestAssignableItemResponse.from(
+					item,
+					requestedItemId,
+					getAvailableIntangibleSeatCount(companyId, item.getId(), assetRequestTicket.getTicket().getDepartment().getId())
+				));
 		return AssetRequestAssignableItemsResponse.builder()
 			.requestedItem(requestedItem)
 			.items(PaginationResponse.from(items))
@@ -118,7 +118,11 @@ public class AssetRequestAvailabilityService {
 		return AssetRequestAssignableItemResponse.from(
 			item,
 			item.getId(),
-			getAvailableIntangibleSeatCount(assetRequestTicket.getCompany().getId(), item.getId())
+			getAvailableIntangibleSeatCount(
+				assetRequestTicket.getCompany().getId(),
+				item.getId(),
+				assetRequestTicket.getTicket().getDepartment().getId()
+			)
 		);
 	}
 
@@ -130,7 +134,7 @@ public class AssetRequestAvailabilityService {
 		));
 	}
 
-	private int getAvailableIntangibleSeatCount(UUID companyId, UUID itemId) {
+	private int getAvailableIntangibleSeatCount(UUID companyId, UUID itemId, UUID requesterDepartmentId) {
 		List<IntangibleAsset> assets = intangibleAssetRepository.findAllByCompany_IdAndIntangibleAssetItem_IdAndIntangibleAssetStatusIn(
 			companyId,
 			itemId,
@@ -138,6 +142,10 @@ public class AssetRequestAvailabilityService {
 		);
 		int availableSeatCount = 0;
 		for (IntangibleAsset asset : assets) {
+			if (asset.getDepartment() != null
+				&& !asset.getDepartment().getId().equals(requesterDepartmentId)) {
+				continue;
+			}
 			long activeAssignmentCount = intangibleAssetAssignmentRepository
 				.countByCompany_IdAndIntangibleAsset_IdAndAssignmentStatus(
 					companyId,

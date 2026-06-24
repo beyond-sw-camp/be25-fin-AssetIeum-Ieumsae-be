@@ -425,10 +425,14 @@ public class BudgetExecutionService {
             return availableCount >= ticket.getQuantity();
         }
 
-        return getAvailableIntangibleSeatCount(companyId, ticket.getIntangibleAssetItem().getId()) >= ticket.getQuantity();
+        return getAvailableIntangibleSeatCount(
+                companyId,
+                ticket.getIntangibleAssetItem().getId(),
+                ticket.getTicket().getDepartment().getId()
+        ) >= ticket.getQuantity();
     }
 
-    private int getAvailableIntangibleSeatCount(UUID companyId, UUID itemId) {
+    private int getAvailableIntangibleSeatCount(UUID companyId, UUID itemId, UUID requesterDepartmentId) {
         List<IntangibleAsset> assets = intangibleAssetRepository.findAllByCompany_IdAndIntangibleAssetItem_IdAndIntangibleAssetStatusIn(
                 companyId,
                 itemId,
@@ -437,6 +441,10 @@ public class BudgetExecutionService {
 
         int availableSeatCount = 0;
         for (IntangibleAsset asset : assets) {
+            if (asset.getDepartment() != null
+                    && !asset.getDepartment().getId().equals(requesterDepartmentId)) {
+                continue;
+            }
             long activeAssignmentCount = intangibleAssetAssignmentRepository
                     .countByCompany_IdAndIntangibleAsset_IdAndAssignmentStatus(
                             companyId,
