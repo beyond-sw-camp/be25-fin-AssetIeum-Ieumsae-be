@@ -19,4 +19,6 @@ CREATE TABLE ticket_assignment_targets (
     INDEX idx_ticket_assignment_targets_ticket (ticket_id),
     INDEX idx_ticket_assignment_targets_company_member (company_id, member_id),
     UNIQUE KEY uk_ticket_assignment_targets_ticket_member (ticket_id, member_id)
-) COMMENT = 'Ticket assignment targets';
+)  ENGINE = InnoDB
+   DEFAULT CHARSET = utf8mb4
+   COLLATE = utf8mb4_unicode_ci;
