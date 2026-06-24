@@ -11,6 +11,9 @@ import com.ieumsae.assetieum.domain.intangibleasset.item.entity.IntangibleAssetI
 import com.ieumsae.assetieum.domain.intangibleasset.item.repository.IntangibleAssetItemRepository;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
+import com.ieumsae.assetieum.domain.log.service.LogService;
+import com.ieumsae.assetieum.domain.log.type.AuditLogAction;
+import com.ieumsae.assetieum.domain.log.type.LogSubjectType;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.entity.TangibleAsset;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.repository.TangibleAssetRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.type.AssetUsageType;
@@ -58,6 +61,7 @@ public class AssetRequestAssignmentService {
 	private final AssetRequestValidator assetRequestValidator;
 	private final TicketAssignmentTargetService ticketAssignmentTargetService;
 	private final BudgetExecutionService budgetExecutionService;
+	private final LogService logService;
 
 	@Transactional
 	public AssetRequestAssignResponse assign(
@@ -97,6 +101,7 @@ public class AssetRequestAssignmentService {
 			budgetExecutionService.releaseHoldForInventoryAssignment(ticket, companyId);
 			assetRequestTicket.complete();
 			ticket.changeProcessingStatus(TicketStatus.COMPLETED, LocalDateTime.now());
+			logService.recordAuditLog(assignee, AuditLogAction.ASSIGN, LogSubjectType.TICKET, ticket.getId(), "자산 배정 완료");
 			return AssetRequestAssignResponse.from(
 				ticket,
 				assetRequestTicket,
@@ -118,6 +123,7 @@ public class AssetRequestAssignmentService {
 		budgetExecutionService.releaseHoldForInventoryAssignment(ticket, companyId);
 		assetRequestTicket.complete();
 		ticket.changeProcessingStatus(TicketStatus.COMPLETED, LocalDateTime.now());
+		logService.recordAuditLog(assignee, AuditLogAction.ASSIGN, LogSubjectType.TICKET, ticket.getId(), "자산 배정 완료");
 		return AssetRequestAssignResponse.from(
 			ticket,
 			assetRequestTicket,

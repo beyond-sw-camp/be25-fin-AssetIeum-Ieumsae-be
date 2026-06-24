@@ -4,6 +4,9 @@ import com.ieumsae.assetieum.domain.intangibleasset.assignment.entity.Intangible
 import com.ieumsae.assetieum.domain.intangibleasset.assignment.repository.IntangibleAssetAssignmentRepository;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.type.MemberRole;
+import com.ieumsae.assetieum.domain.log.service.LogService;
+import com.ieumsae.assetieum.domain.log.type.AuditLogAction;
+import com.ieumsae.assetieum.domain.log.type.LogSubjectType;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.entity.TangibleAsset;
 import com.ieumsae.assetieum.domain.tangibleasset.assignment.entity.TangibleAssetAssignment;
 import com.ieumsae.assetieum.domain.tangibleasset.assignment.repository.TangibleAssetAssignmentRepository;
@@ -53,6 +56,7 @@ public class AssetReturnTicketService {
 	private final AssignedAssetValidator assignedAssetValidator;
 	private final TangibleAssetTicketConflictValidator tangibleAssetTicketConflictValidator;
 	private final IntangibleAssetTicketConflictValidator intangibleAssetTicketConflictValidator;
+	private final LogService logService;
 
 	public List<AssetReturnAvailableAssetResponse> getAvailableAssets(
 		AuthenticatedMember authenticatedMember,
@@ -159,6 +163,7 @@ public class AssetReturnTicketService {
 		completeAssetStatus(assetReturnTicket);
 		assetReturnTicket.complete(processedAt);
 		ticket.changeProcessingStatus(TicketStatus.COMPLETED, processedAt);
+		logService.recordAuditLog(processor, AuditLogAction.INFORMATION_CHANGE, LogSubjectType.TICKET, ticket.getId(), "자산 반납 완료");
 
 		return AssetReturnCompleteResponse.from(ticket, assetReturnTicket);
 	}
@@ -189,6 +194,7 @@ public class AssetReturnTicketService {
 		);
 		// 유형자산은 요청 생성 시 반납 요청 상태로 표시하되, 실제 배정 종료는 회수 시점에 처리한다.
 		assignment.getTangibleAsset().requestReturn();
+		logService.recordAuditLog(requester, AuditLogAction.INFORMATION_CHANGE, LogSubjectType.TICKET, ticket.getId(), "자산 반납 요청");
 
 		return AssetReturnTicketCreateResponse.from(ticket, assetReturnTicket);
 	}

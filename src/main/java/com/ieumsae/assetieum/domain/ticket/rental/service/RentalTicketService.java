@@ -2,6 +2,9 @@ package com.ieumsae.assetieum.domain.ticket.rental.service;
 
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.type.MemberRole;
+import com.ieumsae.assetieum.domain.log.service.LogService;
+import com.ieumsae.assetieum.domain.log.type.AuditLogAction;
+import com.ieumsae.assetieum.domain.log.type.LogSubjectType;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.entity.TangibleAsset;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.repository.TangibleAssetRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.type.AssetUsageType;
@@ -68,6 +71,7 @@ public class RentalTicketService {
 	private final AssignedAssetValidator assignedAssetValidator;
 	private final TangibleAssetTicketConflictValidator tangibleAssetTicketConflictValidator;
 	private final RentalTicketActionResolver rentalTicketActionResolver;
+	private final LogService logService;
 
 	public PaginationResponse<AvailableRentalItemResponse> getAvailableRentalItems(
 		AuthenticatedMember authenticatedMember,
@@ -235,6 +239,7 @@ public class RentalTicketService {
 		// 배정됨 상태를 거친 뒤 공통 티켓과 상세 티켓을 모두 완료 처리한다.
 		ticket.changeProcessingStatus(TicketStatus.COMPLETED, LocalDateTime.now());
 		rentalTicket.complete();
+		logService.recordAuditLog(assignee, AuditLogAction.ASSIGN, LogSubjectType.TICKET, ticket.getId(), "대여 자산 배정");
 
 		return RentalAssetAssignResponse.from(ticket, rentalTicket, selectedAsset);
 	}
@@ -268,6 +273,7 @@ public class RentalTicketService {
 		assignment.updateEndedAt(request.getReturnDueDate());
 		ticket.changeProcessingStatus(TicketStatus.COMPLETED, LocalDateTime.now());
 		rentalTicket.complete();
+		logService.recordAuditLog(assignee, AuditLogAction.INFORMATION_CHANGE, LogSubjectType.TICKET, ticket.getId(), "대여 연장 처리");
 
 		return RentalExtensionDueDateUpdateResponse.from(ticket, rentalTicket, asset, previousReturnDueDate);
 	}

@@ -17,6 +17,9 @@ import com.ieumsae.assetieum.domain.intangibleasset.item.repository.IntangibleAs
 import com.ieumsae.assetieum.domain.intangibleasset.item.type.LicenseType;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.type.MemberRole;
+import com.ieumsae.assetieum.domain.log.service.LogService;
+import com.ieumsae.assetieum.domain.log.type.AuditLogAction;
+import com.ieumsae.assetieum.domain.log.type.LogSubjectType;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.PurchasePlanItem;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.type.PurchaseRequestStatus;
 import com.ieumsae.assetieum.domain.purchase.purchaseplanitem.repository.PurchasePlanItemRepository;
@@ -105,6 +108,7 @@ public class PurchaseRequestTicketService {
 	private final PurchasePlanItemRepository purchasePlanItemRepository;
 	private final BudgetExecutionService budgetExecutionService;
 	private final CodeGenerator codeGenerator;
+	private final LogService logService;
 
 	@Transactional
 	public PurchaseRequestTicketCreateResponse createTeamPurchaseRequestTicket(
@@ -297,6 +301,7 @@ public class PurchaseRequestTicketService {
 		}
 
 		result.confirm();
+		logService.recordAuditLog(member, AuditLogAction.INFORMATION_CHANGE, LogSubjectType.TICKET, ticket.getId(), "직접구매 결과 확인");
 
 		return DirectPurchaseResultCreateResponse.from(ticket, result, resolveAssetType(purchaseRequestTicket));
 	}
@@ -675,6 +680,7 @@ public class PurchaseRequestTicketService {
 	private void completeDirectPurchaseTicket(Ticket ticket, PurchaseRequestTicket purchaseRequestTicket) {
 		purchaseRequestTicket.complete();
 		ticket.changeProcessingStatus(TicketStatus.COMPLETED, LocalDateTime.now());
+		logService.recordAuditLog(ticket.getRequester(), AuditLogAction.INFORMATION_CHANGE, LogSubjectType.TICKET, ticket.getId(), "구매 자산 배정 완료");
 	}
 
 	private List<Member> resolveDirectPurchaseTangibleAssignees(
