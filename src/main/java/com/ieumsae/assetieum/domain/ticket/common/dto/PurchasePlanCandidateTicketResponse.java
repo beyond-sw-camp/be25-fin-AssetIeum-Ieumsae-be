@@ -25,10 +25,14 @@ import lombok.Getter;
         "ticketNo",
         "ticketType",
         "assetType",
+        "assetItemId",
         "requesterId",
         "requesterName",
+        "departmentId",
+        "departmentName",
         "itemName",
         "categoryName",
+        "isStandard",
         "quantity",
         "estimatedUnitPrice"
 })
@@ -38,10 +42,14 @@ public class PurchasePlanCandidateTicketResponse {
     private final String ticketNo;
     private final TicketType ticketType;
     private final AssetType assetType;
+    private final UUID assetItemId;
     private final UUID requesterId;
     private final String requesterName;
+    private final UUID departmentId;
+    private final String departmentName;
     private final String itemName;
     private final String categoryName;
+    private final Boolean isStandard;
     private final int quantity;
     private final BigDecimal estimatedUnitPrice;
     @JsonIgnore
@@ -60,10 +68,14 @@ public class PurchasePlanCandidateTicketResponse {
                 .ticketNo(ticket.getTicketNo())
                 .ticketType(ticket.getTicketType())
                 .assetType(tangibleItem != null ? AssetType.TANGIBLE : AssetType.INTANGIBLE)
+                .assetItemId(resolveAssetItemId(tangibleItem, intangibleItem))
                 .requesterId(ticket.getRequester().getId())
                 .requesterName(ticket.getRequester().getName())
+                .departmentId(ticket.getDepartment().getId())
+                .departmentName(ticket.getDepartment().getName())
                 .itemName(tangibleItem != null ? tangibleItem.getProductName() : intangibleItem.getProductName())
                 .categoryName(resolveCategoryName(tangibleItem, intangibleItem))
+                .isStandard(resolveIsStandard(tangibleItem, intangibleItem))
                 .quantity(assetRequestTicket.getQuantity())
                 .estimatedUnitPrice(estimatedUnitPrice)
                 .requestedAt(ticket.getCreatedAt())
@@ -78,14 +90,42 @@ public class PurchasePlanCandidateTicketResponse {
                 .ticketNo(ticket.getTicketNo())
                 .ticketType(ticket.getTicketType())
                 .assetType(resolveAssetType(purchaseRequestTicket))
+                .assetItemId(resolveAssetItemId(purchaseRequestTicket))
                 .requesterId(resolveRequesterId(ticket.getRequester()))
                 .requesterName(resolveRequesterName(ticket.getRequester()))
+                .departmentId(ticket.getDepartment().getId())
+                .departmentName(ticket.getDepartment().getName())
                 .itemName(resolveItemName(purchaseRequestTicket))
                 .categoryName(resolveCategoryName(purchaseRequestTicket))
+                .isStandard(purchaseRequestTicket.getIsStandard())
                 .quantity(purchaseRequestTicket.getQuantity())
                 .estimatedUnitPrice(purchaseRequestTicket.getExpectedPrice())
                 .requestedAt(ticket.getCreatedAt())
                 .build();
+    }
+
+    private static UUID resolveAssetItemId(TangibleAssetItem tangibleItem, IntangibleAssetItem intangibleItem) {
+        if (tangibleItem != null) {
+            return tangibleItem.getId();
+        }
+        return intangibleItem.getId();
+    }
+
+    private static Boolean resolveIsStandard(TangibleAssetItem tangibleItem, IntangibleAssetItem intangibleItem) {
+        if (tangibleItem != null) {
+            return tangibleItem.getIsStandard();
+        }
+        return intangibleItem.getIsStandard();
+    }
+
+    private static UUID resolveAssetItemId(PurchaseRequestTicket ticket) {
+        if (ticket.getTangibleAssetItem() != null) {
+            return ticket.getTangibleAssetItem().getId();
+        }
+        if (ticket.getIntangibleAssetItem() != null) {
+            return ticket.getIntangibleAssetItem().getId();
+        }
+        return null;
     }
 
     private static String resolveCategoryName(TangibleAssetItem tangibleItem, IntangibleAssetItem intangibleItem) {
