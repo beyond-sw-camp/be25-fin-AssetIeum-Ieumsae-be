@@ -17,6 +17,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonPropertyOrder({
+    "itemId",
     "assetType",
     "status",
     "isStandard",
@@ -28,6 +29,8 @@ import java.util.UUID;
     "totalAmount"
 })
 public class PurchasePlanItemDetailResponse {
+
+    private Long itemId;
 
     private AssetType assetType;
 
@@ -57,6 +60,7 @@ public class PurchasePlanItemDetailResponse {
 
     public static PurchasePlanItemDetailResponse from(PurchasePlanItem item, String categoryName) {
         return PurchasePlanItemDetailResponse.builder()
+                .itemId(item.getId())
                 .assetType(item.getAssetType())
                 .status(item.getPurchasePlanItemStatus())
                 .isStandard(item.getIsStandard())
