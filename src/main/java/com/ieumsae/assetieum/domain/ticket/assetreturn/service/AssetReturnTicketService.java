@@ -4,6 +4,9 @@ import com.ieumsae.assetieum.domain.intangibleasset.assignment.entity.Intangible
 import com.ieumsae.assetieum.domain.intangibleasset.assignment.repository.IntangibleAssetAssignmentRepository;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.type.MemberRole;
+import com.ieumsae.assetieum.domain.notification.service.NotificationService;
+import com.ieumsae.assetieum.domain.notification.type.NotificationTargetType;
+import com.ieumsae.assetieum.domain.notification.type.NotificationType;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.entity.TangibleAsset;
 import com.ieumsae.assetieum.domain.tangibleasset.assignment.entity.TangibleAssetAssignment;
 import com.ieumsae.assetieum.domain.tangibleasset.assignment.repository.TangibleAssetAssignmentRepository;
@@ -53,6 +56,7 @@ public class AssetReturnTicketService {
 	private final AssignedAssetValidator assignedAssetValidator;
 	private final TangibleAssetTicketConflictValidator tangibleAssetTicketConflictValidator;
 	private final IntangibleAssetTicketConflictValidator intangibleAssetTicketConflictValidator;
+	private final NotificationService notificationService;
 
 	public List<AssetReturnAvailableAssetResponse> getAvailableAssets(
 		AuthenticatedMember authenticatedMember,
@@ -137,6 +141,7 @@ public class AssetReturnTicketService {
 		endActiveAssignment(assetReturnTicket, companyId, collectedAt);
 		markAssetCollected(assetReturnTicket);
 		assetReturnTicket.collect(collectedAt);
+		notifyMember(ticket.getRequester(), "자산 반납이 수거되었습니다.", "자산 반납이 진행됩니다.", ticket);
 
 		return AssetReturnCollectResponse.from(ticket, assetReturnTicket);
 	}
@@ -159,6 +164,7 @@ public class AssetReturnTicketService {
 		completeAssetStatus(assetReturnTicket);
 		assetReturnTicket.complete(processedAt);
 		ticket.changeProcessingStatus(TicketStatus.COMPLETED, processedAt);
+		notifyMember(ticket.getRequester(), "자산 반납이 완료되었습니다.", "자산 반납 처리가 완료되었습니다.", ticket);
 
 		return AssetReturnCompleteResponse.from(ticket, assetReturnTicket);
 	}
@@ -189,6 +195,7 @@ public class AssetReturnTicketService {
 		);
 		// 유형자산은 요청 생성 시 반납 요청 상태로 표시하되, 실제 배정 종료는 회수 시점에 처리한다.
 		assignment.getTangibleAsset().requestReturn();
+		notifyMember(ticket.getApprover(), "자산 반납 요청이 접수되었습니다.", "자산 반납 요청을 확인하고 승인 여부를 처리하세요.", ticket);
 
 		return AssetReturnTicketCreateResponse.from(ticket, assetReturnTicket);
 	}
@@ -388,5 +395,20 @@ public class AssetReturnTicketService {
 
 	private boolean isAssetRole(MemberRole role) {
 		return role == MemberRole.ADMIN || role == MemberRole.ASSET_MANAGER || role == MemberRole.ASSET_TEAM;
+	}
+
+	private void notifyMember(Member receiver, String title, String content, Ticket ticket) {
+		if (receiver == null || !receiver.isActive()) {
+			return;
+		}
+
+		notificationService.createNotification(
+			receiver,
+			NotificationType.TICKET_STATUS_CHANGED,
+			title,
+			content,
+			NotificationTargetType.TICKET,
+			ticket.getId()
+		);
 	}
 }

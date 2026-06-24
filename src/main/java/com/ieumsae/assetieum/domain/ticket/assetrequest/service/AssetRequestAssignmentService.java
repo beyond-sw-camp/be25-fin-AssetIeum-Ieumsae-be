@@ -11,6 +11,9 @@ import com.ieumsae.assetieum.domain.intangibleasset.item.entity.IntangibleAssetI
 import com.ieumsae.assetieum.domain.intangibleasset.item.repository.IntangibleAssetItemRepository;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
+import com.ieumsae.assetieum.domain.notification.service.NotificationService;
+import com.ieumsae.assetieum.domain.notification.type.NotificationTargetType;
+import com.ieumsae.assetieum.domain.notification.type.NotificationType;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.entity.TangibleAsset;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.repository.TangibleAssetRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.type.AssetUsageType;
@@ -58,6 +61,7 @@ public class AssetRequestAssignmentService {
 	private final AssetRequestValidator assetRequestValidator;
 	private final TicketAssignmentTargetService ticketAssignmentTargetService;
 	private final BudgetExecutionService budgetExecutionService;
+	private final NotificationService notificationService;
 
 	@Transactional
 	public AssetRequestAssignResponse assign(
@@ -97,6 +101,7 @@ public class AssetRequestAssignmentService {
 			budgetExecutionService.releaseHoldForInventoryAssignment(ticket, companyId);
 			assetRequestTicket.complete();
 			ticket.changeProcessingStatus(TicketStatus.COMPLETED, LocalDateTime.now());
+			notifyRequester(ticket, "자산 배정이 완료되었습니다.", "요청하신 자산이 배정되었습니다.");
 			return AssetRequestAssignResponse.from(
 				ticket,
 				assetRequestTicket,
@@ -118,6 +123,7 @@ public class AssetRequestAssignmentService {
 		budgetExecutionService.releaseHoldForInventoryAssignment(ticket, companyId);
 		assetRequestTicket.complete();
 		ticket.changeProcessingStatus(TicketStatus.COMPLETED, LocalDateTime.now());
+		notifyRequester(ticket, "자산 배정이 완료되었습니다.", "요청하신 자산이 배정되었습니다.");
 		return AssetRequestAssignResponse.from(
 			ticket,
 			assetRequestTicket,
@@ -378,5 +384,21 @@ public class AssetRequestAssignmentService {
 			throw new BusinessException(ErrorCode.INTANGIBLE_ASSET_ITEM_NOT_FOUND);
 		}
 		return item;
+	}
+
+	private void notifyRequester(Ticket ticket, String title, String content) {
+		Member requester = ticket.getRequester();
+		if (requester == null || !requester.isActive()) {
+			return;
+		}
+
+		notificationService.createNotification(
+			requester,
+			NotificationType.TICKET_STATUS_CHANGED,
+			title,
+			content,
+			NotificationTargetType.TICKET,
+			ticket.getId()
+		);
 	}
 }
