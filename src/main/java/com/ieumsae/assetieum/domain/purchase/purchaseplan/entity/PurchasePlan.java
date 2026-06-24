@@ -99,4 +99,8 @@ public class PurchasePlan extends BaseEntity {
             this.deliveryDate = LocalDateTime.now();
         }
     }
+
+    public void updateActualAmount(BigDecimal actualAmount) {
+        this.actualAmount = actualAmount;
+    }
 }

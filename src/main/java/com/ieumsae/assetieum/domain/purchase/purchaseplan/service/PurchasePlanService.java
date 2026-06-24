@@ -23,6 +23,7 @@ import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanDetail
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanItemCreateIntangibleAssetRequest;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanItemCreateItemRequest;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanItemCreateTangibleAssetRequest;
+import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanPurchaseResultRequest;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanResponse;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanSearchRequest;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.dto.PurchasePlanSearchResponse;
@@ -335,6 +336,26 @@ public class PurchasePlanService {
 
         return PurchasePlanResponse.from(purchasePlan);
 
+    }
+
+    @Transactional
+    public PurchasePlanDetailResponse updatePurchasePlanPurchaseResult(
+            UUID planId,
+            PurchasePlanPurchaseResultRequest request,
+            UUID companyId
+    ) {
+        companyRepository.findByIdAndDeletedAtIsNull(companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
+
+        PurchasePlan purchasePlan = purchasePlanRepository.findByIdAndDeletedAtIsNullAndCompany_Id(planId, companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PURCHASE_PLAN_NOT_FOUND));
+
+        purchasePlan.updateActualAmount(request.getActualAmount());
+        List<PurchasePlanItem> purchasePlanItems =
+                purchasePlanItemRepository.findAllByPurchasePlan_IdAndCompany_Id(planId, companyId)
+                        .orElseThrow(() -> new BusinessException(ErrorCode.PURCHASE_PLAN_ITEM_NOT_FOUND));
+
+        return PurchasePlanDetailResponse.from(purchasePlan, purchasePlanItems);
     }
 
     private void validatePurchasePlanCompletionReady(
