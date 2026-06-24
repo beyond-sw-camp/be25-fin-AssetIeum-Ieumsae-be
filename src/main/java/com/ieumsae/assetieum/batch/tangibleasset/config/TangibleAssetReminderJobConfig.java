@@ -47,22 +47,22 @@ public class TangibleAssetReminderJobConfig {
 	@Bean
 	public Job tangibleAssetReminderJob() {
 		return new JobBuilder(JOB_NAME, jobRepository)
-			.start(sendRentalReturnDueTomorrowReminderStep())
-			.next(sendRentalReturnDueTodayReminderStep())
-			.next(sendRentalReturnOverdueReminderStep())
+			.start(sendTangibleAssetReturnDueTomorrowReminderStep())
+			.next(sendTangibleAssetReturnDueTodayReminderStep())
+			.next(sendTangibleAssetReturnOverdueReminderStep())
 			.build();
 	}
 
 	@Bean
-	public Step sendRentalReturnDueTomorrowReminderStep() {
-		return new StepBuilder("sendRentalReturnDueTomorrowReminderStep", jobRepository)
+	public Step sendTangibleAssetReturnDueTomorrowReminderStep() {
+		return new StepBuilder("sendTangibleAssetReturnDueTomorrowReminderStep", jobRepository)
 			.tasklet((contribution, chunkContext) -> {
 				LocalDate baseDate = resolveBaseDate(chunkContext);
 				List<TangibleAssetAssignment> assignments = findAssignmentsDueOn(baseDate.plusDays(1));
 
 				sendNotifications(
 					assignments,
-					NotificationType.RENTAL_RETURN_DUE_TOMORROW,
+					NotificationType.TANGIBLE_ASSET_RETURN_DUE_TOMORROW,
 					"대여 자산 반납일이 하루 남았습니다.",
 					"내일 반납 예정인 대여 자산이 있습니다."
 				);
@@ -72,15 +72,15 @@ public class TangibleAssetReminderJobConfig {
 	}
 
 	@Bean
-	public Step sendRentalReturnDueTodayReminderStep() {
-		return new StepBuilder("sendRentalReturnDueTodayReminderStep", jobRepository)
+	public Step sendTangibleAssetReturnDueTodayReminderStep() {
+		return new StepBuilder("sendTangibleAssetReturnDueTodayReminderStep", jobRepository)
 			.tasklet((contribution, chunkContext) -> {
 				LocalDate baseDate = resolveBaseDate(chunkContext);
 				List<TangibleAssetAssignment> assignments = findAssignmentsDueOn(baseDate);
 
 				sendNotifications(
 					assignments,
-					NotificationType.RENTAL_RETURN_DUE_TODAY,
+					NotificationType.TANGIBLE_ASSET_RETURN_DUE_TODAY,
 					"대여 자산 반납일입니다.",
 					"오늘 반납 예정인 대여 자산이 있습니다."
 				);
@@ -90,15 +90,15 @@ public class TangibleAssetReminderJobConfig {
 	}
 
 	@Bean
-	public Step sendRentalReturnOverdueReminderStep() {
-		return new StepBuilder("sendRentalReturnOverdueReminderStep", jobRepository)
+	public Step sendTangibleAssetReturnOverdueReminderStep() {
+		return new StepBuilder("sendTangibleAssetReturnOverdueReminderStep", jobRepository)
 			.tasklet((contribution, chunkContext) -> {
 				LocalDate baseDate = resolveBaseDate(chunkContext);
 				List<TangibleAssetAssignment> assignments = findOverdueAssignments(baseDate);
 
 				sendNotifications(
 					assignments,
-					NotificationType.RENTAL_RETURN_OVERDUE,
+					NotificationType.TANGIBLE_ASSET_RETURN_OVERDUE,
 					"대여 자산 반납일이 지났습니다.",
 					"반납 예정일이 지난 대여 자산이 있습니다."
 				);
