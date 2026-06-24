@@ -18,6 +18,7 @@ import java.math.BigDecimal;
 @JsonPropertyOrder({
     "assetType",
     "status",
+    "isStandard",
     "category",
     "productName",
     "quantity",
@@ -29,6 +30,8 @@ public class PurchasePlanItemResponse {
     private AssetType assetType;
 
     private PurchasePlanItemStatus status;
+
+    private Boolean isStandard;
 
     private String category;
 
@@ -44,6 +47,7 @@ public class PurchasePlanItemResponse {
         return PurchasePlanItemResponse.builder()
                 .assetType(item.getAssetType())
                 .status(item.getPurchasePlanItemStatus())
+                .isStandard(item.getIsStandard())
                 .category(resolveCategory(item))
                 .productName(item.getProductName())
                 .quantity(item.getQuantity())

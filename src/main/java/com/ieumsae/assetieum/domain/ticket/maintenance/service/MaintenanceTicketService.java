@@ -3,6 +3,9 @@ package com.ieumsae.assetieum.domain.ticket.maintenance.service;
 import com.ieumsae.assetieum.domain.budget.budget.service.BudgetExecutionService;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.type.MemberRole;
+import com.ieumsae.assetieum.domain.log.service.LogService;
+import com.ieumsae.assetieum.domain.log.type.AuditLogAction;
+import com.ieumsae.assetieum.domain.log.type.LogSubjectType;
 import com.ieumsae.assetieum.domain.notification.service.NotificationService;
 import com.ieumsae.assetieum.domain.notification.type.NotificationTargetType;
 import com.ieumsae.assetieum.domain.notification.type.NotificationType;
@@ -53,6 +56,7 @@ public class MaintenanceTicketService {
 	private final AssignedAssetValidator assignedAssetValidator;
 	private final TangibleAssetTicketConflictValidator tangibleAssetTicketConflictValidator;
 	private final BudgetExecutionService budgetExecutionService;
+	private final LogService logService;
 	private final NotificationService notificationService;
 
 	public List<MaintenanceAvailableAssetResponse> getAvailableAssets(
@@ -148,6 +152,7 @@ public class MaintenanceTicketService {
 		// 회수 버튼을 누르면 실제 자산 상태를 수리중으로 전환한다.
 		maintenanceTicket.getTangibleAsset().startRepair();
 		maintenanceTicket.collect(LocalDateTime.now());
+		logService.recordAuditLog(collector, AuditLogAction.INFORMATION_CHANGE, LogSubjectType.TICKET, ticket.getId(), "유지보수 수거");
 		notifyMember(ticket.getRequester(), "수선 자산이 수거되었습니다.", "수선이 진행됩니다.", ticket);
 
 		return MaintenanceAssetCollectResponse.from(ticket, maintenanceTicket);
@@ -175,6 +180,7 @@ public class MaintenanceTicketService {
 		maintenanceTicket.getTangibleAsset().completeRepair();
 		maintenanceTicket.complete(normalizeMaintenanceResult(request.getMaintenanceResult()), maintenanceCost, completedAt);
 		ticket.changeProcessingStatus(TicketStatus.COMPLETED, completedAt);
+		logService.recordAuditLog(processor, AuditLogAction.INFORMATION_CHANGE, LogSubjectType.TICKET, ticket.getId(), "유지보수 완료");
 		notifyMember(ticket.getRequester(), "수선이 완료되었습니다.", "수선 처리가 완료되었습니다.", ticket);
 
 		return MaintenanceTicketCompleteResponse.from(

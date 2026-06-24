@@ -11,6 +11,9 @@ import com.ieumsae.assetieum.domain.intangibleasset.item.entity.IntangibleAssetI
 import com.ieumsae.assetieum.domain.intangibleasset.item.repository.IntangibleAssetItemRepository;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
+import com.ieumsae.assetieum.domain.log.service.LogService;
+import com.ieumsae.assetieum.domain.log.type.AuditLogAction;
+import com.ieumsae.assetieum.domain.log.type.LogSubjectType;
 import com.ieumsae.assetieum.domain.notification.service.NotificationService;
 import com.ieumsae.assetieum.domain.notification.type.NotificationTargetType;
 import com.ieumsae.assetieum.domain.notification.type.NotificationType;
@@ -61,6 +64,7 @@ public class AssetRequestAssignmentService {
 	private final AssetRequestValidator assetRequestValidator;
 	private final TicketAssignmentTargetService ticketAssignmentTargetService;
 	private final BudgetExecutionService budgetExecutionService;
+	private final LogService logService;
 	private final NotificationService notificationService;
 
 	@Transactional
@@ -101,6 +105,7 @@ public class AssetRequestAssignmentService {
 			budgetExecutionService.releaseHoldForInventoryAssignment(ticket, companyId);
 			assetRequestTicket.complete();
 			ticket.changeProcessingStatus(TicketStatus.COMPLETED, LocalDateTime.now());
+			logService.recordAuditLog(assignee, AuditLogAction.ASSIGN, LogSubjectType.TICKET, ticket.getId(), "자산 배정 완료");
 			notifyRequester(ticket, "자산 배정이 완료되었습니다.", "요청하신 자산이 배정되었습니다.");
 			return AssetRequestAssignResponse.from(
 				ticket,
@@ -123,6 +128,7 @@ public class AssetRequestAssignmentService {
 		budgetExecutionService.releaseHoldForInventoryAssignment(ticket, companyId);
 		assetRequestTicket.complete();
 		ticket.changeProcessingStatus(TicketStatus.COMPLETED, LocalDateTime.now());
+		logService.recordAuditLog(assignee, AuditLogAction.ASSIGN, LogSubjectType.TICKET, ticket.getId(), "자산 배정 완료");
 		notifyRequester(ticket, "자산 배정이 완료되었습니다.", "요청하신 자산이 배정되었습니다.");
 		return AssetRequestAssignResponse.from(
 			ticket,
