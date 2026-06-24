@@ -109,4 +109,23 @@ public class InspectionFollowUpService {
 
         return PaginationResponse.from(page);
     }
+
+    public PaginationResponse<InspectionFollowUpSearchResponse> getMyInspectionFollowUps(
+            InspectionFollowUpSearchRequest request,
+            AuthenticatedMember member
+    ) {
+        String keyword = StringUtils.hasText(request.getKeyword())
+                ? request.getKeyword().trim()
+                : null;
+
+        Page<InspectionFollowUpSearchResponse> page = inspectionFollowUpRepository.searchMyFollowUps(
+                member.companyId(),
+                member.id(),
+                request.getStatus(),
+                keyword,
+                request.toPageable()
+        ).map(InspectionFollowUpSearchResponse::from);
+
+        return PaginationResponse.from(page);
+    }
 }

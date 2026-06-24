@@ -65,4 +65,15 @@ public class InspectionFollowUpController {
         return ApiResponse.ok("전수조사 후속 처리 목록 조회에 성공했습니다.", response);
     }
 
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'DEPARTMENT_MANAGER', 'ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
+    @GetMapping("/my")
+    public ApiResponse<PaginationResponse<InspectionFollowUpSearchResponse>> getMyInspectionFollowUps(
+            @AuthenticationPrincipal AuthenticatedMember member,
+            @Valid @ModelAttribute InspectionFollowUpSearchRequest request
+    ) {
+        PaginationResponse<InspectionFollowUpSearchResponse> response =
+                inspectionFollowUpService.getMyInspectionFollowUps(request, member);
+
+        return ApiResponse.ok("내 자산 전수조사 후속 처리 목록 조회에 성공했습니다.", response);
+    }
 }

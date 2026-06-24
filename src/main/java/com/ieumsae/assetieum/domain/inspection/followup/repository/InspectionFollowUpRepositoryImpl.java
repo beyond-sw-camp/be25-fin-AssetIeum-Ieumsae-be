@@ -41,6 +41,7 @@ public class InspectionFollowUpRepositoryImpl implements InspectionFollowUpRepos
         QMember inspector = new QMember("inspectionInspector");
         QMember targetMember = new QMember("targetMember");
         QMember tangibleAssetMember = new QMember("tangibleAssetMember");
+        QMember intangibleAssetMember = new QMember("intangibleAssetMember");
 
         List<InspectionFollowUp> content = queryFactory
                 .selectFrom(inspectionFollowUp)
@@ -54,6 +55,7 @@ public class InspectionFollowUpRepositoryImpl implements InspectionFollowUpRepos
                 .leftJoin(tangibleAsset.member, tangibleAssetMember).fetchJoin()
                 .leftJoin(tangibleAsset.tangibleAssetItem, tangibleAssetItem).fetchJoin()
                 .leftJoin(inspectionTarget.intangibleAsset, intangibleAsset).fetchJoin()
+                .leftJoin(intangibleAsset.member, intangibleAssetMember).fetchJoin()
                 .leftJoin(intangibleAsset.intangibleAssetItem, intangibleAssetItem).fetchJoin()
                 .where(condition)
                 .orderBy(inspectionFollowUp.createdAt.desc())
@@ -68,8 +70,62 @@ public class InspectionFollowUpRepositoryImpl implements InspectionFollowUpRepos
                 .join(inspectionResult.inspection, inspection)
                 .join(inspectionResult.inspectionTarget, inspectionTarget)
                 .leftJoin(inspectionTarget.tangibleAsset, tangibleAsset)
+                .leftJoin(inspectionTarget.member, targetMember)
+                .leftJoin(tangibleAsset.member, tangibleAssetMember)
                 .leftJoin(tangibleAsset.tangibleAssetItem, tangibleAssetItem)
                 .leftJoin(inspectionTarget.intangibleAsset, intangibleAsset)
+                .leftJoin(intangibleAsset.member, intangibleAssetMember)
+                .leftJoin(intangibleAsset.intangibleAssetItem, intangibleAssetItem)
+                .where(condition)
+                .fetchOne();
+
+        return new PageImpl<>(content, pageable, total == null ? 0 : total);
+    }
+
+    @Override
+    public Page<InspectionFollowUp> searchMyFollowUps(
+            UUID companyId,
+            UUID memberId,
+            InspectionFollowUpStatus status,
+            String keyword,
+            Pageable pageable
+    ) {
+        BooleanBuilder condition = buildMyCondition(companyId, memberId, status, keyword);
+        QMember targetMember = new QMember("myTargetMember");
+        QMember tangibleAssetMember = new QMember("myTangibleAssetMember");
+        QMember intangibleAssetMember = new QMember("myIntangibleAssetMember");
+
+        List<InspectionFollowUp> content = queryFactory
+                .selectFrom(inspectionFollowUp)
+                .distinct()
+                .join(inspectionFollowUp.inspectionResult, inspectionResult).fetchJoin()
+                .join(inspectionResult.inspection, inspection).fetchJoin()
+                .join(inspectionResult.inspectionTarget, inspectionTarget).fetchJoin()
+                .leftJoin(inspectionTarget.member, targetMember).fetchJoin()
+                .leftJoin(inspectionTarget.tangibleAsset, tangibleAsset).fetchJoin()
+                .leftJoin(tangibleAsset.member, tangibleAssetMember).fetchJoin()
+                .leftJoin(tangibleAsset.tangibleAssetItem, tangibleAssetItem).fetchJoin()
+                .leftJoin(inspectionTarget.intangibleAsset, intangibleAsset).fetchJoin()
+                .leftJoin(intangibleAsset.member, intangibleAssetMember).fetchJoin()
+                .leftJoin(intangibleAsset.intangibleAssetItem, intangibleAssetItem).fetchJoin()
+                .where(condition)
+                .orderBy(inspectionFollowUp.createdAt.desc())
+                .offset(pageable.getOffset())
+                .limit(pageable.getPageSize())
+                .fetch();
+
+        Long total = queryFactory
+                .select(inspectionFollowUp.countDistinct())
+                .from(inspectionFollowUp)
+                .join(inspectionFollowUp.inspectionResult, inspectionResult)
+                .join(inspectionResult.inspection, inspection)
+                .join(inspectionResult.inspectionTarget, inspectionTarget)
+                .leftJoin(inspectionTarget.member, targetMember)
+                .leftJoin(inspectionTarget.tangibleAsset, tangibleAsset)
+                .leftJoin(tangibleAsset.member, tangibleAssetMember)
+                .leftJoin(tangibleAsset.tangibleAssetItem, tangibleAssetItem)
+                .leftJoin(inspectionTarget.intangibleAsset, intangibleAsset)
+                .leftJoin(intangibleAsset.member, intangibleAssetMember)
                 .leftJoin(intangibleAsset.intangibleAssetItem, intangibleAssetItem)
                 .where(condition)
                 .fetchOne();
@@ -86,6 +142,37 @@ public class InspectionFollowUpRepositoryImpl implements InspectionFollowUpRepos
         BooleanBuilder condition = new BooleanBuilder();
         condition.and(inspectionFollowUp.company.id.eq(companyId));
         condition.and(inspection.inspector.id.eq(inspectorId));
+
+        if (status != null) {
+            condition.and(inspectionFollowUp.inspectionFollowUpStatus.eq(status));
+        }
+
+        if (StringUtils.hasText(keyword)) {
+            String trimmedKeyword = keyword.trim();
+            condition.and(
+                    tangibleAsset.assetCode.containsIgnoreCase(trimmedKeyword)
+                            .or(tangibleAssetItem.productName.containsIgnoreCase(trimmedKeyword))
+                            .or(intangibleAsset.assetCode.containsIgnoreCase(trimmedKeyword))
+                            .or(intangibleAssetItem.productName.containsIgnoreCase(trimmedKeyword))
+            );
+        }
+
+        return condition;
+    }
+
+    private BooleanBuilder buildMyCondition(
+            UUID companyId,
+            UUID memberId,
+            InspectionFollowUpStatus status,
+            String keyword
+    ) {
+        BooleanBuilder condition = new BooleanBuilder();
+        condition.and(inspectionFollowUp.company.id.eq(companyId));
+        condition.and(
+                inspectionTarget.member.id.eq(memberId)
+                        .or(tangibleAsset.member.id.eq(memberId))
+                        .or(intangibleAsset.member.id.eq(memberId))
+        );
 
         if (status != null) {
             condition.and(inspectionFollowUp.inspectionFollowUpStatus.eq(status));

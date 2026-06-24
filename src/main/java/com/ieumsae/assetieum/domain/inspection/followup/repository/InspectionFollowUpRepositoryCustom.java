@@ -15,4 +15,12 @@ public interface InspectionFollowUpRepositoryCustom {
             String keyword,
             Pageable pageable
     );
+
+    Page<InspectionFollowUp> searchMyFollowUps(
+            UUID companyId,
+            UUID memberId,
+            InspectionFollowUpStatus status,
+            String keyword,
+            Pageable pageable
+    );
 }
