@@ -32,7 +32,5 @@ public class OffboardingHrEventHandler implements HrEventHandler {
         for (HrEventAssetTarget target : targets) {
             hrEventAssetTargetProcessor.process(hrEvent, target, hrEvent.getCompany().getId(), false);
         }
-
-        hrEvent.getMember().resign();
     }
 }

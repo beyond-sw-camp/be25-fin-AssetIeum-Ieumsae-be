@@ -18,7 +18,6 @@ import org.springframework.transaction.PlatformTransactionManager;
 @RequiredArgsConstructor
 public class HrEventExecutionJobConfig {
 
-    // HR 이벤트 실행일에 PENDING 이벤트를 실행하는 Job 이름과 기준일 파라미터 이름입니다.
     public static final String JOB_NAME = "hrEventExecutionJob";
     public static final String HR_EVENT_EXECUTION_DATE_PARAMETER = "hrEventExecutionDate";
 
@@ -29,8 +28,8 @@ public class HrEventExecutionJobConfig {
     @Bean
     public Job hrEventExecutionJob() {
         return new JobBuilder(JOB_NAME, jobRepository)
-                // 실행일이 된 HR 이벤트를 타입별 실행 로직으로 위임합니다.
                 .start(executeHrEventsStep())
+                .next(completeOffboardingHrEventsStep())
                 .build();
     }
 
@@ -44,8 +43,17 @@ public class HrEventExecutionJobConfig {
                 .build();
     }
 
+    @Bean
+    public Step completeOffboardingHrEventsStep() {
+        return new StepBuilder("completeOffboardingHrEventsStep", jobRepository)
+                .tasklet((contribution, chunkContext) -> {
+                    hrEventService.completeDueOffboardingHrEvents(resolveExecutionDate(chunkContext));
+                    return RepeatStatus.FINISHED;
+                }, transactionManager)
+                .build();
+    }
+
     private LocalDate resolveExecutionDate(ChunkContext chunkContext) {
-        // 스케줄러가 전달한 기준일을 사용하고, 직접 실행 시 파라미터가 없으면 오늘 날짜를 사용합니다.
         Object parameter = chunkContext.getStepContext()
                 .getJobParameters()
                 .get(HR_EVENT_EXECUTION_DATE_PARAMETER);

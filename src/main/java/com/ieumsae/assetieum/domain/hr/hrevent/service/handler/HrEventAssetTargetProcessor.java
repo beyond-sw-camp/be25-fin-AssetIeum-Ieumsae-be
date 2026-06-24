@@ -5,10 +5,12 @@ import com.ieumsae.assetieum.domain.hr.hreventassettarget.entity.HrEventAssetTar
 import com.ieumsae.assetieum.domain.hr.hreventassettarget.type.HrEventAssetActionType;
 import com.ieumsae.assetieum.domain.intangibleasset.assignment.repository.IntangibleAssetAssignmentRepository;
 import com.ieumsae.assetieum.domain.intangibleasset.assignment.service.IntangibleAssetAssignmentService;
+import com.ieumsae.assetieum.domain.intangibleasset.assignment.type.AssignmentStatus;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.tangibleasset.assignment.entity.TangibleAssetAssignment;
 import com.ieumsae.assetieum.domain.tangibleasset.assignment.repository.TangibleAssetAssignmentRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.assignment.service.TangibleAssetAssignmentService;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.type.TangibleAssetStatus;
 import com.ieumsae.assetieum.domain.ticket.assetreturn.dto.AssetReturnTicketCreateRequest;
 import com.ieumsae.assetieum.domain.ticket.assetreturn.service.AssetReturnTicketService;
 import com.ieumsae.assetieum.domain.ticket.assetreturn.type.AssetReturnTargetType;
@@ -53,6 +55,10 @@ public class HrEventAssetTargetProcessor {
 
         if (actionType == HrEventAssetActionType.RETURN_REQUIRED
                 || actionType == HrEventAssetActionType.UNASSIGN_REQUIRED) {
+            if (isAlreadyReturnedOrUnassigned(target, companyId)) {
+                target.complete(LocalDateTime.now());
+                return;
+            }
             createReturnTicket(target, companyId);
             target.process(LocalDateTime.now());
             return;
@@ -135,6 +141,44 @@ public class HrEventAssetTargetProcessor {
         }
 
         throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+    }
+
+    private boolean isAlreadyReturnedOrUnassigned(HrEventAssetTarget target, UUID companyId) {
+        if (target.getAssetType() == AssetType.TANGIBLE) {
+            TangibleAssetStatus status = target.getTangibleAsset().getTangibleAssetStatus();
+            if (status != TangibleAssetStatus.IN_USE) {
+                return true;
+            }
+
+            return tangibleAssetAssignmentRepository
+                    .findByCompany_IdAndTangibleAsset_IdAndAssignmentStatus(
+                            companyId,
+                            target.getTangibleAsset().getId(),
+                            com.ieumsae.assetieum.domain.tangibleasset.assignment.type.AssignmentStatus.ACTIVE
+                    )
+                    .isEmpty();
+        }
+
+        if (target.getAssetType() == AssetType.INTANGIBLE) {
+            if (target.getIntangibleAsset().getIntangibleAssetStatus() != com.ieumsae.assetieum.domain.intangibleasset.asset.type.IntangibleAssetStatus.IN_USE) {
+                return true;
+            }
+
+            if (target.getIntangibleAssetAssignment() != null) {
+                return target.getIntangibleAssetAssignment().getAssignmentStatus() != com.ieumsae.assetieum.domain.intangibleasset.assignment.type.AssignmentStatus.ACTIVE;
+            }
+
+            return intangibleAssetAssignmentRepository
+                    .findByCompany_IdAndIntangibleAsset_IdAndMember_IdAndAssignmentStatus(
+                            companyId,
+                            target.getIntangibleAsset().getId(),
+                            target.getMember().getId(),
+                            AssignmentStatus.ACTIVE
+                    )
+                    .isEmpty();
+        }
+
+        return false;
     }
 
     private UUID resolveAssignmentId(HrEventAssetTarget target, UUID companyId) {

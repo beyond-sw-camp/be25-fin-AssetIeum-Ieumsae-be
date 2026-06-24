@@ -26,10 +26,23 @@ public class AssignedAssetValidator {
 	public boolean isIntangibleInUseByAssignee(IntangibleAssetAssignment assignment) {
 		IntangibleAsset asset = assignment.getIntangibleAsset();
 
-		return asset.getIntangibleAssetStatus() == IntangibleAssetStatus.IN_USE
-			&& asset.getMember() != null
+		if (asset.getIntangibleAssetStatus() != IntangibleAssetStatus.IN_USE) {
+			return false;
+		}
+
+		if (!asset.getCompany().getId().equals(assignment.getCompany().getId())) {
+			return false;
+		}
+
+		if (asset.getSeatCount() != null && asset.getSeatCount() > 1) {
+			return assignment.getAssignmentStatus() == com.ieumsae.assetieum.domain.intangibleasset.assignment.type.AssignmentStatus.ACTIVE
+				&& assignment.getMember() != null;
+		}
+
+		return asset.getMember() != null
+			&& assignment.getMember() != null
 			&& asset.getMember().getId().equals(assignment.getMember().getId())
-			&& asset.getCompany().getId().equals(assignment.getCompany().getId());
+			&& assignment.getAssignmentStatus() == com.ieumsae.assetieum.domain.intangibleasset.assignment.type.AssignmentStatus.ACTIVE;
 	}
 
 	public void validateTangibleRequester(TangibleAssetAssignment assignment, Member requester) {
@@ -43,7 +56,7 @@ public class AssignedAssetValidator {
 	public void validateIntangibleRequester(IntangibleAssetAssignment assignment, Member requester) {
 		IntangibleAsset asset = assignment.getIntangibleAsset();
 
-		if (asset.getMember() == null || !asset.getMember().getId().equals(requester.getId())) {
+		if (assignment.getMember() == null || !assignment.getMember().getId().equals(requester.getId())) {
 			throw new BusinessException(ErrorCode.ACCESS_DENIED);
 		}
 	}

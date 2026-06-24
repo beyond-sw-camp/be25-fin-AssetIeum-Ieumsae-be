@@ -383,6 +383,22 @@ public class HrEventService {
         hrEvents.forEach(this::executeHrEvent);
     }
 
+    @Transactional
+    public void completeDueOffboardingHrEvents(LocalDate executionDate) {
+        LocalDateTime startInclusive = executionDate.atStartOfDay();
+        LocalDateTime endExclusive = startInclusive.plusDays(1);
+
+        List<HrEvent> hrEvents = hrEventRepository
+                .findAllByHrEventStatusAndEventTypeAndEventDateGreaterThanEqualAndEventDateLessThanAndCancelledAtIsNullOrderByEventDateAsc(
+                        HrEventStatus.IN_PROGRESS,
+                        HrEventType.OFFBOARDING,
+                        startInclusive,
+                        endExclusive
+                );
+
+        hrEvents.forEach(this::completeOffboardingHrEvent);
+    }
+
     private void executeHrEvent(HrEvent hrEvent) {
         hrEventHandlerResolver.resolve(hrEvent.getEventType()).handle(hrEvent);
     }
@@ -395,5 +411,11 @@ public class HrEventService {
         for (HrEventAssetTarget target : hrEventAssetTargets) {
             target.complete(completedAt);
         }
+    }
+
+    private void completeOffboardingHrEvent(HrEvent hrEvent) {
+        hrEvent.getMember().resign();
+        completeRelatedTargets(hrEvent);
+        hrEvent.complete();
     }
 }
