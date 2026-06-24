@@ -8,6 +8,8 @@ import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.batch.core.repository.JobExecutionAlreadyRunningException;
+import org.springframework.batch.core.repository.JobInstanceAlreadyCompleteException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -28,7 +30,9 @@ public class TangibleAssetReminderJobScheduler {
 				LocalDate.now(SEOUL_ZONE).toString()
 			)
 			.toJobParameters();
-
-		jobLauncher.run(tangibleAssetReminderJob, jobParameters);
+		try {
+			jobLauncher.run(tangibleAssetReminderJob, jobParameters);
+		} catch (JobInstanceAlreadyCompleteException | JobExecutionAlreadyRunningException ignored) {
+		}
 	}
 }
