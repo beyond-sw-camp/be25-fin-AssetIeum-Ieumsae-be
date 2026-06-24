@@ -115,8 +115,7 @@ public class DirectPurchaseResultCreateResponse {
 		}
 		try {
 			return OBJECT_MAPPER.readValue(normalized, STRING_LIST_TYPE).stream()
-				.filter(value -> value != null && !value.isBlank())
-				.map(String::trim)
+				.map(value -> value == null || value.isBlank() ? null : value.trim())
 				.toList();
 		} catch (JsonProcessingException e) {
 			return List.of(normalized);

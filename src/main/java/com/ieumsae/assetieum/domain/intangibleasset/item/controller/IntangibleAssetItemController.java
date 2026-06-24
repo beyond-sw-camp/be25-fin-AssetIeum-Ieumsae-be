@@ -52,7 +52,7 @@ public class IntangibleAssetItemController {
             @Valid @ModelAttribute IntangibleAssetItemSearchRequest request
     ) {
         PaginationResponse<IntangibleAssetItemResponse> response =
-                intangibleAssetItemService.getItems(request, member.companyId());
+                intangibleAssetItemService.getItems(request, member.id(), member.companyId());
 
         return ApiResponse.ok("무형자산 품목 목록 조회에 성공했습니다.", response);
     }

@@ -1,0 +1,1 @@
+DROP INDEX uk_ticket_assignment_targets_ticket_member ON ticket_assignment_targets;

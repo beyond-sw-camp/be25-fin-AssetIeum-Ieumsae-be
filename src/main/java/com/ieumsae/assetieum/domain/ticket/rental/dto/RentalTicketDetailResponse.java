@@ -37,6 +37,8 @@ public class RentalTicketDetailResponse {
 	private final LocalDateTime requestedAt;
 	private final TicketStatus currentStatus;
 	private final RentalTicketStatus detailStatus;
+	private final String departmentRejectionReason;
+	private final String purchaseRejectionReason;
 	private final MemberSummary assetAssignee;
 	@JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
 	private final LocalDateTime assetProcessedAt;
@@ -80,6 +82,8 @@ public class RentalTicketDetailResponse {
 			.requestedAt(ticket.getCreatedAt())
 			.currentStatus(ticket.getTicketStatus())
 			.detailStatus(requesterView ? rentalTicket.getStatus() : null)
+			.departmentRejectionReason(ticket.getDepartmentRejectionReason())
+			.purchaseRejectionReason(ticket.getPurchaseRejectionReason())
 			.assetAssignee(MemberSummary.from(ticket.getAssignee()))
 			.assetProcessedAt(resolveAssetProcessedAt(ticket))
 			.rentalStartDate(rentalTicket.getRentalStartDate())

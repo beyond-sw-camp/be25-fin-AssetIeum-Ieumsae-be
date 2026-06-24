@@ -57,4 +57,5 @@ public class DirectPurchaseResultCreateRequest {
 	private LocalDateTime expiredAt;
 
 	private BillingCycle billingCycle;
+
 }

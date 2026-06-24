@@ -30,6 +30,38 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+package com.ieumsae.assetieum.domain.dashboard.controller;
+
+import com.ieumsae.assetieum.domain.dashboard.dto.AssetDemandResponse;
+import com.ieumsae.assetieum.domain.dashboard.dto.BudgetLedgerResponse;
+import com.ieumsae.assetieum.domain.dashboard.dto.BudgetLedgerSearchRequest;
+import com.ieumsae.assetieum.domain.dashboard.dto.BudgetOverviewResponse;
+import com.ieumsae.assetieum.domain.dashboard.dto.ExpiringAssetDetailResponse;
+import com.ieumsae.assetieum.domain.dashboard.dto.ExpiringAssetDetailSearchRequest;
+import com.ieumsae.assetieum.domain.dashboard.dto.ExpiringAssetSummaryResponse;
+import com.ieumsae.assetieum.domain.dashboard.dto.LifecycleEventResponse;
+import com.ieumsae.assetieum.domain.dashboard.dto.OwnedAssetDetailResponse;
+import com.ieumsae.assetieum.domain.dashboard.dto.OwnedAssetDetailSearchRequest;
+import com.ieumsae.assetieum.domain.dashboard.dto.OwnedAssetSummaryResponse;
+import com.ieumsae.assetieum.domain.dashboard.dto.TicketProgressSummaryResponse;
+import com.ieumsae.assetieum.domain.dashboard.service.DashboardService;
+import com.ieumsae.assetieum.domain.member.type.MemberRole;
+import com.ieumsae.assetieum.global.common.page.PaginationRequest;
+import com.ieumsae.assetieum.global.common.page.PaginationResponse;
+import com.ieumsae.assetieum.global.response.ApiResponse;
+import com.ieumsae.assetieum.global.security.AuthenticatedMember;
+import jakarta.validation.Valid;
+import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/dashboard")
 public class DashboardController {
@@ -44,6 +76,8 @@ public class DashboardController {
 	) {
 		TicketProgressSummaryResponse response = isEmployee(authenticatedMember)
 			? dashboardService.getEmployeeTicketProgressSummary(authenticatedMember.companyId(), authenticatedMember.id())
+			: isDepartmentManager(authenticatedMember)
+			? dashboardService.getDepartmentTicketProgressSummary(authenticatedMember.companyId(), authenticatedMember.id())
 			: dashboardService.getTicketProgressSummary(authenticatedMember.companyId(), departmentId);
 
 		return ApiResponse.ok("진행중인 티켓 현황 조회에 성공했습니다.", response);
@@ -57,27 +91,24 @@ public class DashboardController {
 	) {
 		OwnedAssetSummaryResponse response = isEmployee(authenticatedMember)
 			? dashboardService.getEmployeeOwnedAssetSummary(authenticatedMember.companyId(), authenticatedMember.id())
+			: isDepartmentManager(authenticatedMember)
+			? dashboardService.getDepartmentOwnedAssetSummary(authenticatedMember.companyId(), authenticatedMember.id())
 			: dashboardService.getOwnedAssetSummary(authenticatedMember.companyId(), departmentId);
 
 		return ApiResponse.ok("보유자산 현황 조회에 성공했습니다.", response);
 	}
 
-	@PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
+	@PreAuthorize("hasAnyRole('EMPLOYEE', 'ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN', 'DEPARTMENT_MANAGER')")
 	@GetMapping("/owned-assets/details")
 	public ApiResponse<PaginationResponse<OwnedAssetDetailResponse>> getOwnedAssetDetails(
 		@AuthenticationPrincipal AuthenticatedMember authenticatedMember,
 		@Valid @ModelAttribute OwnedAssetDetailSearchRequest request
 	) {
-		PaginationResponse<OwnedAssetDetailResponse> response =
-			dashboardService.getOwnedAssetDetails(authenticatedMember.companyId(), request);
-
-		return ApiResponse.ok("보유자산 현황 상세 조회에 성공했습니다.", response);
-	}
-
-	@PreAuthorize("hasAnyRole('EMPLOYEE', 'ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN', 'DEPARTMENT_MANAGER')")
-	@GetMapping("/expiring-assets")
-	public ApiResponse<ExpiringAssetSummaryResponse> getExpiringAssetSummary(
-		@AuthenticationPrincipal AuthenticatedMember authenticatedMember,
+		PaginationResponse<OwnedAssetDetailResponse> response = isEmployee(authenticatedMember)
+			? dashboardService.getEmployeeOwnedAssetDetails(authenticatedMember.companyId(), authenticatedMember.id(), request)
+			: isDepartmentManager(authenticatedMember)
+			? dashboardService.getDepartmentOwnedAssetDetails(authenticatedMember.companyId(), authenticatedMember.id(), request)
+			: dashboardService.getOwnedAssetDetails(authenticatedMember.companyId(), request);
 		@RequestParam(required = false) UUID departmentId
 	) {
 		ExpiringAssetSummaryResponse response = isEmployee(authenticatedMember)
@@ -87,14 +118,17 @@ public class DashboardController {
 		return ApiResponse.ok("만료예정 자산 현황 조회에 성공했습니다.", response);
 	}
 
-	@PreAuthorize("hasAnyRole('ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN')")
+	@PreAuthorize("hasAnyRole('EMPLOYEE', 'ASSET_MANAGER', 'ASSET_TEAM', 'ADMIN', 'DEPARTMENT_MANAGER')")
 	@GetMapping("/expiring-assets/details")
 	public ApiResponse<PaginationResponse<ExpiringAssetDetailResponse>> getExpiringAssetDetails(
 		@AuthenticationPrincipal AuthenticatedMember authenticatedMember,
 		@Valid @ModelAttribute ExpiringAssetDetailSearchRequest request
 	) {
-		PaginationResponse<ExpiringAssetDetailResponse> response =
-			dashboardService.getExpiringAssetDetails(authenticatedMember.companyId(), request);
+		PaginationResponse<ExpiringAssetDetailResponse> response = isEmployee(authenticatedMember)
+			? dashboardService.getEmployeeExpiringAssetDetails(authenticatedMember.companyId(), authenticatedMember.id(), request)
+			: isDepartmentManager(authenticatedMember)
+			? dashboardService.getDepartmentExpiringAssetDetails(authenticatedMember.companyId(), authenticatedMember.id(), request)
+			: dashboardService.getExpiringAssetDetails(authenticatedMember.companyId(), request);
 
 		return ApiResponse.ok("만료예정 자산 현황 상세 조회에 성공했습니다.", response);
 	}
@@ -159,5 +193,9 @@ public class DashboardController {
 
 	private boolean isEmployee(AuthenticatedMember authenticatedMember) {
 		return authenticatedMember.role() == MemberRole.EMPLOYEE;
+	}
+
+	private boolean isDepartmentManager(AuthenticatedMember authenticatedMember) {
+		return authenticatedMember.role() == MemberRole.DEPARTMENT_MANAGER;
 	}
 }

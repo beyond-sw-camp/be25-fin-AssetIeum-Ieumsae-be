@@ -34,6 +34,7 @@ public class PurchaseRequestTicketCreateResponse {
 	private final LicenseType licenseType;
 	private final String purchaseUrl;
 	private final int quantity;
+	private final Integer seatCount;
 	private final BigDecimal expectedPrice;
 
 	public static PurchaseRequestTicketCreateResponse from(
@@ -48,7 +49,7 @@ public class PurchaseRequestTicketCreateResponse {
 			.ticketType(ticket.getTicketType())
 			.ticketStatus(ticket.getTicketStatus())
 			.purchaseRequestStatus(purchaseRequestTicket.getStatus())
-			.requestedUsageType(purchaseRequestTicket.getRequestedUsageType())
+			.requestedUsageType(assetType == AssetType.INTANGIBLE ? null : purchaseRequestTicket.getRequestedUsageType())
 			.requestMethod(purchaseRequestTicket.getRequestMethod())
 			.assetType(assetType)
 			.isStandard(purchaseRequestTicket.getIsStandard())
@@ -59,6 +60,7 @@ public class PurchaseRequestTicketCreateResponse {
 			.licenseType(purchaseRequestTicket.getLicenseType())
 			.purchaseUrl(purchaseRequestTicket.getPurchaseUrl())
 			.quantity(purchaseRequestTicket.getQuantity())
+			.seatCount(purchaseRequestTicket.getSeatCount())
 			.expectedPrice(purchaseRequestTicket.getExpectedPrice())
 			.build();
 	}

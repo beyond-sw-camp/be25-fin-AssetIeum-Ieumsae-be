@@ -30,9 +30,12 @@ import com.ieumsae.assetieum.domain.tangibleasset.category.entity.TangibleAssetC
 import com.ieumsae.assetieum.domain.tangibleasset.category.repository.TangibleAssetCategoryRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
 import com.ieumsae.assetieum.domain.tangibleasset.item.repository.TangibleAssetItemRepository;
+import com.ieumsae.assetieum.domain.ticket.common.dto.TicketAssignmentTargetResponse;
 import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
+import com.ieumsae.assetieum.domain.ticket.common.entity.TicketAssignmentTarget;
 import com.ieumsae.assetieum.domain.ticket.common.repository.TicketRepository;
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketApprovalResolver;
+import com.ieumsae.assetieum.domain.ticket.common.service.TicketAssignmentTargetService;
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketNoGenerator;
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketRequesterResolver;
 import com.ieumsae.assetieum.domain.ticket.common.type.AssetType;
@@ -96,6 +99,7 @@ public class PurchaseRequestTicketService {
 	private final TicketNoGenerator ticketNoGenerator;
 	private final TicketApprovalResolver ticketApprovalResolver;
 	private final TicketRequesterResolver ticketRequesterResolver;
+	private final TicketAssignmentTargetService ticketAssignmentTargetService;
 	private final PurchaseRequestActionResolver purchaseRequestActionResolver;
 	private final PurchasePlanItemRepository purchasePlanItemRepository;
 	private final BudgetExecutionService budgetExecutionService;
@@ -109,7 +113,7 @@ public class PurchaseRequestTicketService {
 		return createPurchaseRequestTicket(
 			authenticatedMember,
 			RequestMethod.TEAM_PURCHASE,
-			request.getRequestedUsageType(),
+			resolveRequestedUsageType(request.getAssetType(), request.getRequestedUsageType()),
 			request.getAssetType(),
 			request.getCategoryId(),
 			request.getRequestedItemDetail(),
@@ -117,8 +121,10 @@ public class PurchaseRequestTicketService {
 			request.getLicenseType(),
 			request.getPurchaseUrl(),
 			request.getQuantity(),
+			request.getSeatCount(),
 			request.getExpectedPrice(),
-			request.getRequestReason()
+			request.getRequestReason(),
+			request.getAssignmentTargetMemberIds()
 		);
 	}
 
@@ -131,7 +137,7 @@ public class PurchaseRequestTicketService {
 		return createPurchaseRequestTicket(
 			authenticatedMember,
 			RequestMethod.DIRECT_PURCHASE,
-			request.getRequestedUsageType(),
+			resolveRequestedUsageType(request.getAssetType(), request.getRequestedUsageType()),
 			request.getAssetType(),
 			request.getIsStandard(),
 			target.tangibleAssetItem(),
@@ -143,8 +149,10 @@ public class PurchaseRequestTicketService {
 			target.licenseType(),
 			null,
 			request.getQuantity(),
+			request.getSeatCount(),
 			request.getExpectedPrice(),
-			request.getRequestReason()
+			request.getRequestReason(),
+			request.getAssignmentTargetMemberIds()
 		);
 	}
 
@@ -167,6 +175,7 @@ public class PurchaseRequestTicketService {
 
 		validateDirectPurchaseResultTarget(purchaseRequestTicket, ticket, submitter);
 		validateDirectPurchaseResultRequest(companyId, assetType, purchaseRequestTicket.getQuantity(), request, null);
+		validateActualSeatCapacity(companyId, ticket, purchaseRequestTicket, assetType, request);
 
 		DirectPurchaseResult result = directPurchaseResultRepository.save(DirectPurchaseResult.create(
 			purchaseRequestTicket,
@@ -189,7 +198,7 @@ public class PurchaseRequestTicketService {
 			request.getBillingCycle()
 		));
 		budgetExecutionService.executeForDirectPurchaseResult(ticket, companyId, request.getActualPrice());
-		// [수정] 자산팀 확인 전까지 IN_PROGRESS 상태 유지
+		// Keep IN_PROGRESS until the asset team confirms the direct purchase result.
 
 		return DirectPurchaseResultCreateResponse.from(ticket, result, assetType);
 	}
@@ -210,11 +219,12 @@ public class PurchaseRequestTicketService {
 		AssetType assetType = resolveAssetType(purchaseRequestTicket);
 
 		validateDirectPurchaseResultUpdatable(purchaseRequestTicket, ticket, submitter);
-		// [수정] 이미 확인(CONFIRMED)된 영수증은 수정 불가
+        // 확인 완료된 직접구매 정보는 수정할 수 없다.
 		if (result.getConfirmationStatus() == ConfirmationStatus.CONFIRMED) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "이미 확인 완료된 직접구매 정보는 수정할 수 없습니다.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "이미 확인 완료된 직접구매 정보는 수정할 수 없습니다.");
 		}
 		validateDirectPurchaseResultRequest(companyId, assetType, purchaseRequestTicket.getQuantity(), request, result);
+		validateActualSeatCapacity(companyId, ticket, purchaseRequestTicket, assetType, request);
 
 		BigDecimal previousActualPrice = result.getActualPrice();
 		result.update(
@@ -282,7 +292,7 @@ public class PurchaseRequestTicketService {
 		validateDirectPurchaseAssetAssignee(ticket, member);
 
 		if (result.getConfirmationStatus() == ConfirmationStatus.CONFIRMED) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "이미 확인완료 처리된 직접구매 결과입니다.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "이미 확인 완료 처리된 직접구매 결과입니다.");
 		}
 
 		result.confirm();
@@ -340,13 +350,37 @@ public class PurchaseRequestTicketService {
 			resolveLinkedPurchasePlanId(linkedPurchasePlanItem),
 			linkedPurchasePlanItem,
 			directPurchaseResult,
+			getAssignmentTargetResponses(companyId, ticket),
 			purchaseRequestActionResolver.createActions(ticket, viewer)
 		);
+	}
+
+	private List<TicketAssignmentTargetResponse> getAssignmentTargetResponses(UUID companyId, Ticket ticket) {
+		return ticketAssignmentTargetService.findTargets(companyId, ticket).stream()
+			.map(TicketAssignmentTargetResponse::from)
+			.toList();
 	}
 
 	private PurchasePlanItem findLinkedPurchasePlanItem(UUID ticketId, UUID companyId) {
 		return purchasePlanItemRepository.findFirstByTicket_IdAndCompany_IdOrderByIdAsc(ticketId, companyId)
 			.orElse(null);
+	}
+
+	private void validateActualSeatCapacity(
+		UUID companyId,
+		Ticket ticket,
+		PurchaseRequestTicket purchaseRequestTicket,
+		AssetType assetType,
+		DirectPurchaseResultCreateRequest request
+	) {
+		if (assetType == AssetType.TANGIBLE) {
+			return;
+		}
+		int capacity = purchaseRequestTicket.getQuantity() * request.getSeatCount();
+		ticketAssignmentTargetService.validateCapacity(
+			ticketAssignmentTargetService.findTargets(companyId, ticket),
+			capacity
+		);
 	}
 
 	private UUID resolveLinkedPurchasePlanId(PurchasePlanItem linkedPurchasePlanItem) {
@@ -375,8 +409,17 @@ public class PurchaseRequestTicketService {
 		);
 		BigDecimal unitPrice = divideActualPrice(result.getActualPrice(), purchaseRequestTicket.getQuantity());
 		List<DirectPurchaseAssetAssignResponse.AssignedAssetResponse> assignedAssets = new ArrayList<>();
+		List<DirectPurchaseAssetAssignResponse.RegisteredAssetResponse> registeredAssets = new ArrayList<>();
+		List<TicketAssignmentTarget> assignmentTargets = ticketAssignmentTargetService.findTargets(companyId, ticket);
+		List<Member> targetAssignees = resolveDirectPurchaseTangibleAssignees(
+			ticket,
+			purchaseRequestTicket.getQuantity(),
+			assignmentTargets
+		);
 
-		for (String serialNumber : serialNumbers) {
+		for (int i = 0; i < serialNumbers.size(); i++) {
+			String serialNumber = serialNumbers.get(i);
+			Member targetAssignee = targetAssignees.get(i);
 			TangibleAsset asset = tangibleAssetRepository.save(TangibleAsset.builder()
 				.company(ticket.getCompany())
 				.tangibleAssetItem(item)
@@ -393,14 +436,15 @@ public class PurchaseRequestTicketService {
 			TangibleAssetAssignment assignment = tangibleAssetAssignmentRepository.save(TangibleAssetAssignment.builder()
 				.company(ticket.getCompany())
 				.tangibleAsset(asset)
-				.member(ticket.getRequester())
-				.department(ticket.getDepartment())
+				.member(targetAssignee)
+				.department(targetAssignee.getDepartment())
 				.assignmentType(UsageType.PERMANENT)
 				.assignmentStatus(com.ieumsae.assetieum.domain.tangibleasset.assignment.type.AssignmentStatus.ACTIVE)
 				.build());
+			markAssignmentTargetAssigned(assignmentTargets, i, AssetType.TANGIBLE, asset.getId(), assignment.getAssignedAt());
 			asset.markInUse(
-				ticket.getRequester(),
-				ticket.getDepartment(),
+				targetAssignee,
+				targetAssignee.getDepartment(),
 				UsageType.PERMANENT,
 				resolveAssetUsageType(purchaseRequestTicket.getRequestedUsageType()),
 				assignment.getAssignedAt(),
@@ -411,7 +455,18 @@ public class PurchaseRequestTicketService {
 				asset.getAssetCode(),
 				assignment.getId(),
 				serialNumber,
-				null
+				null,
+				targetAssignee.getId(),
+				targetAssignee.getName(),
+				targetAssignee.getDepartment().getId(),
+				targetAssignee.getDepartment().getName()
+			));
+			registeredAssets.add(DirectPurchaseAssetAssignResponse.RegisteredAssetResponse.of(
+				asset.getId(),
+				asset.getAssetCode(),
+				serialNumber,
+				null,
+				1
 			));
 		}
 		completeDirectPurchaseTicket(ticket, purchaseRequestTicket);
@@ -423,7 +478,8 @@ public class PurchaseRequestTicketService {
 			AssetType.TANGIBLE,
 			item.getId(),
 			item.getProductName(),
-			assignedAssets
+			assignedAssets,
+			registeredAssets
 		);
 	}
 
@@ -443,6 +499,16 @@ public class PurchaseRequestTicketService {
 		);
 		BigDecimal unitPrice = divideActualPrice(result.getActualPrice(), purchaseRequestTicket.getQuantity());
 		List<DirectPurchaseAssetAssignResponse.AssignedAssetResponse> assignedAssets = new ArrayList<>();
+		List<DirectPurchaseAssetAssignResponse.RegisteredAssetResponse> registeredAssets = new ArrayList<>();
+		List<TicketAssignmentTarget> assignmentTargets = ticketAssignmentTargetService.findTargets(companyId, ticket);
+		List<Member> targetAssignees = resolveDirectPurchaseIntangibleAssignees(
+			ticket,
+			purchaseRequestTicket.getRequestedUsageType(),
+			purchaseRequestTicket.getQuantity(),
+			result.getSeatCount(),
+			assignmentTargets
+		);
+		int assigneeIndex = 0;
 
 		for (String licenseCode : licenseCodes) {
 			IntangibleAsset asset = intangibleAssetRepository.save(IntangibleAsset.builder()
@@ -460,27 +526,57 @@ public class PurchaseRequestTicketService {
 				.purchaseVendor(result.getPurchaseVendor())
 				.intangibleAssetStatus(IntangibleAssetStatus.AVAILABLE)
 				.build());
-
-			IntangibleAssetAssignment assignment = intangibleAssetAssignmentRepository.save(IntangibleAssetAssignment.builder()
-				.company(ticket.getCompany())
-				.intangibleAsset(asset)
-				.member(ticket.getRequester())
-				.department(ticket.getDepartment())
-				.assignedAt(result.getStartedAt())
-				.endedAt(result.getExpiredAt())
-				.assignmentStatus(AssignmentStatus.ACTIVE)
-				.build());
-			if (asset.getSeatCount() == 1) {
-				asset.assignTo(ticket.getRequester(), ticket.getDepartment());
-			} else {
+			if (asset.getSeatCount() > 1) {
 				asset.markInUse();
+				asset.transferDepartment(ticket.getDepartment());
 			}
-			assignedAssets.add(DirectPurchaseAssetAssignResponse.AssignedAssetResponse.of(
+
+			int assignableSeats = assignmentTargets.isEmpty() ? 1 : asset.getSeatCount();
+			int assignedSeatCount = 0;
+			for (int seat = 0; seat < assignableSeats && assigneeIndex < targetAssignees.size(); seat++) {
+				Member targetAssignee = targetAssignees.get(assigneeIndex);
+				IntangibleAssetAssignment assignment = intangibleAssetAssignmentRepository.save(IntangibleAssetAssignment.builder()
+					.company(ticket.getCompany())
+					.intangibleAsset(asset)
+					.member(targetAssignee)
+					.department(targetAssignee.getDepartment())
+					.assignedAt(result.getStartedAt())
+					.endedAt(result.getExpiredAt())
+					.assignmentStatus(AssignmentStatus.ACTIVE)
+					.build());
+				if (asset.getSeatCount() == 1) {
+					asset.assignTo(targetAssignee, targetAssignee.getDepartment());
+				} else {
+					asset.markInUse();
+					asset.transferDepartment(ticket.getDepartment());
+				}
+				markAssignmentTargetAssigned(
+					assignmentTargets,
+					assigneeIndex,
+					AssetType.INTANGIBLE,
+					asset.getId(),
+					assignment.getAssignedAt()
+				);
+				assignedAssets.add(DirectPurchaseAssetAssignResponse.AssignedAssetResponse.of(
+					asset.getId(),
+					asset.getAssetCode(),
+					assignment.getId(),
+					null,
+					licenseCode,
+					targetAssignee.getId(),
+					targetAssignee.getName(),
+					targetAssignee.getDepartment().getId(),
+					targetAssignee.getDepartment().getName()
+				));
+				assigneeIndex++;
+				assignedSeatCount++;
+			}
+			registeredAssets.add(DirectPurchaseAssetAssignResponse.RegisteredAssetResponse.of(
 				asset.getId(),
 				asset.getAssetCode(),
-				assignment.getId(),
 				null,
-				licenseCode
+				licenseCode,
+				assignedSeatCount
 			));
 		}
 		completeDirectPurchaseTicket(ticket, purchaseRequestTicket);
@@ -492,7 +588,8 @@ public class PurchaseRequestTicketService {
 			AssetType.INTANGIBLE,
 			item.getId(),
 			item.getProductName(),
-			assignedAssets
+			assignedAssets,
+			registeredAssets
 		);
 	}
 
@@ -516,7 +613,7 @@ public class PurchaseRequestTicketService {
 
 		String productName = normalize(request.getProductName());
 		if (!StringUtils.hasText(productName)) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "Product name is required when creating a non-standard tangible item.");
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "비표준 유형자산 품목을 생성하려면 품목명이 필수입니다.");
 		}
 		if (tangibleAssetItemRepository.existsByCompany_IdAndProductName(companyId, productName)) {
 			throw new BusinessException(ErrorCode.TANGIBLE_ASSET_ITEM_DUPLICATED_PRODUCT_NAME);
@@ -552,7 +649,7 @@ public class PurchaseRequestTicketService {
 
 		String productName = normalize(request.getProductName());
 		if (!StringUtils.hasText(productName)) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "Product name is required when creating a non-standard intangible item.");
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "비표준 무형자산 품목을 생성하려면 품목명이 필수입니다.");
 		}
 		if (intangibleAssetItemRepository.existsByCompany_IdAndProductName(companyId, productName)) {
 			throw new BusinessException(ErrorCode.INTANGIBLE_ASSET_ITEM_DUPLICATED_PRODUCT_NAME);
@@ -573,6 +670,61 @@ public class PurchaseRequestTicketService {
 		ticket.changeProcessingStatus(TicketStatus.COMPLETED, LocalDateTime.now());
 	}
 
+	private List<Member> resolveDirectPurchaseTangibleAssignees(
+		Ticket ticket,
+		int quantity,
+		List<TicketAssignmentTarget> assignmentTargets
+	) {
+		if (assignmentTargets.isEmpty()) {
+			// 직접구매 자산도 티켓 등록 시 저장된 배정 대상자를 기준으로만 개별 할당한다.
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "배정 대상자를 1명 이상 입력해야 합니다.");
+		}
+		if (assignmentTargets.size() != quantity) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "배정 대상자 수는 요청 수량과 일치해야 합니다.");
+		}
+		return assignmentTargets.stream()
+			.map(TicketAssignmentTarget::getMember)
+			.toList();
+	}
+
+	private List<Member> resolveDirectPurchaseIntangibleAssignees(
+		Ticket ticket,
+		RequestedUsageType requestedUsageType,
+		int quantity,
+		Integer seatCount,
+		List<TicketAssignmentTarget> assignmentTargets
+	) {
+		if (assignmentTargets.isEmpty()) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "배정 대상자를 입력해야 합니다.");
+		}
+		int capacity = quantity * seatCount;
+		ticketAssignmentTargetService.validateCapacity(assignmentTargets, capacity);
+		return assignmentTargets.stream()
+			.map(TicketAssignmentTarget::getMember)
+			.toList();
+	}
+
+	private List<Member> createRequesterAssignees(Member requester, int quantity) {
+		List<Member> assignees = new ArrayList<>();
+		for (int i = 0; i < quantity; i++) {
+			assignees.add(requester);
+		}
+		return assignees;
+	}
+
+	private void markAssignmentTargetAssigned(
+		List<TicketAssignmentTarget> assignmentTargets,
+		int index,
+		AssetType assetType,
+		UUID assetId,
+		LocalDateTime assignedAt
+	) {
+		if (assignmentTargets.isEmpty()) {
+			return;
+		}
+		ticketAssignmentTargetService.markAssigned(assignmentTargets.get(index), assetType, assetId, assignedAt);
+	}
+
 	private List<String> resolveDirectPurchaseSerialNumbers(
 		UUID companyId,
 		UUID itemId,
@@ -581,8 +733,8 @@ public class PurchaseRequestTicketService {
 		DirectPurchaseAssetAssignRequest request
 	) {
 		List<String> serialNumbers = parseStoredValues(result.getSerialNumber());
-		validateValueCount(serialNumbers, quantity, "Serial numbers must match the direct purchase quantity.");
-		validateNoDuplicateValues(serialNumbers, "Duplicate serial numbers are not allowed.");
+        validateValueCount(serialNumbers, quantity, "시리얼 번호 수는 직접구매 수량과 일치해야 합니다.");
+        validateNoDuplicateValues(serialNumbers, "시리얼 번호는 중복될 수 없습니다.");
 		for (String serialNumber : serialNumbers) {
 			if (tangibleAssetRepository.existsByCompany_IdAndSerialNumberAndTangibleAssetItem_Id(
 				companyId,
@@ -602,9 +754,12 @@ public class PurchaseRequestTicketService {
 		DirectPurchaseAssetAssignRequest request
 	) {
 		List<String> licenseCodes = parseStoredValues(result.getLicenseCode());
-		validateValueCount(licenseCodes, quantity, "License codes must match the direct purchase quantity.");
-		validateNoDuplicateValues(licenseCodes, "Duplicate license codes are not allowed.");
+        validateValueCount(licenseCodes, quantity, "라이선스 코드 수는 직접구매 수량과 일치해야 합니다.");
+        validateNoDuplicateValues(licenseCodes, "라이선스 코드는 중복될 수 없습니다.");
 		for (String licenseCode : licenseCodes) {
+			if (!StringUtils.hasText(licenseCode)) {
+				continue;
+			}
 			if (intangibleAssetRepository.existsByCompany_IdAndLicenseCode(companyId, licenseCode)) {
 				throw new BusinessException(ErrorCode.INTANGIBLE_ASSET_ITEM_DUPLICATED_LICENSE_CODE);
 			}
@@ -632,8 +787,8 @@ public class PurchaseRequestTicketService {
 		if (serialNumbers.isEmpty() && StringUtils.hasText(request.getSerialNumber())) {
 			serialNumbers = List.of(normalize(request.getSerialNumber()));
 		}
-		validateValueCount(serialNumbers, quantity, "Serial numbers must match the direct purchase quantity.");
-		validateNoDuplicateValues(serialNumbers, "Duplicate serial numbers are not allowed.");
+        validateValueCount(serialNumbers, quantity, "시리얼 번호 수는 직접구매 수량과 일치해야 합니다.");
+        validateNoDuplicateValues(serialNumbers, "시리얼 번호는 중복될 수 없습니다.");
 		for (String serialNumber : serialNumbers) {
 			if (isExistingStoredValue(existingResult == null ? null : existingResult.getSerialNumber(), serialNumber)) {
 				continue;
@@ -651,13 +806,18 @@ public class PurchaseRequestTicketService {
 		DirectPurchaseResultCreateRequest request,
 		DirectPurchaseResult existingResult
 	) {
-		List<String> licenseCodes = normalizeValues(request.getLicenseCodes());
-		if (licenseCodes.isEmpty() && StringUtils.hasText(request.getLicenseCode())) {
-			licenseCodes = List.of(normalize(request.getLicenseCode()));
+		List<String> licenseCodes = normalizeNullableValues(request.getLicenseCodes());
+		if (licenseCodes.isEmpty()) {
+			licenseCodes = StringUtils.hasText(request.getLicenseCode())
+				? List.of(normalize(request.getLicenseCode()))
+				: createNullValues(quantity);
 		}
-		validateValueCount(licenseCodes, quantity, "License codes must match the direct purchase quantity.");
-		validateNoDuplicateValues(licenseCodes, "Duplicate license codes are not allowed.");
+        validateValueCount(licenseCodes, quantity, "라이선스 코드 수는 직접구매 수량과 일치해야 합니다.");
+        validateNoDuplicateValues(licenseCodes, "라이선스 코드는 중복될 수 없습니다.");
 		for (String licenseCode : licenseCodes) {
+			if (!StringUtils.hasText(licenseCode)) {
+				continue;
+			}
 			if (isExistingStoredValue(existingResult == null ? null : existingResult.getLicenseCode(), licenseCode)) {
 				continue;
 			}
@@ -666,6 +826,23 @@ public class PurchaseRequestTicketService {
 			}
 		}
 		return serializeValues(licenseCodes);
+	}
+
+	private List<String> normalizeNullableValues(List<String> values) {
+		if (values == null || values.isEmpty()) {
+			return List.of();
+		}
+		return values.stream()
+			.map(this::normalize)
+			.toList();
+	}
+
+	private List<String> createNullValues(int quantity) {
+		List<String> values = new ArrayList<>();
+		for (int i = 0; i < quantity; i++) {
+			values.add(null);
+		}
+		return values;
 	}
 
 	private boolean isExistingStoredValue(String storedValue, String value) {
@@ -691,7 +868,6 @@ public class PurchaseRequestTicketService {
 		try {
 			return OBJECT_MAPPER.readValue(normalized, STRING_LIST_TYPE).stream()
 				.map(this::normalize)
-				.filter(StringUtils::hasText)
 				.toList();
 		} catch (JsonProcessingException e) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "Invalid direct purchase asset identifiers.");
@@ -705,8 +881,11 @@ public class PurchaseRequestTicketService {
 	}
 
 	private void validateNoDuplicateValues(List<String> values, String message) {
-		Set<String> uniqueValues = new HashSet<>(values);
-		if (uniqueValues.size() != values.size()) {
+		List<String> presentValues = values.stream()
+			.filter(StringUtils::hasText)
+			.toList();
+		Set<String> uniqueValues = new HashSet<>(presentValues);
+		if (uniqueValues.size() != presentValues.size()) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, message);
 		}
 	}
@@ -722,6 +901,19 @@ public class PurchaseRequestTicketService {
 		};
 	}
 
+	private RequestedUsageType resolveRequestedUsageType(AssetType assetType, RequestedUsageType requestedUsageType) {
+		if (assetType == null) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "자산 유형은 필수입니다.");
+		}
+		if (assetType == AssetType.INTANGIBLE) {
+			return RequestedUsageType.PERSONAL;
+		}
+		if (requestedUsageType == null) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "유형자산은 요청 용도가 필수입니다.");
+		}
+		return requestedUsageType;
+	}
+
 	private PurchaseRequestTicketCreateResponse createPurchaseRequestTicket(
 		AuthenticatedMember authenticatedMember,
 		RequestMethod requestMethod,
@@ -733,8 +925,10 @@ public class PurchaseRequestTicketService {
 		LicenseType licenseType,
 		String purchaseUrl,
 		int quantity,
+		Integer seatCount,
 		BigDecimal expectedPrice,
-		String requestReason
+		String requestReason,
+		List<UUID> assignmentTargetMemberIds
 	) {
 		UUID companyId = authenticatedMember.companyId();
 		Member requester = ticketRequesterResolver.resolveActiveRequester(authenticatedMember.id(), companyId);
@@ -744,12 +938,14 @@ public class PurchaseRequestTicketService {
 
 		if (assetType == AssetType.TANGIBLE) {
 			validateTangiblePurchaseRequest(licenseType);
+			validateNoSeatCountForTangible(seatCount);
 			tangibleAssetCategory = findTangibleAssetCategory(
 				categoryId,
 				companyId
 			);
 		} else {
 			validateIntangiblePurchaseRequest(licenseType);
+			validateIntangibleSeatCount(seatCount);
 			intangibleAssetCategory = findIntangibleAssetCategory(
 				categoryId,
 				companyId
@@ -781,10 +977,11 @@ public class PurchaseRequestTicketService {
 				licenseType,
 				normalize(purchaseUrl),
 				quantity,
+				seatCount,
 				expectedPrice
 			)
 		);
-
+		savePurchaseAssignmentTargets(companyId, ticket, requestedUsageType, assetType, quantity, seatCount, assignmentTargetMemberIds);
 		return PurchaseRequestTicketCreateResponse.from(
 			ticket,
 			purchaseRequestTicket,
@@ -808,12 +1005,19 @@ public class PurchaseRequestTicketService {
 		LicenseType licenseType,
 		String purchaseUrl,
 		int quantity,
+		Integer seatCount,
 		BigDecimal expectedPrice,
-		String requestReason
+		String requestReason,
+		List<UUID> assignmentTargetMemberIds
 	) {
 		UUID companyId = authenticatedMember.companyId();
 		Member requester = ticketRequesterResolver.resolveActiveRequester(authenticatedMember.id(), companyId);
 		Member approver = ticketApprovalResolver.resolveDepartmentApprover(requester);
+		if (assetType == AssetType.TANGIBLE) {
+			validateNoSeatCountForTangible(seatCount);
+		} else {
+			validateIntangibleSeatCount(seatCount);
+		}
 
 		Ticket ticket = ticketRepository.save(Ticket.createPurchaseRequest(
 			requester.getCompany(),
@@ -840,16 +1044,59 @@ public class PurchaseRequestTicketService {
 				licenseType,
 				normalize(purchaseUrl),
 				quantity,
+				seatCount,
 				expectedPrice
 			)
 		);
-
+		savePurchaseAssignmentTargets(companyId, ticket, requestedUsageType, assetType, quantity, seatCount, assignmentTargetMemberIds);
 		return PurchaseRequestTicketCreateResponse.from(
 			ticket,
 			purchaseRequestTicket,
 			assetType,
 			resolveCategoryId(tangibleAssetCategory, intangibleAssetCategory)
 		);
+	}
+
+	private void savePurchaseAssignmentTargets(
+		UUID companyId,
+		Ticket ticket,
+		RequestedUsageType requestedUsageType,
+		AssetType assetType,
+		int quantity,
+		Integer seatCount,
+		List<UUID> assignmentTargetMemberIds
+	) {
+		if (assetType == AssetType.TANGIBLE) {
+			ticketAssignmentTargetService.replaceRequiredTargets(
+				companyId,
+				ticket,
+				assignmentTargetMemberIds,
+				requestedUsageType,
+				quantity,
+				true
+			);
+			return;
+		}
+		ticketAssignmentTargetService.replaceRequiredTargetsWithinCapacity(
+			companyId,
+			ticket,
+			assignmentTargetMemberIds,
+			requestedUsageType,
+			quantity * seatCount,
+			false
+		);
+	}
+
+	private void validateIntangibleSeatCount(Integer seatCount) {
+		if (seatCount == null || seatCount < 1) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "무형자산은 라이선스 1개당 사용 가능 인원 수가 1 이상이어야 합니다.");
+		}
+	}
+
+	private void validateNoSeatCountForTangible(Integer seatCount) {
+		if (seatCount != null) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "유형자산 요청에는 사용 가능 인원 수를 입력할 수 없습니다.");
+		}
 	}
 
 	private TangibleAssetCategory findTangibleAssetCategory(UUID categoryId, UUID companyId) {
@@ -894,7 +1141,7 @@ public class PurchaseRequestTicketService {
 
 			IntangibleAssetItem item = findStandardIntangibleAssetItem(request.getAssetItemId(), companyId);
 			if (request.getLicenseType() != null && request.getLicenseType() != item.getLicenseType()) {
-				throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "License type must match the selected standard asset item.");
+                throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "라이선스 유형은 선택한 표준 자산 품목과 일치해야 합니다.");
 			}
 			return new DirectPurchaseTarget(
 				null,
@@ -968,30 +1215,30 @@ public class PurchaseRequestTicketService {
 
 	private void validateStandardDirectPurchaseRequest(DirectPurchaseRequestTicketCreateRequest request) {
 		if (request.getAssetItemId() == null) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "Asset item ID is required for standard direct purchase requests.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "?쒖? 吏곸젒援щℓ ?붿껌?먮뒗 ?먯궛 ?덈ぉ ID媛 ?꾩닔?낅땲??");
 		}
 	}
 
 	private void validateNonStandardDirectPurchaseRequest(DirectPurchaseRequestTicketCreateRequest request) {
 		if (request.getAssetItemId() != null) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "Asset item ID cannot be used for non-standard direct purchase requests.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "鍮꾪몴以 吏곸젒援щℓ ?붿껌?먮뒗 ?먯궛 ?덈ぉ ID瑜??ъ슜?????놁뒿?덈떎.");
 		}
 		if (request.getCategoryId() == null
 			|| !StringUtils.hasText(request.getRequestedItemDetail())
 			|| !StringUtils.hasText(request.getManufacturer())) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "Category, item detail, and manufacturer are required for non-standard direct purchase requests.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "비표준 직접구매 요청에는 카테고리, 품목 상세, 제조사가 필수입니다.");
 		}
 	}
 
 	private void validateTangiblePurchaseRequest(LicenseType licenseType) {
 		if (licenseType != null) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "유형 자산 요청에는 라이선스 유형을 입력할 수 없습니다.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "유형자산 구매 요청에는 라이선스 유형을 입력할 수 없습니다.");
 		}
 	}
 
 	private void validateIntangiblePurchaseRequest(LicenseType licenseType) {
 		if (licenseType == null) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "무형자산 요청에는 라이선스 유형이 필수입니다.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "무형자산 구매 요청에는 라이선스 유형이 필수입니다.");
 		}
 	}
 
@@ -1008,16 +1255,16 @@ public class PurchaseRequestTicketService {
 		Member submitter
 	) {
 		if (purchaseRequestTicket.getRequestMethod() != RequestMethod.DIRECT_PURCHASE) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "직접구매 티켓만 구매 완료 정보를 등록할 수 있습니다.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "직접구매 티켓만 구매 완료 정보를 등록할 수 있습니다.");
 		}
 		if (!ticket.getRequester().getId().equals(submitter.getId())) {
 			throw new BusinessException(ErrorCode.ACCESS_DENIED);
 		}
 		if (ticket.getTicketStatus() != TicketStatus.IN_PROGRESS) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "구매자산팀 승인 이후에 구매 완료 정보를 등록할 수 있습니다.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "구매자산팀 승인 이후에 구매 완료 정보를 등록할 수 있습니다.");
 		}
 		if (directPurchaseResultRepository.existsByPurchaseRequestTicket_Id(purchaseRequestTicket.getId())) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "이미 등록된 직접구매 완료 정보가 있습니다.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "이미 등록된 직접구매 완료 정보가 있습니다.");
 		}
 	}
 
@@ -1027,13 +1274,13 @@ public class PurchaseRequestTicketService {
 		Member submitter
 	) {
 		if (purchaseRequestTicket.getRequestMethod() != RequestMethod.DIRECT_PURCHASE) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "직접구매 티켓만 구매 완료 정보를 수정할 수 있습니다.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "직접구매 티켓만 구매 완료 정보를 수정할 수 있습니다.");
 		}
 		if (!ticket.getRequester().getId().equals(submitter.getId())) {
 			throw new BusinessException(ErrorCode.ACCESS_DENIED);
 		}
 		if (ticket.getTicketStatus() != TicketStatus.IN_PROGRESS) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "구매자산팀 승인 이후에 구매 완료 정보를 수정할 수 있습니다.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "구매자산팀 승인 이후에 구매 완료 정보를 수정할 수 있습니다.");
 		}
 	}
 
@@ -1062,13 +1309,13 @@ public class PurchaseRequestTicketService {
 		DirectPurchaseResult result
 	) {
 		if (purchaseRequestTicket.getRequestMethod() != RequestMethod.DIRECT_PURCHASE) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "Only direct purchase tickets can register and assign direct purchase assets.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "직접구매 티켓만 직접구매 자산을 등록하고 할당할 수 있습니다.");
 		}
 		if (ticket.getTicketStatus() != TicketStatus.IN_PROGRESS) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "Direct purchase assets can be assigned only while the ticket is in progress.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "직접구매 자산은 티켓이 처리중 상태일 때만 할당할 수 있습니다.");
 		}
 		if (result.getConfirmationStatus() != ConfirmationStatus.CONFIRMED) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "Direct purchase result must be confirmed before asset registration.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "직접구매 결과 확인 후 자산을 등록할 수 있습니다.");
 		}
 		if (resolveAssetType(purchaseRequestTicket) == AssetType.TANGIBLE
 			&& Boolean.TRUE.equals(purchaseRequestTicket.getIsStandard())
@@ -1084,7 +1331,7 @@ public class PurchaseRequestTicketService {
 
 	private void validateTangibleItemCategory(PurchaseRequestTicket purchaseRequestTicket, TangibleAssetItem item) {
 		if (!item.getTangibleAssetCategory().getId().equals(purchaseRequestTicket.getTangibleAssetCategory().getId())) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "Selected tangible item category does not match the direct purchase ticket.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "선택한 유형자산 품목의 카테고리가 직접구매 티켓과 일치하지 않습니다.");
 		}
 	}
 
@@ -1093,10 +1340,10 @@ public class PurchaseRequestTicketService {
 		IntangibleAssetItem item
 	) {
 		if (!item.getIntangibleAssetCategory().getId().equals(purchaseRequestTicket.getIntangibleAssetCategory().getId())) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "Selected intangible item category does not match the direct purchase ticket.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "선택한 무형자산 품목의 카테고리가 직접구매 티켓과 일치하지 않습니다.");
 		}
 		if (item.getLicenseType() != purchaseRequestTicket.getLicenseType()) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "Selected intangible item license type does not match the direct purchase ticket.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "선택한 무형자산 품목의 라이선스 유형이 직접구매 티켓과 일치하지 않습니다.");
 		}
 	}
 
@@ -1123,16 +1370,16 @@ public class PurchaseRequestTicketService {
 		String serialNumber = normalize(request.getSerialNumber());
 		String location = normalize(request.getLocation());
 		if (quantity == 1 && !StringUtils.hasText(serialNumber) && normalizeValues(request.getSerialNumbers()).isEmpty()) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "유형자산은 시리얼번호가 필수입니다.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "유형자산은 시리얼 번호가 필수입니다.");
 		}
 		if (!StringUtils.hasText(location)) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "유형자산은 위치가 필수입니다.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "유형자산은 위치가 필수입니다.");
 		}
 		if (request.getWarrantyExpiredAt() == null) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "유형자산은 보증 만료일시가 필수입니다.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "유형자산은 보증 만료일시가 필수입니다.");
 		}
 		if (hasIntangibleOnlyFields(request)) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "유형자산에는 무형자산 구매 정보를 입력할 수 없습니다.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "유형자산에는 무형자산 구매 정보를 입력할 수 없습니다.");
 		}
 	}
 
@@ -1142,30 +1389,26 @@ public class PurchaseRequestTicketService {
 		DirectPurchaseResultCreateRequest request,
 		DirectPurchaseResult existingResult
 	) {
-		String licenseCode = normalize(request.getLicenseCode());
-		if (quantity == 1 && !StringUtils.hasText(licenseCode) && normalizeValues(request.getLicenseCodes()).isEmpty()) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "무형자산은 라이선스코드가 필수입니다.");
-		}
 		if (request.getSeatCount() == null || request.getSeatCount() < 1) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "무형자산은 좌석 수가 1 이상이어야 합니다.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "무형자산은 좌석 수가 1 이상이어야 합니다.");
 		}
 		if (request.getIsAutoRenewal() == null) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "무형자산은 자동 갱신 여부가 필수입니다.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "무형자산은 자동 갱신 여부가 필수입니다.");
 		}
 		if (request.getStartedAt() == null) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "무형자산은 사용 시작일시가 필수입니다.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "무형자산은 사용 시작일시가 필수입니다.");
 		}
 		if (request.getExpiredAt() == null) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "무형자산은 만료일시가 필수입니다.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "무형자산은 만료일시가 필수입니다.");
 		}
 		if (!request.getExpiredAt().isAfter(request.getStartedAt())) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "무형자산 만료일시는 사용 시작일시보다 이후여야 합니다.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "무형자산 만료일시는 사용 시작일시보다 이후여야 합니다.");
 		}
 		if (request.getBillingCycle() == null) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "무형자산은 결제주기가 필수입니다.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "무형자산은 결제주기가 필수입니다.");
 		}
 		if (hasTangibleOnlyFields(request)) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "무형자산에는 유형자산 구매 정보를 입력할 수 없습니다.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "무형자산에는 유형자산 구매 정보를 입력할 수 없습니다.");
 		}
 	}
 

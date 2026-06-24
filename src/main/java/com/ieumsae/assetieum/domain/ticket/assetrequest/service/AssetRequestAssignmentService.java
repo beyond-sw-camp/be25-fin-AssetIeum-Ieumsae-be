@@ -10,6 +10,7 @@ import com.ieumsae.assetieum.domain.intangibleasset.assignment.type.AssignmentSt
 import com.ieumsae.assetieum.domain.intangibleasset.item.entity.IntangibleAssetItem;
 import com.ieumsae.assetieum.domain.intangibleasset.item.repository.IntangibleAssetItemRepository;
 import com.ieumsae.assetieum.domain.member.entity.Member;
+import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.entity.TangibleAsset;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.repository.TangibleAssetRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.type.AssetUsageType;
@@ -23,7 +24,9 @@ import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.AssetRequestAssignRe
 import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.AssetRequestAssignResponse;
 import com.ieumsae.assetieum.domain.ticket.assetrequest.entity.AssetRequestTicket;
 import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
+import com.ieumsae.assetieum.domain.ticket.common.entity.TicketAssignmentTarget;
 import com.ieumsae.assetieum.domain.ticket.common.repository.TicketRepository;
+import com.ieumsae.assetieum.domain.ticket.common.service.TicketAssignmentTargetService;
 import com.ieumsae.assetieum.domain.ticket.common.type.AssetType;
 import com.ieumsae.assetieum.domain.ticket.common.type.RequestedUsageType;
 import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
@@ -31,7 +34,9 @@ import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -47,9 +52,11 @@ public class AssetRequestAssignmentService {
 	private final IntangibleAssetItemRepository intangibleAssetItemRepository;
 	private final TangibleAssetRepository tangibleAssetRepository;
 	private final IntangibleAssetRepository intangibleAssetRepository;
+	private final MemberRepository memberRepository;
 	private final TangibleAssetAssignmentRepository tangibleAssetAssignmentRepository;
 	private final IntangibleAssetAssignmentRepository intangibleAssetAssignmentRepository;
 	private final AssetRequestValidator assetRequestValidator;
+	private final TicketAssignmentTargetService ticketAssignmentTargetService;
 	private final BudgetExecutionService budgetExecutionService;
 
 	@Transactional
@@ -65,13 +72,25 @@ public class AssetRequestAssignmentService {
 
 		assetRequestValidator.validateAssignable(ticket, assignee);
 		assetRequestValidator.validateAssignmentTarget(assetRequestTicket, request);
+		List<TicketAssignmentTarget> assignmentTargets = ticketAssignmentTargetService.resolveTargetsOrEmpty(companyId, ticket);
+		int capacity = assetRequestTicket.getQuantity();
+
+		List<Member> targetAssignees = resolveTargetAssignees(
+			companyId,
+			ticket,
+			assetRequestTicket,
+			capacity,
+			request,
+			assignmentTargets
+		);
 
 		if (request.getAssetType() == AssetType.TANGIBLE) {
 			TangibleAssetItem item = findTangibleAssetItem(request.getItemId(), companyId);
 			List<AssetRequestAssignResponse.AssignedAssetSummary> assignedAssets = assignTangibleAssets(
 				ticket,
 				item,
-				assetRequestTicket.getQuantity(),
+				targetAssignees,
+				assignmentTargets,
 				assetRequestTicket.getRequestedUsageType(),
 				companyId
 			);
@@ -92,7 +111,8 @@ public class AssetRequestAssignmentService {
 		List<AssetRequestAssignResponse.AssignedAssetSummary> assignedAssets = assignIntangibleAssets(
 			ticket,
 			item,
-			assetRequestTicket.getQuantity(),
+			targetAssignees,
+			assignmentTargets,
 			companyId
 		);
 		budgetExecutionService.releaseHoldForInventoryAssignment(ticket, companyId);
@@ -111,10 +131,12 @@ public class AssetRequestAssignmentService {
 	private List<AssetRequestAssignResponse.AssignedAssetSummary> assignTangibleAssets(
 		Ticket ticket,
 		TangibleAssetItem item,
-		int quantity,
+		List<Member> targetAssignees,
+		List<TicketAssignmentTarget> assignmentTargets,
 		RequestedUsageType requestedUsageType,
 		UUID companyId
 	) {
+		int quantity = targetAssignees.size();
 		List<TangibleAsset> assets = tangibleAssetRepository.findAvailableAssetsWithLock(
 			companyId,
 			item.getId(),
@@ -122,23 +144,26 @@ public class AssetRequestAssignmentService {
 			PageRequest.of(0, quantity)
 		);
 		if (assets.size() < quantity) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "할당 가능한 유형자산 재고가 부족합니다.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "할당 가능한 유형자산 재고가 부족합니다.");
 		}
 
 		List<AssetRequestAssignResponse.AssignedAssetSummary> assignedAssets = new ArrayList<>();
-		for (TangibleAsset asset : assets) {
+		for (int i = 0; i < assets.size(); i++) {
+			TangibleAsset asset = assets.get(i);
+			Member targetAssignee = targetAssignees.get(i);
 			TangibleAssetAssignment assignment = TangibleAssetAssignment.builder()
 				.company(ticket.getCompany())
 				.tangibleAsset(asset)
-				.member(ticket.getRequester())
-				.department(ticket.getDepartment())
+				.member(targetAssignee)
+				.department(targetAssignee.getDepartment())
 				.assignmentType(UsageType.PERMANENT)
 				.assignmentStatus(com.ieumsae.assetieum.domain.tangibleasset.assignment.type.AssignmentStatus.ACTIVE)
 				.build();
 			tangibleAssetAssignmentRepository.save(assignment);
+			markAssignmentTargetAssigned(assignmentTargets, i, AssetType.TANGIBLE, asset.getId(), assignment.getAssignedAt());
 			asset.markInUse(
-				ticket.getRequester(),
-				ticket.getDepartment(),
+				targetAssignee,
+				targetAssignee.getDepartment(),
 				UsageType.PERMANENT,
 				resolveAssetUsageType(requestedUsageType),
 				assignment.getAssignedAt(),
@@ -147,6 +172,10 @@ public class AssetRequestAssignmentService {
 			assignedAssets.add(AssetRequestAssignResponse.AssignedAssetSummary.builder()
 				.assetId(asset.getId())
 				.assetCode(asset.getAssetCode())
+				.assigneeId(targetAssignee.getId())
+				.assigneeName(targetAssignee.getName())
+				.departmentId(targetAssignee.getDepartment().getId())
+				.departmentName(targetAssignee.getDepartment().getName())
 				.build());
 		}
 		return assignedAssets;
@@ -155,49 +184,163 @@ public class AssetRequestAssignmentService {
 	private List<AssetRequestAssignResponse.AssignedAssetSummary> assignIntangibleAssets(
 		Ticket ticket,
 		IntangibleAssetItem item,
-		int quantity,
+		List<Member> targetAssignees,
+		List<TicketAssignmentTarget> assignmentTargets,
 		UUID companyId
 	) {
+		int quantity = targetAssignees.size();
 		List<IntangibleAsset> candidates = intangibleAssetRepository.findAssignableAssetsWithLock(
 			companyId,
 			item.getId(),
 			List.of(IntangibleAssetStatus.AVAILABLE, IntangibleAssetStatus.IN_USE),
 			PageRequest.of(0, Math.max(quantity * 5, 10))
 		);
-		List<AssetRequestAssignResponse.AssignedAssetSummary> assignedAssets = new ArrayList<>();
+
+		java.util.Map<UUID, Long> remainingSeatsMap = new java.util.HashMap<>();
 		for (IntangibleAsset asset : candidates) {
-			while (assignedAssets.size() < quantity && hasAvailableSeat(asset, companyId)) {
-				if (intangibleAssetAssignmentRepository.existsByCompany_IdAndIntangibleAsset_IdAndMember_IdAndAssignmentStatus(
+			long activeCount = intangibleAssetAssignmentRepository
+				.countByCompany_IdAndIntangibleAsset_IdAndAssignmentStatus(
 					companyId,
 					asset.getId(),
-					ticket.getRequester().getId(),
 					AssignmentStatus.ACTIVE
-				)) {
-					break;
-				}
-				IntangibleAssetAssignment assignment = IntangibleAssetAssignment.builder()
-					.company(ticket.getCompany())
-					.intangibleAsset(asset)
-					.member(ticket.getRequester())
-					.department(ticket.getDepartment())
-					.assignmentStatus(AssignmentStatus.ACTIVE)
-					.build();
-				intangibleAssetAssignmentRepository.save(assignment);
-				if (asset.getSeatCount() == 1) {
-					asset.assignTo(ticket.getRequester(), ticket.getDepartment());
-				} else {
-					asset.markInUse();
-				}
-				assignedAssets.add(AssetRequestAssignResponse.AssignedAssetSummary.builder()
-					.assetId(asset.getId())
-					.assetCode(asset.getAssetCode())
-					.build());
-			}
-			if (assignedAssets.size() == quantity) {
-				return assignedAssets;
-			}
+				);
+			remainingSeatsMap.put(asset.getId(), asset.getSeatCount() - activeCount);
 		}
-		throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "할당 가능한 무형자산 좌석이 부족합니다.");
+
+		List<AssetRequestAssignResponse.AssignedAssetSummary> assignedAssets = new ArrayList<>();
+		int assigneeIndex = 0;
+
+		for (Member targetAssignee : targetAssignees) {
+			boolean assigned = false;
+			for (IntangibleAsset asset : candidates) {
+				if (asset.getDepartment() != null
+					&& !asset.getDepartment().getId().equals(ticket.getDepartment().getId())) {
+					continue;
+				}
+				long remaining = remainingSeatsMap.getOrDefault(asset.getId(), 0L);
+				if (remaining > 0) {
+					boolean isAlreadyAssigned = intangibleAssetAssignmentRepository
+						.existsByCompany_IdAndIntangibleAsset_IdAndMember_IdAndAssignmentStatus(
+							companyId,
+							asset.getId(),
+							targetAssignee.getId(),
+							AssignmentStatus.ACTIVE
+						);
+					
+					if (!isAlreadyAssigned) {
+						IntangibleAssetAssignment assignment = IntangibleAssetAssignment.builder()
+							.company(ticket.getCompany())
+							.intangibleAsset(asset)
+							.member(targetAssignee)
+							.department(targetAssignee.getDepartment())
+							.assignmentStatus(AssignmentStatus.ACTIVE)
+							.build();
+						intangibleAssetAssignmentRepository.save(assignment);
+						
+						if (asset.getSeatCount() == 1) {
+							asset.assignTo(targetAssignee, targetAssignee.getDepartment());
+						} else {
+							asset.markInUse();
+							asset.transferDepartment(ticket.getDepartment());
+						}
+						
+						markAssignmentTargetAssigned(
+							assignmentTargets,
+							assigneeIndex,
+							AssetType.INTANGIBLE,
+							asset.getId(),
+							assignment.getAssignedAt()
+						);
+						
+						assignedAssets.add(AssetRequestAssignResponse.AssignedAssetSummary.builder()
+							.assetId(asset.getId())
+							.assetCode(asset.getAssetCode())
+							.assigneeId(targetAssignee.getId())
+							.assigneeName(targetAssignee.getName())
+							.departmentId(targetAssignee.getDepartment().getId())
+							.departmentName(targetAssignee.getDepartment().getName())
+							.build());
+						
+						remainingSeatsMap.put(asset.getId(), remaining - 1);
+						assigned = true;
+						break;
+					}
+				}
+			}
+			if (!assigned) {
+				throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "할당 가능한 무형자산 좌석이 부족합니다.");
+			}
+			assigneeIndex++;
+		}
+		
+		return assignedAssets;
+	}
+
+	private List<Member> resolveTargetAssignees(
+		UUID companyId,
+		Ticket ticket,
+		AssetRequestTicket assetRequestTicket,
+		int capacity,
+		AssetRequestAssignRequest request,
+		List<TicketAssignmentTarget> assignmentTargets
+	) {
+		if (!assignmentTargets.isEmpty()) {
+			if (assignmentTargets.size() != capacity) {
+                throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "배정 대상자 수는 요청 수량과 일치해야 합니다.");
+			}
+			return assignmentTargets.stream()
+				.map(TicketAssignmentTarget::getMember)
+				.toList();
+		}
+		if (request.getAssigneeIds() == null || request.getAssigneeIds().isEmpty()) {
+			// 과거 데이터나 수동 호출에서도 대상자 없는 자동 배정을 허용하지 않는다.
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "배정 대상자를 1명 이상 입력해야 합니다.");
+		}
+		if (assetRequestTicket.getRequestedUsageType() == RequestedUsageType.DEPARTMENT) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "부서용 요청에는 개인 배정 대상자를 지정할 수 없습니다.");
+		}
+		if (request.getAssigneeIds().size() != capacity) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "할당 대상자 수는 요청 수량과 일치해야 합니다.");
+		}
+		Set<UUID> uniqueAssigneeIds = new HashSet<>(request.getAssigneeIds());
+		if (uniqueAssigneeIds.size() != request.getAssigneeIds().size()) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "할당 대상자를 중복으로 지정할 수 없습니다.");
+		}
+
+		List<Member> assignees = new ArrayList<>();
+		for (UUID assigneeId : request.getAssigneeIds()) {
+			Member member = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(assigneeId, companyId)
+				.orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+			if (!member.isActive()) {
+                throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "활성 상태의 구성원만 자산을 할당받을 수 있습니다.");
+			}
+			if (!member.getDepartment().getId().equals(ticket.getDepartment().getId())) {
+                throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "할당 대상자는 요청자와 같은 부서에 속해야 합니다.");
+			}
+			assignees.add(member);
+		}
+		return assignees;
+	}
+
+	private void markAssignmentTargetAssigned(
+		List<TicketAssignmentTarget> assignmentTargets,
+		int index,
+		AssetType assetType,
+		UUID assetId,
+		LocalDateTime assignedAt
+	) {
+		if (assignmentTargets.isEmpty()) {
+			return;
+		}
+		ticketAssignmentTargetService.markAssigned(assignmentTargets.get(index), assetType, assetId, assignedAt);
+	}
+
+	private List<Member> createRequesterAssignees(Member requester, int quantity) {
+		List<Member> assignees = new ArrayList<>();
+		for (int i = 0; i < quantity; i++) {
+			assignees.add(requester);
+		}
+		return assignees;
 	}
 
 	private boolean hasAvailableSeat(IntangibleAsset asset, UUID companyId) {
