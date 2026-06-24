@@ -28,6 +28,7 @@ public class InspectionEndJobScheduler {
                         InspectionEndJobConfig.INSPECTION_END_DATE_PARAMETER,
                         LocalDate.now().toString()
                 )
+                .addLong("run.id", System.currentTimeMillis())
                 .toJobParameters();
         try {
             jobLauncher.run(inspectionEndJob, jobParameters);

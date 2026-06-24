@@ -29,6 +29,7 @@ public class TangibleAssetReminderJobScheduler {
 				TangibleAssetReminderJobConfig.BASE_DATE_PARAMETER,
 				LocalDate.now(SEOUL_ZONE).toString()
 			)
+			.addLong("run.id", System.currentTimeMillis())
 			.toJobParameters();
 		try {
 			jobLauncher.run(tangibleAssetReminderJob, jobParameters);

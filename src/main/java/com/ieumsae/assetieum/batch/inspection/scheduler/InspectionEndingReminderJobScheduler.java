@@ -28,6 +28,7 @@ public class InspectionEndingReminderJobScheduler {
                         InspectionEndingReminderJobConfig.INSPECTION_END_DATE_PARAMETER,
                         LocalDate.now().plusDays(1).toString()
                 )
+                .addLong("run.id", System.currentTimeMillis())
                 .toJobParameters();
         try {
             jobLauncher.run(inspectionEndingReminderJob, jobParameters);

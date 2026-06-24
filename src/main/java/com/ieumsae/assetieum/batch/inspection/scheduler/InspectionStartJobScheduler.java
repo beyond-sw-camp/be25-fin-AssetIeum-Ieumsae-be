@@ -28,6 +28,7 @@ public class InspectionStartJobScheduler {
                         InspectionStartJobConfig.INSPECTION_START_DATE_PARAMETER,
                         LocalDate.now().toString()
                 )
+                .addLong("run.id", System.currentTimeMillis())
                 .toJobParameters();
         try {
             jobLauncher.run(inspectionStartJob, jobParameters);

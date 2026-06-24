@@ -28,6 +28,7 @@ public class HrEventExecutionJobScheduler {
                         HrEventExecutionJobConfig.HR_EVENT_EXECUTION_DATE_PARAMETER,
                         LocalDate.now().toString()
                 )
+                .addLong("run.id", System.currentTimeMillis())
                 .toJobParameters();
         try {
             jobLauncher.run(hrEventExecutionJob, jobParameters);
