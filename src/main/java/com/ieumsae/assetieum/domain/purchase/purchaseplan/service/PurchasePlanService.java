@@ -177,6 +177,13 @@ public class PurchasePlanService {
                     .productName(request.getProductName())
                     .department(findDepartment(request.getDepartmentId(), companyId))
                     .isStandard(request.getIsStandard())
+                    .categoryId(resolvePurchasePlanItemCategoryId(
+                            request,
+                            tangibleAssetItem,
+                            intangibleAssetItem,
+                            linkedTicket,
+                            companyId
+                    ))
                     .quantity(request.getQuantity())
                     .estimatedUnitPrice(request.getEstimatedUnitPrice())
                     .externalUrl(request.getExternalUrl())
@@ -184,6 +191,92 @@ public class PurchasePlanService {
         }
 
         return purchasePlanItems;
+    }
+
+    private UUID resolvePurchasePlanItemCategoryId(
+            PurchasePlanItemCreateRequest request,
+            TangibleAssetItem tangibleAssetItem,
+            IntangibleAssetItem intangibleAssetItem,
+            Ticket linkedTicket,
+            UUID companyId
+    ) {
+        if (Boolean.TRUE.equals(request.getIsStandard())) {
+            return resolveStandardPurchasePlanItemCategoryId(request.getAssetType(), tangibleAssetItem, intangibleAssetItem);
+        }
+
+        return resolveNonStandardPurchasePlanItemCategoryId(request.getAssetType(), linkedTicket, companyId);
+    }
+
+    private UUID resolveStandardPurchasePlanItemCategoryId(
+            AssetType assetType,
+            TangibleAssetItem tangibleAssetItem,
+            IntangibleAssetItem intangibleAssetItem
+    ) {
+        if (assetType == AssetType.TANGIBLE && tangibleAssetItem != null) {
+            return tangibleAssetItem.getTangibleAssetCategory().getId();
+        }
+
+        if (assetType == AssetType.INTANGIBLE && intangibleAssetItem != null) {
+            return intangibleAssetItem.getIntangibleAssetCategory().getId();
+        }
+
+        throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+    }
+
+    private UUID resolveNonStandardPurchasePlanItemCategoryId(
+            AssetType assetType,
+            Ticket linkedTicket,
+            UUID companyId
+    ) {
+        if (linkedTicket == null) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+
+        if (linkedTicket.getTicketType() == TicketType.PURCHASE_REQUEST) {
+            PurchaseRequestTicket purchaseRequestTicket = purchaseRequestTicketRepository.findByIdAndCompany_Id(
+                            linkedTicket.getId(),
+                            companyId
+                    )
+                    .orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+
+            if (assetType == AssetType.TANGIBLE) {
+                if (purchaseRequestTicket.getTangibleAssetCategory() != null) {
+                    return purchaseRequestTicket.getTangibleAssetCategory().getId();
+                }
+                if (purchaseRequestTicket.getTangibleAssetItem() != null) {
+                    return purchaseRequestTicket.getTangibleAssetItem().getTangibleAssetCategory().getId();
+                }
+            }
+
+            if (assetType == AssetType.INTANGIBLE) {
+                if (purchaseRequestTicket.getIntangibleAssetCategory() != null) {
+                    return purchaseRequestTicket.getIntangibleAssetCategory().getId();
+                }
+                if (purchaseRequestTicket.getIntangibleAssetItem() != null) {
+                    return purchaseRequestTicket.getIntangibleAssetItem().getIntangibleAssetCategory().getId();
+                }
+            }
+
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+
+        if (linkedTicket.getTicketType() == TicketType.ASSET_REQUEST) {
+            AssetRequestTicket assetRequestTicket = assetRequestTicketRepository.findByIdAndCompany_IdAndDeletedAtIsNull(
+                            linkedTicket.getId(),
+                            companyId
+                    )
+                    .orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+
+            if (assetType == AssetType.TANGIBLE && assetRequestTicket.getTangibleAssetItem() != null) {
+                return assetRequestTicket.getTangibleAssetItem().getTangibleAssetCategory().getId();
+            }
+
+            if (assetType == AssetType.INTANGIBLE && assetRequestTicket.getIntangibleAssetItem() != null) {
+                return assetRequestTicket.getIntangibleAssetItem().getIntangibleAssetCategory().getId();
+            }
+        }
+
+        throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
     }
 
     private Department findDepartment(UUID departmentId, UUID companyId) {

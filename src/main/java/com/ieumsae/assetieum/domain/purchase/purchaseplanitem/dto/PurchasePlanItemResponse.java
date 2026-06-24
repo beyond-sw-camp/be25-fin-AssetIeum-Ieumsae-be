@@ -10,6 +10,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 @Getter
 @Builder
@@ -19,7 +20,8 @@ import java.math.BigDecimal;
     "assetType",
     "status",
     "isStandard",
-    "category",
+    "categoryId",
+    "categoryName",
     "productName",
     "quantity",
     "estimatedUnitPrice",
@@ -33,7 +35,9 @@ public class PurchasePlanItemResponse {
 
     private Boolean isStandard;
 
-    private String category;
+    private UUID categoryId;
+
+    private String categoryName;
 
     private String productName;
 
@@ -48,7 +52,8 @@ public class PurchasePlanItemResponse {
                 .assetType(item.getAssetType())
                 .status(item.getPurchasePlanItemStatus())
                 .isStandard(item.getIsStandard())
-                .category(resolveCategory(item))
+                .categoryId(item.getCategoryId())
+                .categoryName(resolveCategoryName(item))
                 .productName(item.getProductName())
                 .quantity(item.getQuantity())
                 .estimatedUnitPrice(item.getEstimatedUnitPrice())
@@ -57,7 +62,7 @@ public class PurchasePlanItemResponse {
                 .build();
     }
 
-    private static String resolveCategory(PurchasePlanItem item) {
+    private static String resolveCategoryName(PurchasePlanItem item) {
         if (item.getTangibleAssetItem() != null) {
             return item.getTangibleAssetItem().getTangibleAssetCategory().getName();
         }
