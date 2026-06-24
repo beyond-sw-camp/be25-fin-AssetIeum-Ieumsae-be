@@ -1,15 +1,18 @@
 package com.ieumsae.assetieum.domain.intangibleasset.asset.repository;
 
 import com.ieumsae.assetieum.domain.intangibleasset.asset.entity.IntangibleAsset;
+import com.ieumsae.assetieum.domain.intangibleasset.asset.type.BillingCycle;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.type.IntangibleAssetStatus;
 import jakarta.persistence.LockModeType;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -77,5 +80,25 @@ public interface IntangibleAssetRepository extends JpaRepository<IntangibleAsset
             UUID companyId,
             List<UUID> categoryIds,
             IntangibleAssetStatus status
+    );
+
+    @EntityGraph(attributePaths = {"member", "intangibleAssetItem"})
+    List<IntangibleAsset> findAllByIntangibleAssetStatusInAndBillingCycleInAndPurchaseDateIsNotNull(
+            List<IntangibleAssetStatus> statuses,
+            List<BillingCycle> billingCycles
+    );
+
+    @EntityGraph(attributePaths = {"member", "intangibleAssetItem"})
+    List<IntangibleAsset> findAllByIntangibleAssetStatusInAndExpiredAtGreaterThanEqualAndExpiredAtLessThan(
+            List<IntangibleAssetStatus> statuses,
+            LocalDateTime startInclusive,
+            LocalDateTime endExclusive
+    );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @EntityGraph(attributePaths = {"member", "intangibleAssetItem"})
+    List<IntangibleAsset> findAllByIntangibleAssetStatusInAndExpiredAtLessThan(
+            List<IntangibleAssetStatus> statuses,
+            LocalDateTime endExclusive
     );
 }
