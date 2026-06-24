@@ -9,6 +9,9 @@ import com.ieumsae.assetieum.domain.member.type.MemberRole;
 import com.ieumsae.assetieum.domain.log.service.LogService;
 import com.ieumsae.assetieum.domain.log.type.AuditLogAction;
 import com.ieumsae.assetieum.domain.log.type.LogSubjectType;
+import com.ieumsae.assetieum.domain.notification.service.NotificationService;
+import com.ieumsae.assetieum.domain.notification.type.NotificationTargetType;
+import com.ieumsae.assetieum.domain.notification.type.NotificationType;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.PurchasePlanItem;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.type.PurchasePlanItemStatus;
 import com.ieumsae.assetieum.domain.purchase.purchaseplanitem.repository.PurchasePlanItemRepository;
@@ -89,6 +92,7 @@ public class TicketService {
 	private final TicketApprovalResolver ticketApprovalResolver;
 	private final BudgetExecutionService budgetExecutionService;
 	private final LogService logService;
+	private final NotificationService notificationService;
 
 	@Transactional
 	public TicketAssigneeResponse assignMe(
@@ -104,6 +108,7 @@ public class TicketService {
 
 		ticket.assign(assignee);
 		logService.recordAuditLog(assignee, AuditLogAction.ASSIGN, LogSubjectType.TICKET, ticket.getId(), "티켓 담당자 지정");
+		notifyTicketRequester(ticket, "티켓 담당자가 지정되었습니다.", "자산 팀이 요청을 처리할 수 있습니다.");
 
 		return TicketAssigneeResponse.from(ticket);
 	}
@@ -130,6 +135,7 @@ public class TicketService {
 		syncCancelledAssetReturnStatusIfNeeded(ticket, companyId);
 		syncCancelledPurchaseReturnStatusIfNeeded(ticket, companyId);
 		logService.recordAuditLog(ticket.getRequester(), AuditLogAction.DELETE, LogSubjectType.TICKET, ticket.getId(), "티켓 취소");
+		notifyTicketRequester(ticket, "티켓이 취소되었습니다.", "취소된 요청을 확인하세요.");
 
 		return TicketCancelResponse.from(ticket);
 	}
@@ -150,6 +156,7 @@ public class TicketService {
 		syncCancelledAssetReturnStatusIfNeeded(ticket, companyId);
 		syncCancelledPurchaseReturnStatusIfNeeded(ticket, companyId);
 		logService.recordAuditLog(ticket.getRequester(), AuditLogAction.DELETE, LogSubjectType.TICKET, ticket.getId(), "티켓 취소");
+		notifyTicketRequester(ticket, "티켓이 취소되었습니다.", "취소된 요청을 확인하세요.");
 
 		return TicketCancelResponse.from(ticket);
 	}
@@ -171,6 +178,7 @@ public class TicketService {
 		budgetExecutionService.holdForPurchaseRequest(ticket, companyId);
 		ticket.approveDepartment(LocalDateTime.now());
 		logService.recordAuditLog(approver, AuditLogAction.INFORMATION_CHANGE, LogSubjectType.TICKET, ticket.getId(), "부서 승인");
+		notifyTicketRequester(ticket, "티켓이 부서 승인되었습니다.", "자산 승인 처리를 진행하세요.");
 
 		return DepartmentApprovalResponse.from(ticket);
 	}
@@ -188,6 +196,7 @@ public class TicketService {
 		budgetExecutionService.holdForPurchaseRequest(ticket, companyId);
 		ticket.approveDepartment(LocalDateTime.now());
 		logService.recordAuditLog(ticket.getApprover(), AuditLogAction.INFORMATION_CHANGE, LogSubjectType.TICKET, ticket.getId(), "부서 승인");
+		notifyTicketRequester(ticket, "티켓이 부서 승인되었습니다.", "자산 승인 처리를 진행하세요.");
 
 	}
 
@@ -211,6 +220,7 @@ public class TicketService {
 		syncRejectedAssetReturnStatusIfNeeded(ticket, companyId);
 		syncRejectedPurchaseReturnStatusIfNeeded(ticket, companyId);
 		logService.recordAuditLog(approver, AuditLogAction.INFORMATION_CHANGE, LogSubjectType.TICKET, ticket.getId(), "부서 반려");
+		notifyTicketRequester(ticket, "티켓이 부서 반려되었습니다.", "반려 사유를 확인하세요.");
 
 		return DepartmentApprovalResponse.from(ticket);
 	}
@@ -231,6 +241,7 @@ public class TicketService {
 		// 대여/대여연장은 구매자산팀 승인 후 실제 처리 API를 기다리기 위해 처리중으로 전환한다.
 		startProcessingAfterAssetApprovalIfNeeded(ticket, companyId);
 		logService.recordAuditLog(assignee, AuditLogAction.INFORMATION_CHANGE, LogSubjectType.TICKET, ticket.getId(), "자산 승인");
+		notifyTicketRequester(ticket, "티켓이 자산 승인되었습니다.", "처리가 진행됩니다.");
 
 		return AssetApprovalResponse.from(ticket);
 	}
@@ -258,6 +269,7 @@ public class TicketService {
 		syncCancelledAssetReturnStatusIfNeeded(ticket, companyId);
 		syncCancelledPurchaseReturnStatusIfNeeded(ticket, companyId);
 		logService.recordAuditLog(assignee, AuditLogAction.INFORMATION_CHANGE, LogSubjectType.TICKET, ticket.getId(), "자산 반려");
+		notifyTicketRequester(ticket, "티켓이 자산 반려되었습니다.", "반려 사유를 확인하세요.");
 
 		return AssetApprovalResponse.from(ticket);
 	}
@@ -289,6 +301,7 @@ public class TicketService {
 		syncAssetReturnStatusIfNeeded(ticket, companyId, request.getTicketStatus());
 		syncPurchaseReturnStatusIfNeeded(ticket, companyId, request.getTicketStatus());
 		logService.recordAuditLog(member, AuditLogAction.INFORMATION_CHANGE, LogSubjectType.TICKET, ticket.getId(), "처리 상태 변경: " + request.getTicketStatus());
+		notifyTicketRequester(ticket, buildProcessingStatusTitle(request.getTicketStatus()), buildProcessingStatusContent(request.getTicketStatus()));
 		return TicketProcessingStatusUpdateResponse.from(ticket);
 	}
 
@@ -1080,5 +1093,39 @@ public class TicketService {
 		} while (added);
 
 		return new ArrayList<>(departmentIds);
+	}
+
+	private void notifyTicketRequester(Ticket ticket, String title, String content) {
+		Member requester = ticket.getRequester();
+		if (requester == null || !requester.isActive()) {
+			return;
+		}
+
+		notificationService.createNotification(
+			requester,
+			NotificationType.TICKET_STATUS_CHANGED,
+			title,
+			content,
+			NotificationTargetType.TICKET,
+			ticket.getId()
+		);
+	}
+
+	private String buildProcessingStatusTitle(TicketStatus status) {
+		return switch (status) {
+			case IN_PROGRESS -> "티켓이 처리 중으로 변경되었습니다.";
+			case COMPLETED -> "티켓이 완료되었습니다.";
+			case CANCELLED -> "티켓이 취소되었습니다.";
+			default -> "티켓 상태가 변경되었습니다.";
+		};
+	}
+
+	private String buildProcessingStatusContent(TicketStatus status) {
+		return switch (status) {
+			case IN_PROGRESS -> "처리 담당자가 업무를 진행 중입니다.";
+			case COMPLETED -> "요청 처리가 완료되었습니다.";
+			case CANCELLED -> "요청이 취소되었습니다.";
+			default -> "티켓 상태 변경 내용을 확인하세요.";
+		};
 	}
 }

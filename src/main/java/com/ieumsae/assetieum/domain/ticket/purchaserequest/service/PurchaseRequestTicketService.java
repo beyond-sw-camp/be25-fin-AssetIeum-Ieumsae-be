@@ -20,6 +20,9 @@ import com.ieumsae.assetieum.domain.member.type.MemberRole;
 import com.ieumsae.assetieum.domain.log.service.LogService;
 import com.ieumsae.assetieum.domain.log.type.AuditLogAction;
 import com.ieumsae.assetieum.domain.log.type.LogSubjectType;
+import com.ieumsae.assetieum.domain.notification.service.NotificationService;
+import com.ieumsae.assetieum.domain.notification.type.NotificationTargetType;
+import com.ieumsae.assetieum.domain.notification.type.NotificationType;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.PurchasePlanItem;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.type.PurchaseRequestStatus;
 import com.ieumsae.assetieum.domain.purchase.purchaseplanitem.repository.PurchasePlanItemRepository;
@@ -109,6 +112,7 @@ public class PurchaseRequestTicketService {
 	private final BudgetExecutionService budgetExecutionService;
 	private final CodeGenerator codeGenerator;
 	private final LogService logService;
+	private final NotificationService notificationService;
 
 	@Transactional
 	public PurchaseRequestTicketCreateResponse createTeamPurchaseRequestTicket(
@@ -203,6 +207,7 @@ public class PurchaseRequestTicketService {
 			request.getBillingCycle()
 		));
 		budgetExecutionService.executeForDirectPurchaseResult(ticket, companyId, request.getActualPrice());
+		notifyMember(ticket.getAssignee(), "직접구매 결과가 등록되었습니다.", "직접구매 결과를 확인하세요.", ticket);
 		// Keep IN_PROGRESS until the asset team confirms the direct purchase result.
 
 		return DirectPurchaseResultCreateResponse.from(ticket, result, assetType);
@@ -302,6 +307,7 @@ public class PurchaseRequestTicketService {
 
 		result.confirm();
 		logService.recordAuditLog(member, AuditLogAction.INFORMATION_CHANGE, LogSubjectType.TICKET, ticket.getId(), "직접구매 결과 확인");
+		notifyMember(ticket.getAssignee(), "직접구매 결과가 확인되었습니다.", "직접구매 결과 확인이 완료되었습니다.", ticket);
 
 		return DirectPurchaseResultCreateResponse.from(ticket, result, resolveAssetType(purchaseRequestTicket));
 	}
@@ -681,6 +687,7 @@ public class PurchaseRequestTicketService {
 		purchaseRequestTicket.complete();
 		ticket.changeProcessingStatus(TicketStatus.COMPLETED, LocalDateTime.now());
 		logService.recordAuditLog(ticket.getRequester(), AuditLogAction.INFORMATION_CHANGE, LogSubjectType.TICKET, ticket.getId(), "구매 자산 배정 완료");
+		notifyMember(ticket.getRequester(), "구매 자산 배정이 완료되었습니다.", "구매 요청하신 자산이 배정되었습니다.", ticket);
 	}
 
 	private List<Member> resolveDirectPurchaseTangibleAssignees(
@@ -995,6 +1002,7 @@ public class PurchaseRequestTicketService {
 			)
 		);
 		savePurchaseAssignmentTargets(companyId, ticket, requestedUsageType, assetType, quantity, seatCount, assignmentTargetMemberIds);
+		notifyMember(approver, "구매 요청이 접수되었습니다.", "구매 요청을 확인하고 승인 여부를 처리하세요.", ticket);
 		return PurchaseRequestTicketCreateResponse.from(
 			ticket,
 			purchaseRequestTicket,
@@ -1062,6 +1070,7 @@ public class PurchaseRequestTicketService {
 			)
 		);
 		savePurchaseAssignmentTargets(companyId, ticket, requestedUsageType, assetType, quantity, seatCount, assignmentTargetMemberIds);
+		notifyMember(approver, "구매 요청이 접수되었습니다.", "구매 요청을 확인하고 승인 여부를 처리하세요.", ticket);
 		return PurchaseRequestTicketCreateResponse.from(
 			ticket,
 			purchaseRequestTicket,
@@ -1447,6 +1456,21 @@ public class PurchaseRequestTicketService {
 			return null;
 		}
 		return value.trim();
+	}
+
+	private void notifyMember(Member receiver, String title, String content, Ticket ticket) {
+		if (receiver == null || !receiver.isActive()) {
+			return;
+		}
+
+		notificationService.createNotification(
+			receiver,
+			NotificationType.TICKET_STATUS_CHANGED,
+			title,
+			content,
+			NotificationTargetType.TICKET,
+			ticket.getId()
+		);
 	}
 
 	private String defaultText(String requestedValue, String fallbackValue) {

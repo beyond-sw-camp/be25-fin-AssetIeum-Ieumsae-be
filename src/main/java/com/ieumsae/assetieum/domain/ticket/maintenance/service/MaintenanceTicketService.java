@@ -6,6 +6,9 @@ import com.ieumsae.assetieum.domain.member.type.MemberRole;
 import com.ieumsae.assetieum.domain.log.service.LogService;
 import com.ieumsae.assetieum.domain.log.type.AuditLogAction;
 import com.ieumsae.assetieum.domain.log.type.LogSubjectType;
+import com.ieumsae.assetieum.domain.notification.service.NotificationService;
+import com.ieumsae.assetieum.domain.notification.type.NotificationTargetType;
+import com.ieumsae.assetieum.domain.notification.type.NotificationType;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.entity.TangibleAsset;
 import com.ieumsae.assetieum.domain.tangibleasset.assignment.entity.TangibleAssetAssignment;
 import com.ieumsae.assetieum.domain.tangibleasset.assignment.repository.TangibleAssetAssignmentRepository;
@@ -54,6 +57,7 @@ public class MaintenanceTicketService {
 	private final TangibleAssetTicketConflictValidator tangibleAssetTicketConflictValidator;
 	private final BudgetExecutionService budgetExecutionService;
 	private final LogService logService;
+	private final NotificationService notificationService;
 
 	public List<MaintenanceAvailableAssetResponse> getAvailableAssets(
 		AuthenticatedMember authenticatedMember
@@ -108,6 +112,7 @@ public class MaintenanceTicketService {
 			asset
 		));
 		asset.requestRepair();
+		notifyMember(approver, "수선 요청이 접수되었습니다.", "수선 요청을 확인하고 승인 여부를 처리하세요.", ticket);
 
 		return MaintenanceTicketCreateResponse.from(ticket, maintenanceTicket, assignment);
 	}
@@ -148,6 +153,7 @@ public class MaintenanceTicketService {
 		maintenanceTicket.getTangibleAsset().startRepair();
 		maintenanceTicket.collect(LocalDateTime.now());
 		logService.recordAuditLog(collector, AuditLogAction.INFORMATION_CHANGE, LogSubjectType.TICKET, ticket.getId(), "유지보수 수거");
+		notifyMember(ticket.getRequester(), "수선 자산이 수거되었습니다.", "수선이 진행됩니다.", ticket);
 
 		return MaintenanceAssetCollectResponse.from(ticket, maintenanceTicket);
 	}
@@ -175,6 +181,7 @@ public class MaintenanceTicketService {
 		maintenanceTicket.complete(normalizeMaintenanceResult(request.getMaintenanceResult()), maintenanceCost, completedAt);
 		ticket.changeProcessingStatus(TicketStatus.COMPLETED, completedAt);
 		logService.recordAuditLog(processor, AuditLogAction.INFORMATION_CHANGE, LogSubjectType.TICKET, ticket.getId(), "유지보수 완료");
+		notifyMember(ticket.getRequester(), "수선이 완료되었습니다.", "수선 처리가 완료되었습니다.", ticket);
 
 		return MaintenanceTicketCompleteResponse.from(
 			ticket,
@@ -319,6 +326,21 @@ public class MaintenanceTicketService {
 			return null;
 		}
 		return maintenanceResult.trim();
+	}
+
+	private void notifyMember(Member receiver, String title, String content, Ticket ticket) {
+		if (receiver == null || !receiver.isActive()) {
+			return;
+		}
+
+		notificationService.createNotification(
+			receiver,
+			NotificationType.TICKET_STATUS_CHANGED,
+			title,
+			content,
+			NotificationTargetType.TICKET,
+			ticket.getId()
+		);
 	}
 
 }
