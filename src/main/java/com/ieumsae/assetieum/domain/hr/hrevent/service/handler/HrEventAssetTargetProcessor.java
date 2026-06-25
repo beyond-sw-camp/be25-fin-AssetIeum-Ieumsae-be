@@ -71,8 +71,7 @@ public class HrEventAssetTargetProcessor {
             return;
         }
 
-        if (actionType == HrEventAssetActionType.RETURN_REQUIRED
-                || actionType == HrEventAssetActionType.UNASSIGN_REQUIRED) {
+        if (actionType == HrEventAssetActionType.RETURN_REQUIRED) {
             if (isAlreadyReturnedOrUnassigned(target, companyId)) {
                 target.complete(LocalDateTime.now());
                 return;
