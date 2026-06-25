@@ -362,6 +362,9 @@ public class HrEventService {
             throw new BusinessException(ErrorCode.HR_EVENT_NOT_IN_PROGRESS);
         }
 
+        if (hrEvent.getEventType() == HrEventType.OFFBOARDING) {
+            hrEvent.getMember().resign();
+        }
         completeRelatedTargets(hrEvent);
         hrEvent.complete();
 
@@ -414,7 +417,9 @@ public class HrEventService {
     }
 
     private void completeOffboardingHrEvent(HrEvent hrEvent) {
-        hrEvent.getMember().resign();
+        if (hrEvent.getEventType() == HrEventType.OFFBOARDING) {
+            hrEvent.getMember().resign();
+        }
         completeRelatedTargets(hrEvent);
         hrEvent.complete();
     }
