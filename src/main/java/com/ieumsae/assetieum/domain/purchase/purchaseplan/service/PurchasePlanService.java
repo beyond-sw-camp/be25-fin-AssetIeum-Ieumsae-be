@@ -5,6 +5,9 @@ import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.company.repository.CompanyRepository;
 import com.ieumsae.assetieum.domain.department.entity.Department;
 import com.ieumsae.assetieum.domain.department.repository.DepartmentRepository;
+import com.ieumsae.assetieum.domain.file.dto.FileResponse;
+import com.ieumsae.assetieum.domain.file.repository.UploadedFileRepository;
+import com.ieumsae.assetieum.domain.file.type.FileTargetType;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.dto.IntangibleAssetCreateRequest;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.dto.IntangibleAssetResponse;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.service.IntangibleAssetService;
@@ -104,6 +107,7 @@ public class PurchasePlanService {
     private final IntangibleAssetAssignmentService intangibleAssetAssignmentService;
     private final TicketAssignmentTargetService ticketAssignmentTargetService;
     private final BudgetExecutionService budgetExecutionService;
+    private final UploadedFileRepository uploadedFileRepository;
 
     @Transactional
     public PurchasePlanResponse createPurchasePlan(
@@ -407,10 +411,7 @@ public class PurchasePlanService {
         return PurchasePlanDetailResponse.from(
                 purchasePlan,
                 purchasePlanItems.stream()
-                        .map(item -> PurchasePlanItemDetailResponse.from(
-                                item,
-                                resolvePurchasePlanItemCategoryName(item, companyId)
-                        ))
+                        .map(item -> createPurchasePlanItemDetailResponse(item, companyId))
                         .toList()
         );
     }
@@ -460,11 +461,28 @@ public class PurchasePlanService {
         return PurchasePlanDetailResponse.from(
                 purchasePlan,
                 purchasePlanItems.stream()
-                        .map(item -> PurchasePlanItemDetailResponse.from(
-                                item,
-                                resolvePurchasePlanItemCategoryName(item, companyId)
-                        ))
+                        .map(item -> createPurchasePlanItemDetailResponse(item, companyId))
                         .toList()
+        );
+    }
+
+    private PurchasePlanItemDetailResponse createPurchasePlanItemDetailResponse(
+            PurchasePlanItem item,
+            UUID companyId
+    ) {
+        List<FileResponse> evidenceFiles = uploadedFileRepository
+                .findAllByCompany_IdAndTargetTypeAndTargetIdOrderByCreatedAtAsc(
+                        companyId,
+                        FileTargetType.PURCHASE_PLAN_ITEM,
+                        item.getId().toString()
+                )
+                .stream()
+                .map(FileResponse::from)
+                .toList();
+        return PurchasePlanItemDetailResponse.from(
+                item,
+                resolvePurchasePlanItemCategoryName(item, companyId),
+                evidenceFiles
         );
     }
 
