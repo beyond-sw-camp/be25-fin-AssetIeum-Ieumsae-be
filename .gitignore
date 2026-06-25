@@ -45,8 +45,6 @@ Thumbs.db
 # Spring Boot
 application-dev.yaml
 application-dev.yml
-application-prod.yaml
-application-prod.yml
 application-secret.yaml
 application-secret.yml
 
