@@ -1,6 +1,7 @@
 package com.ieumsae.assetieum.domain.purchase.purchaseplanitem.dto;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import com.ieumsae.assetieum.domain.file.dto.FileResponse;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.PurchasePlanItem;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.type.PurchasePlanItemStatus;
 import com.ieumsae.assetieum.domain.ticket.common.type.AssetType;
@@ -28,7 +29,8 @@ import java.util.UUID;
     "quantity",
     "estimatedUnitPrice",
     "totalAmount",
-    "ticket"
+    "ticket",
+    "evidenceFiles"
 })
 public class PurchasePlanItemDetailResponse {
 
@@ -54,6 +56,8 @@ public class PurchasePlanItemDetailResponse {
 
     private TicketInfo ticket;
 
+    private List<FileResponse> evidenceFiles;
+
     @Getter
     @Builder
     @NoArgsConstructor
@@ -73,10 +77,14 @@ public class PurchasePlanItemDetailResponse {
         private List<UUID> ticketTargetMemberIds;
     }
 
+    public static PurchasePlanItemDetailResponse from(PurchasePlanItem item, String categoryName) {
+        return from(item, categoryName, List.of(), List.of());
+    }
     public static PurchasePlanItemDetailResponse from(
             PurchasePlanItem item,
             String categoryName,
-            List<UUID> ticketTargetMemberIds
+            List<UUID> ticketTargetMemberIds,
+            List<FileResponse> evidenceFiles
     ) {
         return PurchasePlanItemDetailResponse.builder()
                 .itemId(item.getId())
@@ -91,6 +99,7 @@ public class PurchasePlanItemDetailResponse {
                 .totalAmount(item.getEstimatedUnitPrice()
                         .multiply(BigDecimal.valueOf(item.getQuantity())))
                 .ticket(buildTicketInfo(item, ticketTargetMemberIds))
+                .evidenceFiles(evidenceFiles)
                 .build();
     }
 

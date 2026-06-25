@@ -9,6 +9,8 @@ public class S3Properties {
 	private String bucket;
 	private String region;
 	private String publicBaseUrl;
+	private long maxFileSizeBytes = 10 * 1024 * 1024;
+	private String allowedExtensions = "jpg,jpeg,png,pdf,doc,docx,xls,xlsx";
 
 	public boolean isEnabled() {
 		return enabled;
@@ -40,5 +42,21 @@ public class S3Properties {
 
 	public void setPublicBaseUrl(String publicBaseUrl) {
 		this.publicBaseUrl = publicBaseUrl;
+	}
+
+	public long getMaxFileSizeBytes() {
+		return maxFileSizeBytes;
+	}
+
+	public void setMaxFileSizeBytes(long maxFileSizeBytes) {
+		this.maxFileSizeBytes = maxFileSizeBytes;
+	}
+
+	public String getAllowedExtensions() {
+		return allowedExtensions;
+	}
+
+	public void setAllowedExtensions(String allowedExtensions) {
+		this.allowedExtensions = allowedExtensions;
 	}
 }

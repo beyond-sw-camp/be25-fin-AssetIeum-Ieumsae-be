@@ -24,3 +24,5 @@ cloud:
       bucket: ${AWS_S3_BUCKET:}
       region: ${AWS_REGION:ap-northeast-2}
       public-base-url: ${AWS_S3_PUBLIC_BASE_URL:}
+      max-file-size-bytes: ${AWS_S3_MAX_FILE_SIZE_BYTES:10485760}
+      allowed-extensions: ${AWS_S3_ALLOWED_EXTENSIONS:jpg,jpeg,png,pdf,doc,docx,xls,xlsx}

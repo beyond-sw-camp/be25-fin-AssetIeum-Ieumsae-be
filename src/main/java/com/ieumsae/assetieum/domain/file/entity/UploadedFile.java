@@ -16,7 +16,6 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
-import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -45,7 +44,7 @@ public class UploadedFile {
 	private FileTargetType targetType;
 
 	@Column(name = "target_id", nullable = false, columnDefinition = "CHAR(36)")
-	private UUID targetId;
+	private String targetId;
 
 	@Column(name = "name", nullable = false)
 	private String name;

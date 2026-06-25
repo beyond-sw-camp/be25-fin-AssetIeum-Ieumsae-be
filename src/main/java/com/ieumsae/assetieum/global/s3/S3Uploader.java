@@ -2,8 +2,14 @@ package com.ieumsae.assetieum.global.s3;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.net.URI;
+import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.Locale;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -13,6 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 
 @Component
 @RequiredArgsConstructor
@@ -52,9 +59,31 @@ public class S3Uploader {
 		);
 	}
 
+	public void delete(String key) {
+		if (!StringUtils.hasText(key)) {
+			return;
+		}
+		s3Client.deleteObject(DeleteObjectRequest.builder()
+			.bucket(properties.getBucket())
+			.key(key)
+			.build());
+	}
+
+	public void deleteByUrl(String url) {
+		String key = resolveKeyFromUrl(url);
+		delete(key);
+	}
+
 	private void validateFile(MultipartFile file) {
 		if (file == null || file.isEmpty()) {
-			throw new IllegalArgumentException("Upload file must not be empty.");
+			throw new IllegalArgumentException("업로드할 파일이 비어 있습니다.");
+		}
+		if (file.getSize() > properties.getMaxFileSizeBytes()) {
+			throw new IllegalArgumentException("업로드 가능한 파일 크기를 초과했습니다.");
+		}
+		String extension = resolveExtension(file.getOriginalFilename()).replace(".", "");
+		if (!StringUtils.hasText(extension) || !allowedExtensions().contains(extension)) {
+			throw new IllegalArgumentException("허용되지 않은 파일 확장자입니다.");
 		}
 	}
 
@@ -101,5 +130,35 @@ public class S3Uploader {
 
 	private String encodeKey(String key) {
 		return URLEncoder.encode(key, StandardCharsets.UTF_8).replace("+", "%20").replace("%2F", "/");
+	}
+
+	private String resolveKeyFromUrl(String url) {
+		if (!StringUtils.hasText(url)) {
+			return null;
+		}
+		String normalizedBaseUrl = StringUtils.hasText(properties.getPublicBaseUrl())
+			? properties.getPublicBaseUrl().replaceAll("/+$", "")
+			: "https://" + properties.getBucket() + ".s3." + properties.getRegion() + ".amazonaws.com";
+		if (url.startsWith(normalizedBaseUrl + "/")) {
+			return decodeKey(url.substring(normalizedBaseUrl.length() + 1));
+		}
+
+		URI uri = URI.create(url);
+		String path = uri.getPath();
+		if (!StringUtils.hasText(path)) {
+			return null;
+		}
+		return decodeKey(path.replaceFirst("^/+", ""));
+	}
+
+	private String decodeKey(String key) {
+		return URLDecoder.decode(key, StandardCharsets.UTF_8);
+	}
+
+	private Set<String> allowedExtensions() {
+		return Arrays.stream(properties.getAllowedExtensions().split(","))
+			.map(value -> value.trim().toLowerCase(Locale.ROOT))
+			.filter(StringUtils::hasText)
+			.collect(Collectors.toSet());
 	}
 }

@@ -5,6 +5,9 @@ import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.company.repository.CompanyRepository;
 import com.ieumsae.assetieum.domain.department.entity.Department;
 import com.ieumsae.assetieum.domain.department.repository.DepartmentRepository;
+import com.ieumsae.assetieum.domain.file.dto.FileResponse;
+import com.ieumsae.assetieum.domain.file.repository.UploadedFileRepository;
+import com.ieumsae.assetieum.domain.file.type.FileTargetType;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.dto.IntangibleAssetCreateRequest;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.dto.IntangibleAssetResponse;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.service.IntangibleAssetService;
@@ -104,6 +107,7 @@ public class PurchasePlanService {
     private final IntangibleAssetAssignmentService intangibleAssetAssignmentService;
     private final TicketAssignmentTargetService ticketAssignmentTargetService;
     private final BudgetExecutionService budgetExecutionService;
+    private final UploadedFileRepository uploadedFileRepository;
 
     @Transactional
     public PurchasePlanResponse createPurchasePlan(
@@ -407,11 +411,7 @@ public class PurchasePlanService {
         return PurchasePlanDetailResponse.from(
                 purchasePlan,
                 purchasePlanItems.stream()
-                        .map(item -> PurchasePlanItemDetailResponse.from(
-                                item,
-                                resolvePurchasePlanItemCategoryName(item, companyId),
-                                resolveTicketTargetMemberIds(item, companyId)
-                        ))
+                        .map(item -> createPurchasePlanItemDetailResponse(item, companyId))
                         .toList()
         );
     }
@@ -461,12 +461,29 @@ public class PurchasePlanService {
         return PurchasePlanDetailResponse.from(
                 purchasePlan,
                 purchasePlanItems.stream()
-                        .map(item -> PurchasePlanItemDetailResponse.from(
-                                item,
-                                resolvePurchasePlanItemCategoryName(item, companyId),
-                                resolveTicketTargetMemberIds(item, companyId)
-                        ))
+                        .map(item -> createPurchasePlanItemDetailResponse(item, companyId))
                         .toList()
+        );
+    }
+
+    private PurchasePlanItemDetailResponse createPurchasePlanItemDetailResponse(
+            PurchasePlanItem item,
+            UUID companyId
+    ) {
+        List<FileResponse> evidenceFiles = uploadedFileRepository
+                .findAllByCompany_IdAndTargetTypeAndTargetIdOrderByCreatedAtAsc(
+                        companyId,
+                        FileTargetType.PURCHASE_PLAN_ITEM,
+                        item.getId().toString()
+                )
+                .stream()
+                .map(FileResponse::from)
+                .toList();
+        return PurchasePlanItemDetailResponse.from(
+                item,
+                resolvePurchasePlanItemCategoryName(item, companyId),
+                resolveTicketTargetMemberIds(item, companyId),
+                evidenceFiles
         );
     }
 
@@ -673,7 +690,7 @@ public class PurchasePlanService {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
         }
 
-        purchasePlanItem.markReceivedIfNeeded();
+        purchasePlanItem.updateStatus();
         markLinkedPurchaseRequestReceivedIfNeeded(purchasePlanItem, companyId);
 
         for (PurchasePlanItem item : purchasePlanItems) {
@@ -729,7 +746,6 @@ public class PurchasePlanService {
         if (purchasePlanItem.getAssetType() == AssetType.TANGIBLE) {
             TangibleAssetItem tangibleAssetItem = findOrCreateTangibleItem(purchasePlanItem, request, companyId);
             purchasePlanItem.attachTangibleAssetItem(tangibleAssetItem);
-            purchasePlanItem.markItemRegistered();
             purchasePlanItemRepository.save(purchasePlanItem);
             return;
         }
@@ -737,7 +753,6 @@ public class PurchasePlanService {
         if (purchasePlanItem.getAssetType() == AssetType.INTANGIBLE) {
             IntangibleAssetItem intangibleAssetItem = findOrCreateIntangibleItem(purchasePlanItem, request, companyId);
             purchasePlanItem.attachIntangibleAssetItem(intangibleAssetItem);
-            purchasePlanItem.markItemRegistered();
             purchasePlanItemRepository.save(purchasePlanItem);
             return;
         }
@@ -961,7 +976,7 @@ public class PurchasePlanService {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
         }
 
-        if (purchasePlanItem.getPurchasePlanItemStatus() != PurchasePlanItemStatus.ITEM_REGISTERED) {
+        if (purchasePlanItem.getPurchasePlanItemStatus() != PurchasePlanItemStatus.RECEIVED) {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "자산을 등록할 수 없는 상태의 품목입니다.");
         }
     }

@@ -75,4 +75,3 @@ public class NotificationController {
 		return ApiResponse.ok("전체 알림 읽음 처리가 성공했습니다.", response);
 	}
 }
-
