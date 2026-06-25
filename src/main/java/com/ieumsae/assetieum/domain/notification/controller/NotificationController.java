@@ -40,7 +40,7 @@ public class NotificationController {
 			authenticatedMember,
 			request
 		);
-		return ApiResponse.ok("?뚮┝ 紐⑸줉 議고쉶???깃났?덉뒿?덈떎.", response);
+		return ApiResponse.ok("알림 목록 조회가 성공했습니다.", response);
 	}
 
 	@GetMapping("/unread-count")
@@ -48,7 +48,7 @@ public class NotificationController {
 		@AuthenticationPrincipal AuthenticatedMember authenticatedMember
 	) {
 		NotificationUnreadCountResponse response = notificationService.getUnreadCount(authenticatedMember);
-		return ApiResponse.ok("?쎌? ?딆? ?뚮┝ 媛쒖닔 議고쉶???깃났?덉뒿?덈떎.", response);
+		return ApiResponse.ok("읽지 않은 알림 수 조회가 성공했습니다.", response);
 	}
 
 	@GetMapping("/subscribe")
@@ -64,7 +64,7 @@ public class NotificationController {
 		@PathVariable Long notificationId
 	) {
 		NotificationReadResponse response = notificationService.markAsRead(authenticatedMember, notificationId);
-		return ApiResponse.ok("?뚮┝ ?쎌쓬 泥섎━???깃났?덉뒿?덈떎.", response);
+		return ApiResponse.ok("알림 읽음 처리가 성공했습니다.", response);
 	}
 
 	@PatchMapping("/read-all")
@@ -72,6 +72,7 @@ public class NotificationController {
 		@AuthenticationPrincipal AuthenticatedMember authenticatedMember
 	) {
 		NotificationReadAllResponse response = notificationService.markAllAsRead(authenticatedMember);
-		return ApiResponse.ok("?꾩껜 ?뚮┝ ?쎌쓬 泥섎━???깃났?덉뒿?덈떎.", response);
+		return ApiResponse.ok("전체 알림 읽음 처리가 성공했습니다.", response);
 	}
 }
+
