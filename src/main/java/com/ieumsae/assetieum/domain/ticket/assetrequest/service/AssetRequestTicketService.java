@@ -34,6 +34,9 @@ import com.ieumsae.assetieum.domain.ticket.common.service.TicketService;
 import com.ieumsae.assetieum.domain.ticket.common.type.AssetType;
 import com.ieumsae.assetieum.domain.ticket.common.type.RequestedUsageType;
 import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
+import com.ieumsae.assetieum.domain.notification.service.NotificationService;
+import com.ieumsae.assetieum.domain.notification.type.NotificationTargetType;
+import com.ieumsae.assetieum.domain.notification.type.NotificationType;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
@@ -70,6 +73,7 @@ public class AssetRequestTicketService {
 	private final AssetRequestActionResolver assetRequestActionResolver;
 	private final TicketAssignmentTargetService ticketAssignmentTargetService;
 	private final PurchasePlanItemRepository purchasePlanItemRepository;
+	private final NotificationService notificationService;
 
 	@Transactional
 	public AssetRequestTicketCreateResponse createAssetRequestTicket(
@@ -125,6 +129,7 @@ public class AssetRequestTicketService {
 			requestedUsageType,
 			request.getAssetType() == AssetType.TANGIBLE
 		);
+		notifyTicketApprover(ticket, "자산 요청이 접수되었습니다.", "자산 요청을 확인하고 승인 여부를 처리하세요.");
 
 		return AssetRequestTicketCreateResponse.from(
 			ticket,
@@ -188,6 +193,22 @@ public class AssetRequestTicketService {
 			)
 			.map(purchasePlanItem -> purchasePlanItem.getPurchasePlan().getId())
 			.orElse(null);
+	}
+
+	private void notifyTicketApprover(Ticket ticket, String title, String content) {
+		Member approver = ticket.getApprover();
+		if (approver == null || !approver.isActive()) {
+			return;
+		}
+
+		notificationService.createNotification(
+			approver,
+			NotificationType.TICKET_STATUS_CHANGED,
+			title,
+			content,
+			NotificationTargetType.TICKET,
+			ticket.getId()
+		);
 	}
 
 	private List<TicketAssignmentTargetResponse> getAssignmentTargetResponses(UUID companyId, Ticket ticket) {

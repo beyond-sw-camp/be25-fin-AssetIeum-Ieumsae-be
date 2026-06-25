@@ -1237,13 +1237,13 @@ public class PurchaseRequestTicketService {
 
 	private void validateStandardDirectPurchaseRequest(DirectPurchaseRequestTicketCreateRequest request) {
 		if (request.getAssetItemId() == null) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "?쒖? 吏곸젒援щℓ ?붿껌?먮뒗 ?먯궛 ?덈ぉ ID媛 ?꾩닔?낅땲??");
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "표준 직접구매 요청에는 자산 품목 ID가 필수입니다.");
 		}
 	}
 
 	private void validateNonStandardDirectPurchaseRequest(DirectPurchaseRequestTicketCreateRequest request) {
 		if (request.getAssetItemId() != null) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "鍮꾪몴以 吏곸젒援щℓ ?붿껌?먮뒗 ?먯궛 ?덈ぉ ID瑜??ъ슜?????놁뒿?덈떎.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "비표준 직접구매 요청에는 자산 품목 ID를 사용할 수 없습니다.");
 		}
 		if (request.getCategoryId() == null
 			|| !StringUtils.hasText(request.getRequestedItemDetail())

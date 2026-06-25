@@ -9,6 +9,9 @@ import com.ieumsae.assetieum.domain.tangibleasset.asset.entity.TangibleAsset;
 import com.ieumsae.assetieum.domain.tangibleasset.assignment.entity.TangibleAssetAssignment;
 import com.ieumsae.assetieum.domain.tangibleasset.assignment.repository.TangibleAssetAssignmentRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.assignment.type.AssignmentStatus;
+import com.ieumsae.assetieum.domain.notification.service.NotificationService;
+import com.ieumsae.assetieum.domain.notification.type.NotificationTargetType;
+import com.ieumsae.assetieum.domain.notification.type.NotificationType;
 import com.ieumsae.assetieum.domain.ticket.assetreturn.type.AssetReturnTargetType;
 import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
 import com.ieumsae.assetieum.domain.ticket.common.repository.TicketRepository;
@@ -55,6 +58,7 @@ public class PurchaseReturnTicketService {
 	private final TangibleAssetTicketConflictValidator tangibleAssetTicketConflictValidator;
 	private final IntangibleAssetTicketConflictValidator intangibleAssetTicketConflictValidator;
 	private final BudgetExecutionService budgetExecutionService;
+	private final NotificationService notificationService;
 
 	public List<PurchaseReturnAvailableAssetResponse> getAvailableAssets(
 		AuthenticatedMember authenticatedMember,
@@ -193,6 +197,7 @@ public class PurchaseReturnTicketService {
 		);
 		// 유형자산은 반품 요청 중임을 자산 상태에도 표시한다.
 		assignment.getTangibleAsset().requestReturn();
+		notifyMember(ticket.getApprover(), "자산 반납 요청이 접수되었습니다.", "자산 반납 요청을 확인하고 승인 여부를 처리하세요.", ticket);
 
 		return PurchaseReturnTicketCreateResponse.from(ticket, purchaseReturnTicket);
 	}
@@ -221,6 +226,7 @@ public class PurchaseReturnTicketService {
 		PurchaseReturnTicket purchaseReturnTicket = purchaseReturnTicketRepository.save(
 			PurchaseReturnTicket.createIntangibleReturn(ticket, requester.getCompany(), assignment.getIntangibleAsset())
 		);
+		notifyMember(ticket.getApprover(), "자산 반납 요청이 접수되었습니다.", "자산 반납 요청을 확인하고 승인 여부를 처리하세요.", ticket);
 
 		return PurchaseReturnTicketCreateResponse.from(ticket, purchaseReturnTicket);
 	}
@@ -252,6 +258,21 @@ public class PurchaseReturnTicketService {
 		}
 
 		assignedAssetValidator.validateIntangibleRequester(assignment, requester);
+	}
+
+	private void notifyMember(Member receiver, String title, String content, Ticket ticket) {
+		if (receiver == null || !receiver.isActive()) {
+			return;
+		}
+
+		notificationService.createNotification(
+			receiver,
+			NotificationType.TICKET_STATUS_CHANGED,
+			title,
+			content,
+			NotificationTargetType.TICKET,
+			ticket.getId()
+		);
 	}
 
 	private PurchaseReturnTicket findPurchaseReturnTicket(UUID ticketId, UUID companyId) {
@@ -380,3 +401,5 @@ public class PurchaseReturnTicketService {
 		return role == MemberRole.ADMIN || role == MemberRole.ASSET_MANAGER || role == MemberRole.ASSET_TEAM;
 	}
 }
+
+

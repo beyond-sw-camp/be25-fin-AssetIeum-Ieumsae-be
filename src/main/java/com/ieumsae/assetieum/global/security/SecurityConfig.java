@@ -36,6 +36,8 @@ public class SecurityConfig {
 		return http
 			.cors(cors -> {})
 			.csrf(AbstractHttpConfigurer::disable)
+			.formLogin(AbstractHttpConfigurer::disable)
+			.httpBasic(AbstractHttpConfigurer::disable)
 			.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 			.exceptionHandling(exception -> exception
 				.authenticationEntryPoint((request, response, authException) ->
@@ -45,6 +47,7 @@ public class SecurityConfig {
 			)
 			.authorizeHttpRequests(authorize -> authorize
 				.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+				.requestMatchers(HttpMethod.GET, "/api/v1/health").permitAll()
 				.requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
 				.requestMatchers(HttpMethod.POST, "/api/v1/auth/reissue").permitAll()
 				.anyRequest().authenticated()

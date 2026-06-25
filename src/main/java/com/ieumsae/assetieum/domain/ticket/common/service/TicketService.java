@@ -3,12 +3,12 @@ package com.ieumsae.assetieum.domain.ticket.common.service;
 import com.ieumsae.assetieum.domain.budget.budget.service.BudgetExecutionService;
 import com.ieumsae.assetieum.domain.department.entity.Department;
 import com.ieumsae.assetieum.domain.department.repository.DepartmentRepository;
-import com.ieumsae.assetieum.domain.member.entity.Member;
-import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
-import com.ieumsae.assetieum.domain.member.type.MemberRole;
 import com.ieumsae.assetieum.domain.log.service.LogService;
 import com.ieumsae.assetieum.domain.log.type.AuditLogAction;
 import com.ieumsae.assetieum.domain.log.type.LogSubjectType;
+import com.ieumsae.assetieum.domain.member.entity.Member;
+import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
+import com.ieumsae.assetieum.domain.member.type.MemberRole;
 import com.ieumsae.assetieum.domain.notification.service.NotificationService;
 import com.ieumsae.assetieum.domain.notification.type.NotificationTargetType;
 import com.ieumsae.assetieum.domain.notification.type.NotificationType;
@@ -40,12 +40,11 @@ import com.ieumsae.assetieum.domain.ticket.common.dto.TicketSearchRequest;
 import com.ieumsae.assetieum.domain.ticket.common.dto.TicketStatisticsResponse;
 import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
 import com.ieumsae.assetieum.domain.ticket.common.repository.TicketRepository;
+import com.ieumsae.assetieum.domain.ticket.common.type.RequestMethod;
 import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
 import com.ieumsae.assetieum.domain.ticket.common.type.TicketType;
-import com.ieumsae.assetieum.domain.ticket.common.type.RequestMethod;
 import com.ieumsae.assetieum.domain.ticket.maintenance.entity.MaintenanceTicket;
 import com.ieumsae.assetieum.domain.ticket.maintenance.repository.MaintenanceTicketRepository;
-import com.ieumsae.assetieum.domain.ticket.maintenance.type.MaintenanceTicketStatus;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.entity.DirectPurchaseResult;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.entity.PurchaseRequestTicket;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.repository.DirectPurchaseResultRepository;
@@ -60,16 +59,17 @@ import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -178,6 +178,7 @@ public class TicketService {
 		budgetExecutionService.holdForPurchaseRequest(ticket, companyId);
 		ticket.approveDepartment(LocalDateTime.now());
 		logService.recordAuditLog(approver, AuditLogAction.INFORMATION_CHANGE, LogSubjectType.TICKET, ticket.getId(), "부서 승인");
+		notifyTicketAssignee(ticket, "티켓이 부서 승인되었습니다.", "담당 티켓을 확인하고 후속 처리를 진행하세요.");
 		notifyTicketRequester(ticket, "티켓이 부서 승인되었습니다.", "자산 승인 처리를 진행하세요.");
 
 		return DepartmentApprovalResponse.from(ticket);
@@ -196,8 +197,10 @@ public class TicketService {
 		budgetExecutionService.holdForPurchaseRequest(ticket, companyId);
 		ticket.approveDepartment(LocalDateTime.now());
 		logService.recordAuditLog(ticket.getApprover(), AuditLogAction.INFORMATION_CHANGE, LogSubjectType.TICKET, ticket.getId(), "부서 승인");
+		notifyTicketAssignee(ticket, "티켓이 부서 승인되었습니다.", "담당 티켓을 확인하고 후속 처리를 진행하세요.");
 		notifyTicketRequester(ticket, "티켓이 부서 승인되었습니다.", "자산 승인 처리를 진행하세요.");
 
+		return;
 	}
 
 	@Transactional
@@ -1103,6 +1106,22 @@ public class TicketService {
 
 		notificationService.createNotification(
 			requester,
+			NotificationType.TICKET_STATUS_CHANGED,
+			title,
+			content,
+			NotificationTargetType.TICKET,
+			ticket.getId()
+		);
+	}
+
+	private void notifyTicketAssignee(Ticket ticket, String title, String content) {
+		Member assignee = ticket.getAssignee();
+		if (assignee == null || !assignee.isActive()) {
+			return;
+		}
+
+		notificationService.createNotification(
+			assignee,
 			NotificationType.TICKET_STATUS_CHANGED,
 			title,
 			content,

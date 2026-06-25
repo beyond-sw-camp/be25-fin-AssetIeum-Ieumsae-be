@@ -16,3 +16,11 @@ auth:
   refresh-token-cookie:
     secure: true
     same-site: Strict
+
+cloud:
+  aws:
+    s3:
+      enabled: ${AWS_S3_ENABLED:false}
+      bucket: ${AWS_S3_BUCKET:}
+      region: ${AWS_REGION:ap-northeast-2}
+      public-base-url: ${AWS_S3_PUBLIC_BASE_URL:}
