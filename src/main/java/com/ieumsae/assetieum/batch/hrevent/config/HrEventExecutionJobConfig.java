@@ -1,7 +1,7 @@
 package com.ieumsae.assetieum.batch.hrevent.config;
 
 import com.ieumsae.assetieum.domain.hr.hrevent.service.HrEventService;
-import java.time.LocalDate;
+import com.ieumsae.assetieum.domain.ticket.assetreturn.service.AssetReturnTicketService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
@@ -14,6 +14,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
 
+import java.time.LocalDate;
+
 @Configuration
 @RequiredArgsConstructor
 public class HrEventExecutionJobConfig {
@@ -24,12 +26,13 @@ public class HrEventExecutionJobConfig {
     private final JobRepository jobRepository;
     private final PlatformTransactionManager transactionManager;
     private final HrEventService hrEventService;
+    private final AssetReturnTicketService assetReturnTicketService;
 
     @Bean
     public Job hrEventExecutionJob() {
         return new JobBuilder(JOB_NAME, jobRepository)
                 .start(executeHrEventsStep())
-                .next(completeOffboardingHrEventsStep())
+                .next(approveOffboardingAssetReturnTicketsStep())
                 .build();
     }
 
@@ -44,10 +47,10 @@ public class HrEventExecutionJobConfig {
     }
 
     @Bean
-    public Step completeOffboardingHrEventsStep() {
-        return new StepBuilder("completeOffboardingHrEventsStep", jobRepository)
+    public Step approveOffboardingAssetReturnTicketsStep() {
+        return new StepBuilder("approveOffboardingAssetReturnTicketsStep", jobRepository)
                 .tasklet((contribution, chunkContext) -> {
-                    hrEventService.completeDueOffboardingHrEvents(resolveExecutionDate(chunkContext));
+                    assetReturnTicketService.approveDueOffboardingAssetReturnTickets(resolveExecutionDate(chunkContext));
                     return RepeatStatus.FINISHED;
                 }, transactionManager)
                 .build();

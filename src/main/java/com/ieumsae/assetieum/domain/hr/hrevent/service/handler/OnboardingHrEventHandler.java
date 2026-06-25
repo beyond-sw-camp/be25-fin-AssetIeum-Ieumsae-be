@@ -16,9 +16,10 @@ import com.ieumsae.assetieum.domain.ticket.common.type.RequestedUsageType;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -36,7 +37,7 @@ public class OnboardingHrEventHandler implements HrEventHandler {
 
     @Override
     public void handle(HrEvent hrEvent) {
-        hrEvent.start();
+        hrEvent.process();
         HrTemplate hrTemplate = hrTemplateRepository.findByCompany_IdAndDepartment_IdAndDeletedAtIsNull(
                         hrEvent.getCompany().getId(),
                         hrEvent.getDepartment().getId()

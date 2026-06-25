@@ -33,10 +33,12 @@ import com.ieumsae.assetieum.domain.ticket.common.service.TicketApprovalResolver
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketNoGenerator;
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketRequesterResolver;
 import com.ieumsae.assetieum.domain.ticket.common.service.TangibleAssetTicketConflictValidator;
+import com.ieumsae.assetieum.domain.ticket.common.service.TicketService;
 import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -49,6 +51,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class AssetReturnTicketService {
 
+	private static final String HR_EVENT_AUTO_REQUEST_REASON = "HR event auto request";
+
 	private final TicketRepository ticketRepository;
 	private final AssetReturnTicketRepository assetReturnTicketRepository;
 	private final TangibleAssetAssignmentRepository tangibleAssetAssignmentRepository;
@@ -59,6 +63,7 @@ public class AssetReturnTicketService {
 	private final AssignedAssetValidator assignedAssetValidator;
 	private final TangibleAssetTicketConflictValidator tangibleAssetTicketConflictValidator;
 	private final IntangibleAssetTicketConflictValidator intangibleAssetTicketConflictValidator;
+	private final TicketService ticketService;
 	private final LogService logService;
 	private final NotificationService notificationService;
 
@@ -172,6 +177,27 @@ public class AssetReturnTicketService {
 		notifyMember(ticket.getRequester(), "자산 반납이 완료되었습니다.", "자산 반납 처리가 완료되었습니다.", ticket);
 
 		return AssetReturnCompleteResponse.from(ticket, assetReturnTicket);
+	}
+
+	@Transactional
+	public void approveDueOffboardingAssetReturnTickets(LocalDate executionDate) {
+		LocalDateTime startInclusive = executionDate.atStartOfDay();
+		LocalDateTime endExclusive = startInclusive.plusDays(1);
+
+		List<AssetReturnTicket> tickets = assetReturnTicketRepository
+			.findAllByTicket_RequestReasonAndTicket_TicketStatusAndTicket_CreatedAtGreaterThanEqualAndTicket_CreatedAtLessThanAndDeletedAtIsNullOrderByTicket_CreatedAtAsc(
+				HR_EVENT_AUTO_REQUEST_REASON,
+				TicketStatus.REQUESTED,
+				startInclusive,
+				endExclusive
+			);
+
+		for (AssetReturnTicket assetReturnTicket : tickets) {
+			ticketService.approveDepartmentForHrEvent(
+				assetReturnTicket.getCompany().getId(),
+				assetReturnTicket.getTicket().getId()
+			);
+		}
 	}
 
 	private AssetReturnTicketCreateResponse createTangibleReturnTicket(
