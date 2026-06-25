@@ -19,6 +19,7 @@ import com.ieumsae.assetieum.domain.hr.hreventassettarget.repository.HrEventAsse
 import com.ieumsae.assetieum.domain.hr.hreventassettarget.type.HrEventAssetActionType;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.entity.IntangibleAsset;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.repository.IntangibleAssetRepository;
+import com.ieumsae.assetieum.domain.intangibleasset.asset.type.IntangibleAssetStatus;
 import com.ieumsae.assetieum.domain.intangibleasset.assignment.entity.IntangibleAssetAssignment;
 import com.ieumsae.assetieum.domain.intangibleasset.assignment.repository.IntangibleAssetAssignmentRepository;
 import com.ieumsae.assetieum.domain.intangibleasset.assignment.type.AssignmentStatus;
@@ -26,6 +27,7 @@ import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.entity.TangibleAsset;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.repository.TangibleAssetRepository;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.type.TangibleAssetStatus;
 import com.ieumsae.assetieum.domain.ticket.common.type.AssetType;
 import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.common.util.CodeGenerator;
@@ -172,11 +174,11 @@ public class HrEventService {
         Member transferMember = resolveTransferMember(request, targetMember, companyId);
 
         if (request.getAssetType() == AssetType.TANGIBLE) {
-            tangibleAsset = tangibleAssetRepository.findByIdAndCompany_Id(request.getAssetId(), companyId)
+            tangibleAsset = tangibleAssetRepository.findByIdAndCompany_IdAndTangibleAssetStatus(request.getAssetId(), companyId, TangibleAssetStatus.IN_USE)
                     .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_NOT_FOUND));
             validateTargetMember(tangibleAsset.getMember(), targetMember);
         } else if (request.getAssetType() == AssetType.INTANGIBLE) {
-            intangibleAsset = intangibleAssetRepository.findByIdAndCompany_Id(request.getAssetId(), companyId)
+            intangibleAsset = intangibleAssetRepository.findByIdAndCompany_IdAndIntangibleAssetStatus(request.getAssetId(), companyId, IntangibleAssetStatus.IN_USE)
                     .orElseThrow(() -> new BusinessException(ErrorCode.INTANGIBLE_ASSET_NOT_FOUND));
             intangibleAssetAssignment = resolveActiveIntangibleAssignment(companyId, intangibleAsset, targetMember);
         } else {

@@ -143,7 +143,7 @@ public class IntangibleAssetAssignmentService {
                     .orElseThrow(() -> new BusinessException(ErrorCode.INTANGIBLE_ASSET_ASSIGNMENT_NOT_FOUND));
 
             assignment.end(endedAt);
-            asset.clearAssignee();
+            syncAssetStatusAfterSingleMemberEnd(asset, companyId);
             return List.of(IntangibleAssetAssignmentResponse.from(assignment));
         }
 
@@ -311,6 +311,22 @@ public class IntangibleAssetAssignmentService {
         if (activeAssignmentCount >= asset.getSeatCount()) {
             throw new BusinessException(ErrorCode.INTANGIBLE_ASSET_NOT_ASSIGNABLE);
         }
+    }
+
+    private void syncAssetStatusAfterSingleMemberEnd(IntangibleAsset asset, UUID companyId) {
+        long activeAssignmentCount = intangibleAssetAssignmentRepository
+                .countByCompany_IdAndIntangibleAsset_IdAndAssignmentStatus(
+                        companyId,
+                        asset.getId(),
+                        AssignmentStatus.ACTIVE
+                );
+
+        if (activeAssignmentCount > 0) {
+            asset.markInUse();
+            return;
+        }
+
+        asset.makeAvailable();
     }
 
     private void validateNotAlreadyAssigned(UUID assetId, UUID memberId, UUID companyId) {

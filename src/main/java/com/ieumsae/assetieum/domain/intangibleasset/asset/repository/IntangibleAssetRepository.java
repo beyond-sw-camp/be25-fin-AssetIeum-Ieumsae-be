@@ -101,4 +101,6 @@ public interface IntangibleAssetRepository extends JpaRepository<IntangibleAsset
             List<IntangibleAssetStatus> statuses,
             LocalDateTime endExclusive
     );
+
+    Optional<IntangibleAsset> findByIdAndCompany_IdAndIntangibleAssetStatus(UUID assetId, UUID companyId, IntangibleAssetStatus intangibleAssetStatus);
 }

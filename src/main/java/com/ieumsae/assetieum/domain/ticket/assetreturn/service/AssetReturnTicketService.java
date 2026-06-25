@@ -2,11 +2,12 @@ package com.ieumsae.assetieum.domain.ticket.assetreturn.service;
 
 import com.ieumsae.assetieum.domain.intangibleasset.assignment.entity.IntangibleAssetAssignment;
 import com.ieumsae.assetieum.domain.intangibleasset.assignment.repository.IntangibleAssetAssignmentRepository;
-import com.ieumsae.assetieum.domain.member.entity.Member;
-import com.ieumsae.assetieum.domain.member.type.MemberRole;
+import com.ieumsae.assetieum.domain.intangibleasset.assignment.service.IntangibleAssetAssignmentService;
 import com.ieumsae.assetieum.domain.log.service.LogService;
 import com.ieumsae.assetieum.domain.log.type.AuditLogAction;
 import com.ieumsae.assetieum.domain.log.type.LogSubjectType;
+import com.ieumsae.assetieum.domain.member.entity.Member;
+import com.ieumsae.assetieum.domain.member.type.MemberRole;
 import com.ieumsae.assetieum.domain.notification.service.NotificationService;
 import com.ieumsae.assetieum.domain.notification.type.NotificationTargetType;
 import com.ieumsae.assetieum.domain.notification.type.NotificationType;
@@ -29,10 +30,10 @@ import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
 import com.ieumsae.assetieum.domain.ticket.common.repository.TicketRepository;
 import com.ieumsae.assetieum.domain.ticket.common.service.AssignedAssetValidator;
 import com.ieumsae.assetieum.domain.ticket.common.service.IntangibleAssetTicketConflictValidator;
+import com.ieumsae.assetieum.domain.ticket.common.service.TangibleAssetTicketConflictValidator;
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketApprovalResolver;
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketNoGenerator;
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketRequesterResolver;
-import com.ieumsae.assetieum.domain.ticket.common.service.TangibleAssetTicketConflictValidator;
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketService;
 import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
 import com.ieumsae.assetieum.global.exception.BusinessException;
@@ -63,6 +64,7 @@ public class AssetReturnTicketService {
 	private final AssignedAssetValidator assignedAssetValidator;
 	private final TangibleAssetTicketConflictValidator tangibleAssetTicketConflictValidator;
 	private final IntangibleAssetTicketConflictValidator intangibleAssetTicketConflictValidator;
+	private final IntangibleAssetAssignmentService intangibleAssetAssignmentService;
 	private final TicketService ticketService;
 	private final LogService logService;
 	private final NotificationService notificationService;
@@ -212,7 +214,7 @@ public class AssetReturnTicketService {
 				requester.getId(),
 				AssignmentStatus.ACTIVE
 			)
-			.orElseThrow(() -> new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "사용 중인 유형자산 배정을 찾을 수 없습니다."));
+			.orElseThrow(() -> new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "?ъ슜 以묒씤 ?좏삎?먯궛 諛곗젙??李얠쓣 ???놁뒿?덈떎."));
 
 		validateTangibleReturnTarget(assignment, requester);
 		tangibleAssetTicketConflictValidator.validateNoOngoingTangibleAssetTicket(
@@ -377,15 +379,7 @@ public class AssetReturnTicketService {
 					AssignmentStatus.ACTIVE
 				)
 				.ifPresent(assignment -> assignment.end(endedAt));
-			return;
 		}
-
-		intangibleAssetAssignmentRepository.findAllByCompany_IdAndIntangibleAsset_IdAndAssignmentStatus(
-				companyId,
-				assetReturnTicket.getIntangibleAsset().getId(),
-				com.ieumsae.assetieum.domain.intangibleasset.assignment.type.AssignmentStatus.ACTIVE
-			)
-			.forEach(assignment -> assignment.end(endedAt));
 	}
 
 	private void markAssetCollected(AssetReturnTicket assetReturnTicket) {
@@ -407,7 +401,11 @@ public class AssetReturnTicketService {
 			return;
 		}
 
-		assetReturnTicket.getIntangibleAsset().cancel();
+		intangibleAssetAssignmentService.cancelAsset(
+			assetReturnTicket.getIntangibleAsset().getId(),
+			assetReturnTicket.getTicket().getRequester().getId(),
+			assetReturnTicket.getCompany().getId()
+		);
 	}
 
 	private boolean isRequester(Ticket ticket, Member viewer) {

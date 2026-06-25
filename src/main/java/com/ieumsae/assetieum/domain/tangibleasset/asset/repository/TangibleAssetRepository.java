@@ -3,15 +3,16 @@ package com.ieumsae.assetieum.domain.tangibleasset.asset.repository;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.entity.TangibleAsset;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.type.TangibleAssetStatus;
 import jakarta.persistence.LockModeType;
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 public interface TangibleAssetRepository extends JpaRepository<TangibleAsset, UUID>, TangibleAssetRepositoryCustom {
 
@@ -98,4 +99,6 @@ public interface TangibleAssetRepository extends JpaRepository<TangibleAsset, UU
             List<UUID> categoryIds,
             TangibleAssetStatus status
     );
+
+    Optional<TangibleAsset> findByIdAndCompany_IdAndTangibleAssetStatus(UUID assetId, UUID companyId, TangibleAssetStatus tangibleAssetStatus);
 }
