@@ -1,6 +1,7 @@
 package com.ieumsae.assetieum.domain.purchase.purchaseplanitem.dto;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import com.ieumsae.assetieum.domain.file.dto.FileResponse;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.PurchasePlanItem;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.type.PurchasePlanItemStatus;
 import com.ieumsae.assetieum.domain.ticket.common.type.AssetType;
@@ -10,6 +11,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 @Getter
@@ -26,7 +28,8 @@ import java.util.UUID;
     "productName",
     "quantity",
     "estimatedUnitPrice",
-    "totalAmount"
+    "totalAmount",
+    "evidenceFiles"
 })
 public class PurchasePlanItemDetailResponse {
 
@@ -58,7 +61,17 @@ public class PurchasePlanItemDetailResponse {
 
     private String ticketDepartmentName;
 
+    private List<FileResponse> evidenceFiles;
+
     public static PurchasePlanItemDetailResponse from(PurchasePlanItem item, String categoryName) {
+        return from(item, categoryName, List.of());
+    }
+
+    public static PurchasePlanItemDetailResponse from(
+            PurchasePlanItem item,
+            String categoryName,
+            List<FileResponse> evidenceFiles
+    ) {
         return PurchasePlanItemDetailResponse.builder()
                 .itemId(item.getId())
                 .assetType(item.getAssetType())
@@ -75,6 +88,7 @@ public class PurchasePlanItemDetailResponse {
                 .ticketRequesterName(item.getTicket() != null ? item.getTicket().getRequester().getName() : null)
                 .ticketDepartmentId(item.getTicket() != null ? item.getTicket().getDepartment().getId() : null)
                 .ticketDepartmentName(item.getTicket() != null ? item.getTicket().getDepartment().getName() : null)
+                .evidenceFiles(evidenceFiles)
                 .build();
     }
 }

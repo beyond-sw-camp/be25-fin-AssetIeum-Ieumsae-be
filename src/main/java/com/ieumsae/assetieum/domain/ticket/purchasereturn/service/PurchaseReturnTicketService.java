@@ -401,5 +401,3 @@ public class PurchaseReturnTicketService {
 		return role == MemberRole.ADMIN || role == MemberRole.ASSET_MANAGER || role == MemberRole.ASSET_TEAM;
 	}
 }
-
-
