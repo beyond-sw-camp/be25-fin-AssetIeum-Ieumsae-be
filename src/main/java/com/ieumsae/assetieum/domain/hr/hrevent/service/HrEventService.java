@@ -362,9 +362,7 @@ public class HrEventService {
             throw new BusinessException(ErrorCode.HR_EVENT_NOT_IN_PROGRESS);
         }
 
-        if (hrEvent.getEventType() == HrEventType.OFFBOARDING) {
-            hrEvent.getMember().resign();
-        }
+        completeHrEventMember(hrEvent);
         completeRelatedTargets(hrEvent);
         hrEvent.complete();
 
@@ -417,10 +415,22 @@ public class HrEventService {
     }
 
     private void completeOffboardingHrEvent(HrEvent hrEvent) {
-        if (hrEvent.getEventType() == HrEventType.OFFBOARDING) {
-            hrEvent.getMember().resign();
-        }
+        completeHrEventMember(hrEvent);
         completeRelatedTargets(hrEvent);
         hrEvent.complete();
+    }
+
+    private void completeHrEventMember(HrEvent hrEvent) {
+        if (hrEvent.getEventType() == HrEventType.OFFBOARDING) {
+            hrEvent.getMember().resign();
+            return;
+        }
+
+        if (hrEvent.getEventType() == HrEventType.DEPARTMENT_TRANSFER) {
+            if (hrEvent.getTargetDepartment() == null) {
+                throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+            }
+            hrEvent.getMember().changeDepartment(hrEvent.getTargetDepartment());
+        }
     }
 }

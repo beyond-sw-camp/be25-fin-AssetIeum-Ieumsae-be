@@ -76,7 +76,7 @@ public class PurchasePlanItemDetailResponse {
     public static PurchasePlanItemDetailResponse from(
             PurchasePlanItem item,
             String categoryName,
-            java.util.List<UUID> ticketTargetMemberIds
+            List<UUID> ticketTargetMemberIds
     ) {
         return PurchasePlanItemDetailResponse.builder()
                 .itemId(item.getId())
