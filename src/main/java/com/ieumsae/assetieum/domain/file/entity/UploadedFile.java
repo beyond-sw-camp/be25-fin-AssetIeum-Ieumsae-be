@@ -43,7 +43,7 @@ public class UploadedFile {
 	@Column(name = "target_type", nullable = false, length = 50)
 	private FileTargetType targetType;
 
-	@Column(name = "target_id", nullable = false, length = 36)
+	@Column(name = "target_id", nullable = false, columnDefinition = "CHAR(36)")
 	private String targetId;
 
 	@Column(name = "name", nullable = false)
