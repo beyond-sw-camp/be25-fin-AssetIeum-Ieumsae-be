@@ -214,7 +214,7 @@ public class AssetReturnTicketService {
 				requester.getId(),
 				AssignmentStatus.ACTIVE
 			)
-			.orElseThrow(() -> new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "?ъ슜 以묒씤 ?좏삎?먯궛 諛곗젙??李얠쓣 ???놁뒿?덈떎."));
+				.orElseThrow(() -> new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "사용 중인 유형자산 배정을 찾을 수 없습니다."));
 
 		validateTangibleReturnTarget(assignment, requester);
 		tangibleAssetTicketConflictValidator.validateNoOngoingTangibleAssetTicket(
