@@ -14,10 +14,10 @@ import com.ieumsae.assetieum.domain.tangibleasset.asset.repository.TangibleAsset
 import com.ieumsae.assetieum.domain.tangibleasset.asset.type.TangibleAssetStatus;
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
 import com.ieumsae.assetieum.domain.tangibleasset.item.repository.TangibleAssetItemRepository;
-import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.AssetRequestAssignableItemSearchRequest;
-import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.AssetRequestAssignableItemsResponse;
 import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.AssetRequestAssignRequest;
 import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.AssetRequestAssignResponse;
+import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.AssetRequestAssignableItemSearchRequest;
+import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.AssetRequestAssignableItemsResponse;
 import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.AssetRequestTicketCreateRequest;
 import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.AssetRequestTicketCreateResponse;
 import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.AssetRequestTicketDetailResponse;
@@ -30,22 +30,29 @@ import com.ieumsae.assetieum.domain.ticket.common.service.TicketApprovalResolver
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketAssignmentTargetService;
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketNoGenerator;
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketRequesterResolver;
+import com.ieumsae.assetieum.domain.ticket.common.service.TicketService;
 import com.ieumsae.assetieum.domain.ticket.common.type.AssetType;
 import com.ieumsae.assetieum.domain.ticket.common.type.RequestedUsageType;
+import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
-import java.util.List;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class AssetRequestTicketService {
+
+	private static final String HR_EVENT_ONBOARDING_REQUEST_REASON = "입사 자산 신청";
 
 	private final TicketRepository ticketRepository;
 	private final AssetRequestTicketRepository assetRequestTicketRepository;
@@ -57,6 +64,7 @@ public class AssetRequestTicketService {
 	private final TicketNoGenerator ticketNoGenerator;
 	private final TicketApprovalResolver ticketApprovalResolver;
 	private final TicketRequesterResolver ticketRequesterResolver;
+	private final TicketService ticketService;
 	private final AssetRequestAssignmentService assetRequestAssignmentService;
 	private final AssetRequestAvailabilityService assetRequestAvailabilityService;
 	private final AssetRequestActionResolver assetRequestActionResolver;
@@ -124,6 +132,27 @@ public class AssetRequestTicketService {
 			request.getAssetType(),
 			request.getAssetItemId()
 		);
+	}
+
+	@Transactional
+	public void approveDueOnboardingAssetRequestTickets(LocalDate executionDate) {
+		LocalDateTime startInclusive = executionDate.atStartOfDay();
+		LocalDateTime endExclusive = startInclusive.plusDays(1);
+
+		List<AssetRequestTicket> tickets = assetRequestTicketRepository
+			.findAllByTicket_RequestReasonAndTicket_TicketStatusAndTicket_CreatedAtGreaterThanEqualAndTicket_CreatedAtLessThanAndDeletedAtIsNullOrderByTicket_CreatedAtAsc(
+				HR_EVENT_ONBOARDING_REQUEST_REASON,
+				TicketStatus.REQUESTED,
+				startInclusive,
+				endExclusive
+			);
+
+		for (AssetRequestTicket assetRequestTicket : tickets) {
+			ticketService.approveDepartmentForHrEvent(
+				assetRequestTicket.getCompany().getId(),
+				assetRequestTicket.getTicket().getId()
+			);
+		}
 	}
 
 	public AssetRequestTicketDetailResponse getAssetRequestTicket(

@@ -8,9 +8,7 @@ import com.ieumsae.assetieum.domain.hr.hrtemplateitem.entity.HrTemplateItem;
 import com.ieumsae.assetieum.domain.hr.hrtemplateitem.repository.HrTemplateItemRepository;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.AssetRequestTicketCreateRequest;
-import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.AssetRequestTicketCreateResponse;
 import com.ieumsae.assetieum.domain.ticket.assetrequest.service.AssetRequestTicketService;
-import com.ieumsae.assetieum.domain.ticket.common.service.TicketService;
 import com.ieumsae.assetieum.domain.ticket.common.type.AssetType;
 import com.ieumsae.assetieum.domain.ticket.common.type.RequestedUsageType;
 import com.ieumsae.assetieum.global.exception.BusinessException;
@@ -28,7 +26,6 @@ public class OnboardingHrEventHandler implements HrEventHandler {
     private final HrTemplateRepository hrTemplateRepository;
     private final HrTemplateItemRepository hrTemplateItemRepository;
     private final AssetRequestTicketService assetRequestTicketService;
-    private final TicketService ticketService;
 
     @Override
     public HrEventType supports() {
@@ -48,16 +45,19 @@ public class OnboardingHrEventHandler implements HrEventHandler {
         AuthenticatedMember targetMember = toAuthenticatedMember(hrEvent.getMember());
 
         for (HrTemplateItem item : hrTemplateItems) {
-            AssetRequestTicketCreateResponse ticket = assetRequestTicketService.createAssetRequestTicket(targetMember, createAssetRequest(item));
-            ticketService.approveDepartmentForHrEvent(hrEvent.getCompany().getId(), ticket.getTicketId());
+            assetRequestTicketService.createAssetRequestTicket(
+                    targetMember,
+                    createAssetRequest(item, hrEvent.getMember())
+            );
         }
     }
 
-    private AssetRequestTicketCreateRequest createAssetRequest(HrTemplateItem item) {
+    private AssetRequestTicketCreateRequest createAssetRequest(HrTemplateItem item, Member targetMember) {
         AssetRequestTicketCreateRequest request = new AssetRequestTicketCreateRequest();
         request.setRequestedUsageType(RequestedUsageType.PERSONAL);
         request.setQuantity(item.getQuantity());
         request.setRequestReason("입사 자산 신청");
+        request.setAssignmentTargetMemberIds(List.of(targetMember.getId()));
 
         if (item.getTangibleAssetItem() != null) {
             request.setAssetType(AssetType.TANGIBLE);

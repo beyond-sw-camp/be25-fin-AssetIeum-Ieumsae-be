@@ -1,6 +1,7 @@
 package com.ieumsae.assetieum.batch.hrevent.config;
 
 import com.ieumsae.assetieum.domain.hr.hrevent.service.HrEventService;
+import com.ieumsae.assetieum.domain.ticket.assetrequest.service.AssetRequestTicketService;
 import com.ieumsae.assetieum.domain.ticket.assetreturn.service.AssetReturnTicketService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.batch.core.Job;
@@ -26,13 +27,14 @@ public class HrEventExecutionJobConfig {
     private final JobRepository jobRepository;
     private final PlatformTransactionManager transactionManager;
     private final HrEventService hrEventService;
+    private final AssetRequestTicketService assetRequestTicketService;
     private final AssetReturnTicketService assetReturnTicketService;
 
     @Bean
     public Job hrEventExecutionJob() {
         return new JobBuilder(JOB_NAME, jobRepository)
                 .start(executeHrEventsStep())
-                .next(approveOffboardingAssetReturnTicketsStep())
+                .next(approveHrEventAutoCreatedTicketsStep())
                 .build();
     }
 
@@ -47,9 +49,10 @@ public class HrEventExecutionJobConfig {
     }
 
     @Bean
-    public Step approveOffboardingAssetReturnTicketsStep() {
-        return new StepBuilder("approveOffboardingAssetReturnTicketsStep", jobRepository)
+    public Step approveHrEventAutoCreatedTicketsStep() {
+        return new StepBuilder("approveHrEventAutoCreatedTicketsStep", jobRepository)
                 .tasklet((contribution, chunkContext) -> {
+                    assetRequestTicketService.approveDueOnboardingAssetRequestTickets(resolveExecutionDate(chunkContext));
                     assetReturnTicketService.approveDueOffboardingAssetReturnTickets(resolveExecutionDate(chunkContext));
                     return RepeatStatus.FINISHED;
                 }, transactionManager)
