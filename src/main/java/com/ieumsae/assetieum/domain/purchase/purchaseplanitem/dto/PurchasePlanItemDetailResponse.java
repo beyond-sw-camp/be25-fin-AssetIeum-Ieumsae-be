@@ -29,6 +29,7 @@ import java.util.UUID;
     "quantity",
     "estimatedUnitPrice",
     "totalAmount",
+    "ticket",
     "evidenceFiles"
 })
 public class PurchasePlanItemDetailResponse {
@@ -53,23 +54,36 @@ public class PurchasePlanItemDetailResponse {
 
     private BigDecimal totalAmount;
 
-    private UUID ticketRequesterId;
-
-    private String ticketRequesterName;
-
-    private UUID ticketDepartmentId;
-
-    private String ticketDepartmentName;
+    private TicketInfo ticket;
 
     private List<FileResponse> evidenceFiles;
 
-    public static PurchasePlanItemDetailResponse from(PurchasePlanItem item, String categoryName) {
-        return from(item, categoryName, List.of());
+    @Getter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @JsonPropertyOrder({
+            "ticketRequesterId",
+            "ticketRequesterName",
+            "ticketDepartmentId",
+            "ticketDepartmentName",
+            "ticketTargetMemberIds"
+    })
+    public static class TicketInfo {
+        private UUID ticketRequesterId;
+        private String ticketRequesterName;
+        private UUID ticketDepartmentId;
+        private String ticketDepartmentName;
+        private List<UUID> ticketTargetMemberIds;
     }
 
+    public static PurchasePlanItemDetailResponse from(PurchasePlanItem item, String categoryName) {
+        return from(item, categoryName, List.of(), List.of());
+    }
     public static PurchasePlanItemDetailResponse from(
             PurchasePlanItem item,
             String categoryName,
+            List<UUID> ticketTargetMemberIds,
             List<FileResponse> evidenceFiles
     ) {
         return PurchasePlanItemDetailResponse.builder()
@@ -84,11 +98,22 @@ public class PurchasePlanItemDetailResponse {
                 .estimatedUnitPrice(item.getEstimatedUnitPrice())
                 .totalAmount(item.getEstimatedUnitPrice()
                         .multiply(BigDecimal.valueOf(item.getQuantity())))
-                .ticketRequesterId(item.getTicket() != null ? item.getTicket().getRequester().getId() : null)
-                .ticketRequesterName(item.getTicket() != null ? item.getTicket().getRequester().getName() : null)
-                .ticketDepartmentId(item.getTicket() != null ? item.getTicket().getDepartment().getId() : null)
-                .ticketDepartmentName(item.getTicket() != null ? item.getTicket().getDepartment().getName() : null)
+                .ticket(buildTicketInfo(item, ticketTargetMemberIds))
                 .evidenceFiles(evidenceFiles)
+                .build();
+    }
+
+    private static TicketInfo buildTicketInfo(PurchasePlanItem item, java.util.List<UUID> ticketTargetMemberIds) {
+        if (item.getTicket() == null) {
+            return null;
+        }
+
+        return TicketInfo.builder()
+                .ticketRequesterId(item.getTicket().getRequester().getId())
+                .ticketRequesterName(item.getTicket().getRequester().getName())
+                .ticketDepartmentId(item.getTicket().getDepartment().getId())
+                .ticketDepartmentName(item.getTicket().getDepartment().getName())
+                .ticketTargetMemberIds(ticketTargetMemberIds)
                 .build();
     }
 }

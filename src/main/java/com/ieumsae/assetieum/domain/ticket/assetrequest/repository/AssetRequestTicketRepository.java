@@ -1,12 +1,15 @@
 package com.ieumsae.assetieum.domain.ticket.assetrequest.repository;
 
 import com.ieumsae.assetieum.domain.ticket.assetrequest.entity.AssetRequestTicket;
-import java.util.Optional;
-import java.util.List;
-import java.util.UUID;
+import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 public interface AssetRequestTicketRepository extends JpaRepository<AssetRequestTicket, UUID> {
 
@@ -37,4 +40,11 @@ public interface AssetRequestTicketRepository extends JpaRepository<AssetRequest
 			)
 		""")
 	List<AssetRequestTicket> findPurchasePlanCandidates(@Param("companyId") UUID companyId);
+
+	List<AssetRequestTicket> findAllByTicket_RequestReasonAndTicket_TicketStatusAndTicket_CreatedAtGreaterThanEqualAndTicket_CreatedAtLessThanAndDeletedAtIsNullOrderByTicket_CreatedAtAsc(
+		String requestReason,
+		TicketStatus ticketStatus,
+		LocalDateTime startInclusive,
+		LocalDateTime endExclusive
+	);
 }

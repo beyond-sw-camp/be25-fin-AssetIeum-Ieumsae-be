@@ -482,6 +482,7 @@ public class PurchasePlanService {
         return PurchasePlanItemDetailResponse.from(
                 item,
                 resolvePurchasePlanItemCategoryName(item, companyId),
+                resolveTicketTargetMemberIds(item, companyId),
                 evidenceFiles
         );
     }
@@ -505,6 +506,17 @@ public class PurchasePlanService {
         }
 
         return null;
+    }
+
+    private List<UUID> resolveTicketTargetMemberIds(PurchasePlanItem item, UUID companyId) {
+        if (item.getTicket() == null) {
+            return List.of();
+        }
+
+        List<TicketAssignmentTarget> targets = ticketAssignmentTargetService.findTargets(companyId, item.getTicket());
+        return targets.stream()
+                .map(target -> target.getMember().getId())
+                .toList();
     }
 
     private void validatePurchasePlanCompletionReady(

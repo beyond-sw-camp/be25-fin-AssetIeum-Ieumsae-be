@@ -3,20 +3,26 @@ package com.ieumsae.assetieum.domain.hr.hrevent.service.handler;
 import com.ieumsae.assetieum.domain.hr.hrevent.entity.HrEvent;
 import com.ieumsae.assetieum.domain.hr.hreventassettarget.entity.HrEventAssetTarget;
 import com.ieumsae.assetieum.domain.hr.hreventassettarget.type.HrEventAssetActionType;
+import com.ieumsae.assetieum.domain.intangibleasset.asset.type.IntangibleAssetStatus;
 import com.ieumsae.assetieum.domain.intangibleasset.assignment.repository.IntangibleAssetAssignmentRepository;
 import com.ieumsae.assetieum.domain.intangibleasset.assignment.service.IntangibleAssetAssignmentService;
+import com.ieumsae.assetieum.domain.intangibleasset.assignment.type.AssignmentStatus;
 import com.ieumsae.assetieum.domain.member.entity.Member;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.type.TangibleAssetStatus;
 import com.ieumsae.assetieum.domain.tangibleasset.assignment.entity.TangibleAssetAssignment;
 import com.ieumsae.assetieum.domain.tangibleasset.assignment.repository.TangibleAssetAssignmentRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.assignment.service.TangibleAssetAssignmentService;
 import com.ieumsae.assetieum.domain.ticket.assetreturn.dto.AssetReturnTicketCreateRequest;
+import com.ieumsae.assetieum.domain.ticket.assetreturn.repository.AssetReturnTicketRepository;
 import com.ieumsae.assetieum.domain.ticket.assetreturn.service.AssetReturnTicketService;
 import com.ieumsae.assetieum.domain.ticket.assetreturn.type.AssetReturnTargetType;
 import com.ieumsae.assetieum.domain.ticket.common.type.AssetType;
+import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -25,13 +31,27 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class HrEventAssetTargetProcessor {
 
-    private static final String HR_EVENT_AUTO_REQUEST_REASON = "HR 이벤트 자동 생성";
+    private static final String HR_EVENT_AUTO_REQUEST_REASON = "HR event auto request";
 
     private final TangibleAssetAssignmentService tangibleAssetAssignmentService;
     private final IntangibleAssetAssignmentService intangibleAssetAssignmentService;
     private final TangibleAssetAssignmentRepository tangibleAssetAssignmentRepository;
     private final IntangibleAssetAssignmentRepository intangibleAssetAssignmentRepository;
+    private final AssetReturnTicketRepository assetReturnTicketRepository;
     private final AssetReturnTicketService assetReturnTicketService;
+
+    private static final List<TicketStatus> TANGIBLE_RETURN_ONGOING_STATUSES = List.of(
+            TicketStatus.REQUESTED,
+            TicketStatus.DEPARTMENT_APPROVED,
+            TicketStatus.ASSET_APPROVED,
+            TicketStatus.IN_PROGRESS
+    );
+
+    private static final List<TicketStatus> INTANGIBLE_RETURN_ONGOING_STATUSES = List.of(
+            TicketStatus.REQUESTED,
+            TicketStatus.DEPARTMENT_APPROVED,
+            TicketStatus.IN_PROGRESS
+    );
 
     public void process(HrEvent hrEvent, HrEventAssetTarget target, UUID companyId, boolean allowKeep) {
         HrEventAssetActionType actionType = target.getActionType();
@@ -51,9 +71,16 @@ public class HrEventAssetTargetProcessor {
             return;
         }
 
-        if (actionType == HrEventAssetActionType.RETURN_REQUIRED
-                || actionType == HrEventAssetActionType.UNASSIGN_REQUIRED) {
-            createReturnTicket(target, companyId);
+        if (actionType == HrEventAssetActionType.RETURN_REQUIRED) {
+            if (isAlreadyReturnedOrUnassigned(target, companyId)) {
+                target.complete(LocalDateTime.now());
+                return;
+            }
+            if (hasOngoingReturnTicket(target, companyId)) {
+                target.process(LocalDateTime.now());
+                return;
+            }
+            createReturnTicket(hrEvent, target, companyId);
             target.process(LocalDateTime.now());
             return;
         }
@@ -116,13 +143,51 @@ public class HrEventAssetTargetProcessor {
         throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
     }
 
-    private void createReturnTicket(HrEventAssetTarget target, UUID companyId) {
+    private boolean isAlreadyReturnedOrUnassigned(HrEventAssetTarget target, UUID companyId) {
+        if (target.getAssetType() == AssetType.TANGIBLE) {
+            TangibleAssetStatus status = target.getTangibleAsset().getTangibleAssetStatus();
+            if (status != TangibleAssetStatus.IN_USE) {
+                return true;
+            }
+
+            return tangibleAssetAssignmentRepository
+                    .findByCompany_IdAndTangibleAsset_IdAndAssignmentStatus(
+                            companyId,
+                            target.getTangibleAsset().getId(),
+                            com.ieumsae.assetieum.domain.tangibleasset.assignment.type.AssignmentStatus.ACTIVE
+                    )
+                    .isEmpty();
+        }
+
+        if (target.getAssetType() == AssetType.INTANGIBLE) {
+            if (target.getIntangibleAsset().getIntangibleAssetStatus() != IntangibleAssetStatus.IN_USE) {
+                return true;
+            }
+
+            if (target.getIntangibleAssetAssignment() != null) {
+                return target.getIntangibleAssetAssignment().getAssignmentStatus() != AssignmentStatus.ACTIVE;
+            }
+
+            return intangibleAssetAssignmentRepository
+                    .findByCompany_IdAndIntangibleAsset_IdAndMember_IdAndAssignmentStatus(
+                            companyId,
+                            target.getIntangibleAsset().getId(),
+                            target.getMember().getId(),
+                            AssignmentStatus.ACTIVE
+                    )
+                    .isEmpty();
+        }
+
+        return false;
+    }
+
+    private void createReturnTicket(HrEvent hrEvent, HrEventAssetTarget target, UUID companyId) {
         AssetReturnTicketCreateRequest request = new AssetReturnTicketCreateRequest();
         request.setAssetType(resolveReturnTargetType(target));
         request.setAssignmentId(resolveAssignmentId(target, companyId));
         request.setRequestReason(HR_EVENT_AUTO_REQUEST_REASON);
 
-        assetReturnTicketService.createAssetReturnTicket(toAuthenticatedMember(target.getMember()), request);
+        assetReturnTicketService.createAssetReturnTicket(toAuthenticatedMember(hrEvent.getMember()), request);
     }
 
     private AssetReturnTargetType resolveReturnTargetType(HrEventAssetTarget target) {
@@ -135,6 +200,28 @@ public class HrEventAssetTargetProcessor {
         }
 
         throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+    }
+
+    private boolean hasOngoingReturnTicket(HrEventAssetTarget target, UUID companyId) {
+        if (target.getAssetType() == AssetType.TANGIBLE) {
+            return assetReturnTicketRepository
+                    .existsByCompany_IdAndTangibleAsset_IdAndTicket_TicketStatusInAndDeletedAtIsNull(
+                            companyId,
+                            target.getTangibleAsset().getId(),
+                            TANGIBLE_RETURN_ONGOING_STATUSES
+                    );
+        }
+
+        if (target.getAssetType() == AssetType.INTANGIBLE) {
+            return assetReturnTicketRepository
+                    .existsByCompany_IdAndIntangibleAsset_IdAndTicket_TicketStatusInAndDeletedAtIsNull(
+                            companyId,
+                            target.getIntangibleAsset().getId(),
+                            INTANGIBLE_RETURN_ONGOING_STATUSES
+                    );
+        }
+
+        return false;
     }
 
     private UUID resolveAssignmentId(HrEventAssetTarget target, UUID companyId) {
@@ -159,7 +246,7 @@ public class HrEventAssetTargetProcessor {
                             companyId,
                             target.getIntangibleAsset().getId(),
                             target.getMember().getId(),
-                            com.ieumsae.assetieum.domain.intangibleasset.assignment.type.AssignmentStatus.ACTIVE
+                            AssignmentStatus.ACTIVE
                     )
                     .orElseThrow(() -> new BusinessException(ErrorCode.INTANGIBLE_ASSET_ASSIGNMENT_NOT_FOUND))
                     .getId();
