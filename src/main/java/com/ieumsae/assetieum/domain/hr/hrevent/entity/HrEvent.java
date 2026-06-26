@@ -86,7 +86,7 @@ public class HrEvent extends BaseEntity {
         this.cancelledAt = LocalDateTime.now();
     }
 
-    public void start() {
+    public void process() {
         this.hrEventStatus = HrEventStatus.IN_PROGRESS;
         this.executedAt = LocalDateTime.now();
     }

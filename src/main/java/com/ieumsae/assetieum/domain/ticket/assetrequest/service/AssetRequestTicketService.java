@@ -14,10 +14,10 @@ import com.ieumsae.assetieum.domain.tangibleasset.asset.repository.TangibleAsset
 import com.ieumsae.assetieum.domain.tangibleasset.asset.type.TangibleAssetStatus;
 import com.ieumsae.assetieum.domain.tangibleasset.item.entity.TangibleAssetItem;
 import com.ieumsae.assetieum.domain.tangibleasset.item.repository.TangibleAssetItemRepository;
-import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.AssetRequestAssignableItemSearchRequest;
-import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.AssetRequestAssignableItemsResponse;
 import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.AssetRequestAssignRequest;
 import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.AssetRequestAssignResponse;
+import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.AssetRequestAssignableItemSearchRequest;
+import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.AssetRequestAssignableItemsResponse;
 import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.AssetRequestTicketCreateRequest;
 import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.AssetRequestTicketCreateResponse;
 import com.ieumsae.assetieum.domain.ticket.assetrequest.dto.AssetRequestTicketDetailResponse;
@@ -30,22 +30,32 @@ import com.ieumsae.assetieum.domain.ticket.common.service.TicketApprovalResolver
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketAssignmentTargetService;
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketNoGenerator;
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketRequesterResolver;
+import com.ieumsae.assetieum.domain.ticket.common.service.TicketService;
 import com.ieumsae.assetieum.domain.ticket.common.type.AssetType;
 import com.ieumsae.assetieum.domain.ticket.common.type.RequestedUsageType;
+import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
+import com.ieumsae.assetieum.domain.notification.service.NotificationService;
+import com.ieumsae.assetieum.domain.notification.type.NotificationTargetType;
+import com.ieumsae.assetieum.domain.notification.type.NotificationType;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
-import java.util.List;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class AssetRequestTicketService {
+
+	private static final String HR_EVENT_ONBOARDING_REQUEST_REASON = "입사 자산 신청";
 
 	private final TicketRepository ticketRepository;
 	private final AssetRequestTicketRepository assetRequestTicketRepository;
@@ -57,11 +67,13 @@ public class AssetRequestTicketService {
 	private final TicketNoGenerator ticketNoGenerator;
 	private final TicketApprovalResolver ticketApprovalResolver;
 	private final TicketRequesterResolver ticketRequesterResolver;
+	private final TicketService ticketService;
 	private final AssetRequestAssignmentService assetRequestAssignmentService;
 	private final AssetRequestAvailabilityService assetRequestAvailabilityService;
 	private final AssetRequestActionResolver assetRequestActionResolver;
 	private final TicketAssignmentTargetService ticketAssignmentTargetService;
 	private final PurchasePlanItemRepository purchasePlanItemRepository;
+	private final NotificationService notificationService;
 
 	@Transactional
 	public AssetRequestTicketCreateResponse createAssetRequestTicket(
@@ -117,6 +129,7 @@ public class AssetRequestTicketService {
 			requestedUsageType,
 			request.getAssetType() == AssetType.TANGIBLE
 		);
+		notifyTicketApprover(ticket, "자산 요청이 접수되었습니다.", "자산 요청을 확인하고 승인 여부를 처리하세요.");
 
 		return AssetRequestTicketCreateResponse.from(
 			ticket,
@@ -124,6 +137,27 @@ public class AssetRequestTicketService {
 			request.getAssetType(),
 			request.getAssetItemId()
 		);
+	}
+
+	@Transactional
+	public void approveDueOnboardingAssetRequestTickets(LocalDate executionDate) {
+		LocalDateTime startInclusive = executionDate.atStartOfDay();
+		LocalDateTime endExclusive = startInclusive.plusDays(1);
+
+		List<AssetRequestTicket> tickets = assetRequestTicketRepository
+			.findAllByTicket_RequestReasonAndTicket_TicketStatusAndTicket_CreatedAtGreaterThanEqualAndTicket_CreatedAtLessThanAndDeletedAtIsNullOrderByTicket_CreatedAtAsc(
+				HR_EVENT_ONBOARDING_REQUEST_REASON,
+				TicketStatus.REQUESTED,
+				startInclusive,
+				endExclusive
+			);
+
+		for (AssetRequestTicket assetRequestTicket : tickets) {
+			ticketService.approveDepartmentForHrEvent(
+				assetRequestTicket.getCompany().getId(),
+				assetRequestTicket.getTicket().getId()
+			);
+		}
 	}
 
 	public AssetRequestTicketDetailResponse getAssetRequestTicket(
@@ -159,6 +193,22 @@ public class AssetRequestTicketService {
 			)
 			.map(purchasePlanItem -> purchasePlanItem.getPurchasePlan().getId())
 			.orElse(null);
+	}
+
+	private void notifyTicketApprover(Ticket ticket, String title, String content) {
+		Member approver = ticket.getApprover();
+		if (approver == null || !approver.isActive()) {
+			return;
+		}
+
+		notificationService.createNotification(
+			approver,
+			NotificationType.TICKET_STATUS_CHANGED,
+			title,
+			content,
+			NotificationTargetType.TICKET,
+			ticket.getId()
+		);
 	}
 
 	private List<TicketAssignmentTargetResponse> getAssignmentTargetResponses(UUID companyId, Ticket ticket) {

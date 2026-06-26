@@ -118,6 +118,18 @@ public class PurchasePlanItem extends BaseEntity {
         this.purchasePlanItemStatus = PurchasePlanItemStatus.RECEIVED;
     }
 
+    public void markReceivedIfNeeded() {
+        if (this.purchasePlanItemStatus != PurchasePlanItemStatus.PENDING) {
+            return;
+        }
+
+        updateStatus();
+    }
+
+    public void markItemRegistered() {
+        this.purchasePlanItemStatus = PurchasePlanItemStatus.ITEM_REGISTERED;
+    }
+
     public void markAssetRegistered(BigDecimal actualUnitPrice) {
         this.actualUnitPrice = actualUnitPrice;
         this.purchasePlanItemStatus = PurchasePlanItemStatus.ASSET_REGISTERED;

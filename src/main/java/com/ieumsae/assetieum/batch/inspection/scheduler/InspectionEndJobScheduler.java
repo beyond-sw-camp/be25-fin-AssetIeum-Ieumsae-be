@@ -7,6 +7,8 @@ import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.batch.core.repository.JobExecutionAlreadyRunningException;
+import org.springframework.batch.core.repository.JobInstanceAlreadyCompleteException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -26,8 +28,11 @@ public class InspectionEndJobScheduler {
                         InspectionEndJobConfig.INSPECTION_END_DATE_PARAMETER,
                         LocalDate.now().toString()
                 )
+                .addLong("run.id", System.currentTimeMillis())
                 .toJobParameters();
-
-        jobLauncher.run(inspectionEndJob, jobParameters);
+        try {
+            jobLauncher.run(inspectionEndJob, jobParameters);
+        } catch (JobInstanceAlreadyCompleteException | JobExecutionAlreadyRunningException ignored) {
+        }
     }
 }

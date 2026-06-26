@@ -25,4 +25,11 @@ public interface HrEventRepository extends JpaRepository<HrEvent, UUID>, HrEvent
             LocalDateTime startInclusive,
             LocalDateTime endExclusive
     );
+
+    List<HrEvent> findAllByHrEventStatusAndEventTypeAndEventDateGreaterThanEqualAndEventDateLessThanAndCancelledAtIsNullOrderByEventDateAsc(
+            HrEventStatus status,
+            HrEventType eventType,
+            LocalDateTime startInclusive,
+            LocalDateTime endExclusive
+    );
 }

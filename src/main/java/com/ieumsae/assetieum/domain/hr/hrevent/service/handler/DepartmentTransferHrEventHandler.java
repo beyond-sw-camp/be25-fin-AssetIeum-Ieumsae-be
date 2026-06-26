@@ -22,7 +22,7 @@ public class DepartmentTransferHrEventHandler implements HrEventHandler {
 
     @Override
     public void handle(HrEvent hrEvent) {
-        hrEvent.start();
+        hrEvent.process();
         List<HrEventAssetTarget> targets = hrEventAssetTargetRepository
                 .findAllByHrEvent_IdAndCompany_IdOrderByCreatedAtAsc(
                         hrEvent.getId(),

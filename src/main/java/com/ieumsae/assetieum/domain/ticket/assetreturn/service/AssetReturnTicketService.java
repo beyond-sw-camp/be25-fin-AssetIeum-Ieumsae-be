@@ -2,11 +2,12 @@ package com.ieumsae.assetieum.domain.ticket.assetreturn.service;
 
 import com.ieumsae.assetieum.domain.intangibleasset.assignment.entity.IntangibleAssetAssignment;
 import com.ieumsae.assetieum.domain.intangibleasset.assignment.repository.IntangibleAssetAssignmentRepository;
-import com.ieumsae.assetieum.domain.member.entity.Member;
-import com.ieumsae.assetieum.domain.member.type.MemberRole;
+import com.ieumsae.assetieum.domain.intangibleasset.assignment.service.IntangibleAssetAssignmentService;
 import com.ieumsae.assetieum.domain.log.service.LogService;
 import com.ieumsae.assetieum.domain.log.type.AuditLogAction;
 import com.ieumsae.assetieum.domain.log.type.LogSubjectType;
+import com.ieumsae.assetieum.domain.member.entity.Member;
+import com.ieumsae.assetieum.domain.member.type.MemberRole;
 import com.ieumsae.assetieum.domain.notification.service.NotificationService;
 import com.ieumsae.assetieum.domain.notification.type.NotificationTargetType;
 import com.ieumsae.assetieum.domain.notification.type.NotificationType;
@@ -29,14 +30,16 @@ import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
 import com.ieumsae.assetieum.domain.ticket.common.repository.TicketRepository;
 import com.ieumsae.assetieum.domain.ticket.common.service.AssignedAssetValidator;
 import com.ieumsae.assetieum.domain.ticket.common.service.IntangibleAssetTicketConflictValidator;
+import com.ieumsae.assetieum.domain.ticket.common.service.TangibleAssetTicketConflictValidator;
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketApprovalResolver;
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketNoGenerator;
 import com.ieumsae.assetieum.domain.ticket.common.service.TicketRequesterResolver;
-import com.ieumsae.assetieum.domain.ticket.common.service.TangibleAssetTicketConflictValidator;
+import com.ieumsae.assetieum.domain.ticket.common.service.TicketService;
 import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -49,6 +52,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class AssetReturnTicketService {
 
+	private static final String HR_EVENT_AUTO_REQUEST_REASON = "HR event auto request";
+
 	private final TicketRepository ticketRepository;
 	private final AssetReturnTicketRepository assetReturnTicketRepository;
 	private final TangibleAssetAssignmentRepository tangibleAssetAssignmentRepository;
@@ -59,6 +64,8 @@ public class AssetReturnTicketService {
 	private final AssignedAssetValidator assignedAssetValidator;
 	private final TangibleAssetTicketConflictValidator tangibleAssetTicketConflictValidator;
 	private final IntangibleAssetTicketConflictValidator intangibleAssetTicketConflictValidator;
+	private final IntangibleAssetAssignmentService intangibleAssetAssignmentService;
+	private final TicketService ticketService;
 	private final LogService logService;
 	private final NotificationService notificationService;
 
@@ -174,6 +181,27 @@ public class AssetReturnTicketService {
 		return AssetReturnCompleteResponse.from(ticket, assetReturnTicket);
 	}
 
+	@Transactional
+	public void approveDueOffboardingAssetReturnTickets(LocalDate executionDate) {
+		LocalDateTime startInclusive = executionDate.atStartOfDay();
+		LocalDateTime endExclusive = startInclusive.plusDays(1);
+
+		List<AssetReturnTicket> tickets = assetReturnTicketRepository
+			.findAllByTicket_RequestReasonAndTicket_TicketStatusAndTicket_CreatedAtGreaterThanEqualAndTicket_CreatedAtLessThanAndDeletedAtIsNullOrderByTicket_CreatedAtAsc(
+				HR_EVENT_AUTO_REQUEST_REASON,
+				TicketStatus.REQUESTED,
+				startInclusive,
+				endExclusive
+			);
+
+		for (AssetReturnTicket assetReturnTicket : tickets) {
+			ticketService.approveDepartmentForHrEvent(
+				assetReturnTicket.getCompany().getId(),
+				assetReturnTicket.getTicket().getId()
+			);
+		}
+	}
+
 	private AssetReturnTicketCreateResponse createTangibleReturnTicket(
 		UUID companyId,
 		Member requester,
@@ -186,7 +214,7 @@ public class AssetReturnTicketService {
 				requester.getId(),
 				AssignmentStatus.ACTIVE
 			)
-			.orElseThrow(() -> new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "사용 중인 유형자산 배정을 찾을 수 없습니다."));
+				.orElseThrow(() -> new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "사용 중인 유형자산 배정을 찾을 수 없습니다."));
 
 		validateTangibleReturnTarget(assignment, requester);
 		tangibleAssetTicketConflictValidator.validateNoOngoingTangibleAssetTicket(
@@ -351,15 +379,7 @@ public class AssetReturnTicketService {
 					AssignmentStatus.ACTIVE
 				)
 				.ifPresent(assignment -> assignment.end(endedAt));
-			return;
 		}
-
-		intangibleAssetAssignmentRepository.findAllByCompany_IdAndIntangibleAsset_IdAndAssignmentStatus(
-				companyId,
-				assetReturnTicket.getIntangibleAsset().getId(),
-				com.ieumsae.assetieum.domain.intangibleasset.assignment.type.AssignmentStatus.ACTIVE
-			)
-			.forEach(assignment -> assignment.end(endedAt));
 	}
 
 	private void markAssetCollected(AssetReturnTicket assetReturnTicket) {
@@ -381,7 +401,11 @@ public class AssetReturnTicketService {
 			return;
 		}
 
-		assetReturnTicket.getIntangibleAsset().cancel();
+		intangibleAssetAssignmentService.cancelAsset(
+			assetReturnTicket.getIntangibleAsset().getId(),
+			assetReturnTicket.getTicket().getRequester().getId(),
+			assetReturnTicket.getCompany().getId()
+		);
 	}
 
 	private boolean isRequester(Ticket ticket, Member viewer) {
