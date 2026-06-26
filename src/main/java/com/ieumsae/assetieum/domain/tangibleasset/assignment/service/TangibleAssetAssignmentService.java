@@ -1,0 +1,327 @@
+package com.ieumsae.assetieum.domain.tangibleasset.assignment.service;
+
+import com.ieumsae.assetieum.domain.company.entity.Company;
+import com.ieumsae.assetieum.domain.company.repository.CompanyRepository;
+import com.ieumsae.assetieum.domain.department.entity.Department;
+import com.ieumsae.assetieum.domain.department.repository.DepartmentRepository;
+import com.ieumsae.assetieum.domain.member.entity.Member;
+import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.entity.TangibleAsset;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.repository.TangibleAssetRepository;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.type.TangibleAssetStatus;
+import com.ieumsae.assetieum.domain.tangibleasset.asset.type.UsageType;
+import com.ieumsae.assetieum.domain.tangibleasset.assignment.dto.TangibleAssetAssignmentRequest;
+import com.ieumsae.assetieum.domain.tangibleasset.assignment.dto.TangibleAssetAssignmentResponse;
+import com.ieumsae.assetieum.domain.tangibleasset.assignment.dto.TangibleAssetReassignBulkRequest;
+import com.ieumsae.assetieum.domain.tangibleasset.assignment.entity.TangibleAssetAssignment;
+import com.ieumsae.assetieum.domain.tangibleasset.assignment.repository.TangibleAssetAssignmentRepository;
+import com.ieumsae.assetieum.domain.tangibleasset.assignment.type.AssignmentStatus;
+import com.ieumsae.assetieum.global.exception.BusinessException;
+import com.ieumsae.assetieum.global.exception.ErrorCode;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class TangibleAssetAssignmentService {
+
+    private final CompanyRepository companyRepository;
+    private final MemberRepository memberRepository;
+    private final DepartmentRepository departmentRepository;
+    private final TangibleAssetRepository tangibleAssetRepository;
+    private final TangibleAssetAssignmentRepository tangibleAssetAssignmentRepository;
+
+    public List<TangibleAssetAssignmentResponse> getAssignments(
+            UUID assetId,
+            AssignmentStatus assignmentStatus,
+            UUID companyId
+    ) {
+        companyRepository.findById(companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
+
+        tangibleAssetRepository.findByIdAndCompany_Id(assetId, companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_NOT_FOUND));
+
+        return tangibleAssetAssignmentRepository.search(companyId, assetId, assignmentStatus);
+    }
+
+    /**
+     * 유형자산을 사용자에게 배정.
+     * 자산의 상태를 변경하고, 배정 이력을 생성한다.
+     */
+    @Transactional
+    public TangibleAssetAssignmentResponse assignAsset(
+            UUID assetId,
+            TangibleAssetAssignmentRequest request,
+            UUID companyId
+    ) {
+        // 1. 입력값 검증
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
+
+        Member member = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(request.getMemberId(), companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+
+        Department department = departmentRepository.findByIdAndCompany_IdAndDeletedAtIsNull(
+                        member.getDepartment().getId(),
+                        companyId
+                )
+                .orElseThrow(() -> new BusinessException(ErrorCode.DEPARTMENT_NOT_FOUND));
+
+        TangibleAsset asset = tangibleAssetRepository.findWithLockByIdAndCompany_Id(assetId, companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_NOT_FOUND));
+
+        validateAssignmentRequest(request);
+        validateAssignableSeat(asset);
+
+        // 2. 배정 이력 생성
+        TangibleAssetAssignment assignment = TangibleAssetAssignment.builder()
+                .company(company)
+                .tangibleAsset(asset)
+                .member(member)
+                .department(department)
+                .assignmentType(request.getUsageType())
+                .endedAt(request.getEndedAt())
+                .assignmentStatus(AssignmentStatus.ACTIVE)
+                .build();
+
+        TangibleAssetAssignment savedAssignment = tangibleAssetAssignmentRepository.save(assignment);
+
+        // 3. 해당 자산 사용중 처리
+        asset.markInUse(
+                member,
+                department,
+                request.getUsageType(),
+                request.getAssetUsageType(),
+                savedAssignment.getAssignedAt(),
+                request.getEndedAt()
+        );
+
+        return TangibleAssetAssignmentResponse.from(savedAssignment);
+    }
+
+    private void validateAssignableSeat(TangibleAsset asset) {
+        if (asset.getTangibleAssetStatus() != TangibleAssetStatus.AVAILABLE) {
+            throw new BusinessException(ErrorCode.TANGIBLE_ASSET_NOT_ASSIGNABLE);
+        }
+    }
+
+    private void validateAssignmentRequest(TangibleAssetAssignmentRequest request) {
+        if (request.getUsageType() == UsageType.TEMPORARY && request.getEndedAt() == null) {
+            throw new BusinessException(
+                    ErrorCode.TANGIBLE_ASSET_INVALID_REQUEST,
+                    "임시 배정은 종료일이 필수입니다."
+            );
+        }
+    }
+
+    /**
+     * 유형자산 배정 해지
+     * 해당 자산을 RETURN_REQUESTED 상태로 변경한다.
+     */
+    @Transactional
+    public TangibleAssetAssignmentResponse cancelAsset(
+            UUID assetId,
+            UUID companyId
+    ) {
+        // 1. 입력값 검증
+        companyRepository.findById(companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
+
+        TangibleAsset asset = tangibleAssetRepository.findWithLockByIdAndCompany_Id(assetId, companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_NOT_FOUND));
+
+        validateCancelableStatus(asset);
+
+        // 2. 배정 이력 해지 처리
+        LocalDateTime endedAt = LocalDateTime.now();
+        TangibleAssetAssignment assignment = tangibleAssetAssignmentRepository.findByCompany_IdAndTangibleAsset_IdAndAssignmentStatus(
+                companyId,
+                assetId,
+                AssignmentStatus.ACTIVE)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_ASSIGNMENT_NOT_FOUND));
+
+        assignment.end(endedAt);
+
+        // 3. 해당 자산 RETURN_REQUESTED 처리
+        asset.returnRequest();
+
+        return TangibleAssetAssignmentResponse.from(assignment);
+
+    }
+
+    private void validateCancelableStatus(TangibleAsset asset) {
+        if (asset.getTangibleAssetStatus() == TangibleAssetStatus.IN_USE) {
+            return;
+        }
+
+        throw new BusinessException(ErrorCode.TANGIBLE_ASSET_INVALID_REQUEST);
+    }
+
+    @Transactional
+    public TangibleAssetAssignmentResponse reassignAsset(
+            UUID assetId,
+            UUID newMemberId,
+            UUID companyId
+    ) {
+        // 1. 입력값 검증
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
+
+        TangibleAsset asset = tangibleAssetRepository.findWithLockByIdAndCompany_Id(assetId, companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_NOT_FOUND));
+
+        Member newMember = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(newMemberId, companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+
+        validateReassignableStatus(asset);
+
+
+        // 3. 기존 사용자 배정 이력에 반납 처리
+        TangibleAssetAssignment currentAssignment = tangibleAssetAssignmentRepository.findByCompany_IdAndTangibleAsset_IdAndAssignmentStatus(
+                        companyId,
+                        assetId,
+                        AssignmentStatus.ACTIVE)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_ASSIGNMENT_NOT_FOUND));
+
+        if (currentAssignment.getMember().getId().equals(newMemberId)) {
+            throw new BusinessException(
+                    ErrorCode.TANGIBLE_ASSET_INVALID_REQUEST,
+                    "이미 해당 사용자에게 배정된 자산입니다."
+            );
+        }
+
+        if (!currentAssignment.getDepartment().getId().equals(newMember.getDepartment().getId())) {
+            throw new BusinessException(
+                    ErrorCode.TANGIBLE_ASSET_INVALID_REQUEST,
+                    "같은 부서의 사용자에게만 재배정할 수 있습니다."
+            );
+        }
+
+        LocalDateTime reassignedAt = LocalDateTime.now();
+        currentAssignment.end(reassignedAt);
+
+        // 3. 사용자 변경
+        asset.reassign(newMember, reassignedAt);
+
+        // 4. 새로운 사용자 배정 이력 등록
+        TangibleAssetAssignment assignment = TangibleAssetAssignment.builder()
+                .company(company)
+                .tangibleAsset(asset)
+                .member(newMember)
+                .department(currentAssignment.getDepartment())
+                .assignmentType(currentAssignment.getAssignmentType())
+                .assignedAt(reassignedAt)
+                .assignmentStatus(AssignmentStatus.ACTIVE)
+                .build();
+
+        TangibleAssetAssignment savedAssignment = tangibleAssetAssignmentRepository.save(assignment);
+
+        return TangibleAssetAssignmentResponse.from(savedAssignment);
+    }
+
+    @Transactional
+    public void transferDepartment(
+            UUID assetId,
+            UUID memberId,
+            Department targetDepartment,
+            UUID companyId
+    ) {
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
+
+        TangibleAsset asset = tangibleAssetRepository.findWithLockByIdAndCompany_Id(assetId, companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_NOT_FOUND));
+
+        Member member = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(memberId, companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+
+        TangibleAssetAssignment currentAssignment = tangibleAssetAssignmentRepository.findByCompany_IdAndTangibleAsset_IdAndAssignmentStatus(
+                        companyId,
+                        assetId,
+                        AssignmentStatus.ACTIVE)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_ASSIGNMENT_NOT_FOUND));
+
+        if (!currentAssignment.getMember().getId().equals(memberId)) {
+            throw new BusinessException(ErrorCode.TANGIBLE_ASSET_INVALID_REQUEST);
+        }
+
+        if (targetDepartment == null || !targetDepartment.getCompany().getId().equals(companyId)) {
+            throw new BusinessException(ErrorCode.DEPARTMENT_NOT_FOUND);
+        }
+
+        LocalDateTime movedAt = LocalDateTime.now();
+        LocalDateTime originalEndedAt = currentAssignment.getEndedAt();
+        currentAssignment.end(movedAt);
+
+        asset.transferDepartment(targetDepartment);
+        asset.reassign(member, movedAt);
+
+        TangibleAssetAssignment assignment = TangibleAssetAssignment.builder()
+                .company(company)
+                .tangibleAsset(asset)
+                .member(member)
+                .department(targetDepartment)
+                .assignmentType(currentAssignment.getAssignmentType())
+                .assignedAt(movedAt)
+                .endedAt(originalEndedAt)
+                .assignmentStatus(AssignmentStatus.ACTIVE)
+                .build();
+
+        TangibleAssetAssignment savedAssignment = tangibleAssetAssignmentRepository.save(assignment);
+
+    }
+
+    @Transactional
+    public List<TangibleAssetAssignmentResponse> reassignBulkAsset(
+            TangibleAssetReassignBulkRequest request,
+            UUID companyId
+    ) {
+        companyRepository.findById(companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPANY_NOT_FOUND));
+
+        memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(request.getCurrentMemberId(), companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+
+        memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(request.getNewMemberId(), companyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+
+        if (request.getCurrentMemberId().equals(request.getNewMemberId())) {
+            throw new BusinessException(
+                    ErrorCode.TANGIBLE_ASSET_INVALID_REQUEST,
+                    "현재 사용자와 새 사용자가 같습니다."
+            );
+        }
+
+        List<TangibleAssetAssignment> currentAssignments =
+                tangibleAssetAssignmentRepository.findAllByCompany_IdAndMember_IdAndAssignmentStatus(
+                        companyId,
+                        request.getCurrentMemberId(),
+                        AssignmentStatus.ACTIVE
+                );
+
+        if (currentAssignments.isEmpty()) {
+            throw new BusinessException(ErrorCode.TANGIBLE_ASSET_ASSIGNMENT_NOT_FOUND);
+        }
+
+        return currentAssignments.stream()
+                .map(assignment -> reassignAsset(
+                        assignment.getTangibleAsset().getId(),
+                        request.getNewMemberId(),
+                        companyId
+                ))
+                .toList();
+    }
+
+    private void validateReassignableStatus(TangibleAsset asset) {
+        if (asset.getTangibleAssetStatus() != TangibleAssetStatus.IN_USE) {
+            throw new BusinessException(ErrorCode.TANGIBLE_ASSET_INVALID_REQUEST);
+        }
+    }
+}

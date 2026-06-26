@@ -1,0 +1,17 @@
+package com.ieumsae.assetieum.domain.log.type;
+
+public enum LogSubjectType {
+	COMPANY,
+	DEPARTMENT,
+	MEMBER,
+	TANGIBLE_ASSET,
+	INTANGIBLE_ASSET,
+	TANGIBLE_ASSET_ITEM,
+	INTANGIBLE_ASSET_ITEM,
+	TICKET,
+	PURCHASE_PLAN,
+	BUDGET,
+	HR_EVENT,
+	INSPECTION,
+	SYSTEM
+}
