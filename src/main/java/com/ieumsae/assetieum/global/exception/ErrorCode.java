@@ -51,6 +51,7 @@ public enum ErrorCode {
 	TANGIBLE_ASSET_INVALID_REQUEST(HttpStatus.BAD_REQUEST, "tangible-asset-012", "잘못된 자산 요청 값입니다."),
 	TANGIBLE_ASSET_NOT_ASSIGNABLE(HttpStatus.CONFLICT, "tangible-asset-013", "해당 유형 자산은 배정할 수 없는 상태입니다."),
 	TANGIBLE_ASSET_ASSIGNMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "tangible-asset-014", "해당 유형 자산 배정 이력은 존재하지 않습니다."),
+	TANGIBLE_ASSET_DUPLICATED_MEMBER(HttpStatus.BAD_REQUEST, "tangible-asset-015", "해당 유형 자산을 중복된 사용자에게 배정할 수 없습니다."),
 
 
 	// 무형 자산 카테고리
@@ -73,6 +74,7 @@ public enum ErrorCode {
 	INTANGIBLE_ASSET_NOT_FOUND(HttpStatus.NOT_FOUND, "intangible-asset-011", "해당 무형 자산이 존재하지 않습니다."),
 	INTANGIBLE_ASSET_NOT_ASSIGNABLE(HttpStatus.CONFLICT, "intangible-asset-012", "해당 무형 자산은 배정할 수 없는 상태입니다."),
 	INTANGIBLE_ASSET_ASSIGNMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "intangible-asset-013", "해당 무형 자산 배정 이력은 존재하지 않습니다."),
+	INTANGIBLE_ASSET_DUPLICATED_MEMBER(HttpStatus.BAD_REQUEST, "tangible-asset-014", "해당 무형 자산을 중복된 사용자에게 배정할 수 없습니다."),
 
 
 	// 전수 조사

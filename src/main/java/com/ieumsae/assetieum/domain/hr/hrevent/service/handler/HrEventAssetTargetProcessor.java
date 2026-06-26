@@ -122,6 +122,7 @@ public class HrEventAssetTargetProcessor {
         }
 
         if (target.getAssetType() == AssetType.TANGIBLE) {
+            validateTangibleAssignmentOwner(target, companyId);
             tangibleAssetAssignmentService.reassignAsset(
                     target.getTangibleAsset().getId(),
                     target.getTransferMember().getId(),
@@ -141,6 +142,20 @@ public class HrEventAssetTargetProcessor {
         }
 
         throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+    }
+
+    private void validateTangibleAssignmentOwner(HrEventAssetTarget target, UUID companyId) {
+        TangibleAssetAssignment assignment = tangibleAssetAssignmentRepository
+                .findByCompany_IdAndTangibleAsset_IdAndAssignmentStatus(
+                        companyId,
+                        target.getTangibleAsset().getId(),
+                        com.ieumsae.assetieum.domain.tangibleasset.assignment.type.AssignmentStatus.ACTIVE
+                )
+                .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_ASSIGNMENT_NOT_FOUND));
+
+        if (!assignment.getMember().getId().equals(target.getMember().getId())) {
+            throw new BusinessException(ErrorCode.TANGIBLE_ASSET_INVALID_REQUEST);
+        }
     }
 
     private boolean isAlreadyReturnedOrUnassigned(HrEventAssetTarget target, UUID companyId) {
