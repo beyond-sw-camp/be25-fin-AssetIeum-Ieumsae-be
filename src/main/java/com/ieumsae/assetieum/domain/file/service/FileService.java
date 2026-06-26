@@ -2,6 +2,7 @@ package com.ieumsae.assetieum.domain.file.service;
 
 import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.company.repository.CompanyRepository;
+import com.ieumsae.assetieum.domain.file.dto.FileDownloadUrlResponse;
 import com.ieumsae.assetieum.domain.file.dto.FileResponse;
 import com.ieumsae.assetieum.domain.file.dto.FileUploadResponse;
 import com.ieumsae.assetieum.domain.file.entity.UploadedFile;
@@ -9,7 +10,9 @@ import com.ieumsae.assetieum.domain.file.repository.UploadedFileRepository;
 import com.ieumsae.assetieum.domain.file.type.FileTargetType;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
+import com.ieumsae.assetieum.domain.member.type.MemberRole;
 import com.ieumsae.assetieum.domain.purchase.purchaseplanitem.repository.PurchasePlanItemRepository;
+import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
 import com.ieumsae.assetieum.domain.ticket.common.repository.TicketRepository;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.entity.DirectPurchaseResult;
 import com.ieumsae.assetieum.domain.ticket.purchaserequest.repository.DirectPurchaseResultRepository;
@@ -18,6 +21,7 @@ import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import com.ieumsae.assetieum.global.s3.S3UploadResult;
 import com.ieumsae.assetieum.global.s3.S3Uploader;
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +34,8 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 @RequiredArgsConstructor
 public class FileService {
+
+	private static final long DOWNLOAD_URL_EXPIRES_IN_SECONDS = 300;
 
 	private final ObjectProvider<S3Uploader> s3UploaderProvider;
 	private final UploadedFileRepository uploadedFileRepository;
@@ -99,6 +105,22 @@ public class FileService {
 			.toList();
 	}
 
+	@Transactional(readOnly = true)
+	public FileDownloadUrlResponse createDownloadUrl(Long fileId, UUID companyId, UUID memberId) {
+		UploadedFile file = uploadedFileRepository.findByIdAndCompany_Id(fileId, companyId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.INVALID_INPUT_VALUE));
+		Member viewer = memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(memberId, companyId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+
+		validateFileReadable(file, viewer, companyId);
+
+		String downloadUrl = resolveS3Uploader().createPresignedGetUrl(
+			file.getPath(),
+			Duration.ofSeconds(DOWNLOAD_URL_EXPIRES_IN_SECONDS)
+		);
+		return FileDownloadUrlResponse.of(downloadUrl, DOWNLOAD_URL_EXPIRES_IN_SECONDS);
+	}
+
 	@Transactional
 	public void deleteFile(Long fileId, UUID companyId) {
 		UploadedFile file = uploadedFileRepository.findByIdAndCompany_Id(fileId, companyId)
@@ -122,6 +144,50 @@ public class FileService {
 			case PURCHASE_PLAN_ITEM -> purchasePlanItemRepository.findByIdAndCompany_Id(parseLong(targetId), companyId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.PURCHASE_PLAN_ITEM_NOT_FOUND));
 		}
+	}
+
+	private void validateFileReadable(UploadedFile file, Member viewer, UUID companyId) {
+		switch (file.getTargetType()) {
+			case DIRECT_PURCHASE_RESULT -> validateDirectPurchaseFileReadable(file, viewer, companyId);
+			case PURCHASE_PLAN_ITEM -> validatePurchasePlanFileReadable(file, viewer, companyId);
+			case TICKET -> validateTicketFileReadable(file, viewer, companyId);
+		}
+	}
+
+	private void validateDirectPurchaseFileReadable(UploadedFile file, Member viewer, UUID companyId) {
+		DirectPurchaseResult result = directPurchaseResultRepository
+			.findByIdAndCompany_Id(parseUuid(file.getTargetId()), companyId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+		Ticket ticket = result.getPurchaseRequestTicket().getTicket();
+
+		if (ticket.getRequester().getId().equals(viewer.getId()) || isAssetRole(viewer.getRole())) {
+			return;
+		}
+		throw new BusinessException(ErrorCode.ACCESS_DENIED);
+	}
+
+	private void validatePurchasePlanFileReadable(UploadedFile file, Member viewer, UUID companyId) {
+		purchasePlanItemRepository.findByIdAndCompany_Id(parseLong(file.getTargetId()), companyId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.PURCHASE_PLAN_ITEM_NOT_FOUND));
+		if (isAssetRole(viewer.getRole())) {
+			return;
+		}
+		throw new BusinessException(ErrorCode.ACCESS_DENIED);
+	}
+
+	private void validateTicketFileReadable(UploadedFile file, Member viewer, UUID companyId) {
+		Ticket ticket = ticketRepository.findByIdAndCompany_IdAndDeletedAtIsNull(parseUuid(file.getTargetId()), companyId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+		if (ticket.getRequester().getId().equals(viewer.getId())
+			|| ticket.getApprover().getId().equals(viewer.getId())
+			|| isAssetRole(viewer.getRole())) {
+			return;
+		}
+		throw new BusinessException(ErrorCode.ACCESS_DENIED);
+	}
+
+	private boolean isAssetRole(MemberRole role) {
+		return role == MemberRole.ADMIN || role == MemberRole.ASSET_MANAGER || role == MemberRole.ASSET_TEAM;
 	}
 
 	private S3Uploader resolveS3Uploader() {
