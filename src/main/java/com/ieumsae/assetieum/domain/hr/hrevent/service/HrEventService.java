@@ -28,6 +28,7 @@ import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.entity.TangibleAsset;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.repository.TangibleAssetRepository;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.type.TangibleAssetStatus;
+import com.ieumsae.assetieum.domain.tangibleasset.assignment.repository.TangibleAssetAssignmentRepository;
 import com.ieumsae.assetieum.domain.ticket.common.type.AssetType;
 import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.common.util.CodeGenerator;
@@ -57,6 +58,7 @@ public class HrEventService {
     private final HrEventRepository hrEventRepository;
     private final HrEventAssetTargetRepository hrEventAssetTargetRepository;
     private final TangibleAssetRepository tangibleAssetRepository;
+    private final TangibleAssetAssignmentRepository tangibleAssetAssignmentRepository;
     private final IntangibleAssetRepository intangibleAssetRepository;
     private final IntangibleAssetAssignmentRepository intangibleAssetAssignmentRepository;
     private final HrEventHandlerResolver hrEventHandlerResolver;
@@ -176,10 +178,12 @@ public class HrEventService {
         if (request.getAssetType() == AssetType.TANGIBLE) {
             tangibleAsset = tangibleAssetRepository.findByIdAndCompany_IdAndTangibleAssetStatus(request.getAssetId(), companyId, TangibleAssetStatus.IN_USE)
                     .orElseThrow(() -> new BusinessException(ErrorCode.TANGIBLE_ASSET_NOT_FOUND));
+            validateTransferMemberNotAlreadyAssigned(request, transferMember, companyId);
             validateTargetMember(tangibleAsset.getMember(), targetMember);
         } else if (request.getAssetType() == AssetType.INTANGIBLE) {
             intangibleAsset = intangibleAssetRepository.findByIdAndCompany_IdAndIntangibleAssetStatus(request.getAssetId(), companyId, IntangibleAssetStatus.IN_USE)
                     .orElseThrow(() -> new BusinessException(ErrorCode.INTANGIBLE_ASSET_NOT_FOUND));
+            validateTransferMemberNotAlreadyAssigned(request, transferMember, companyId);
             intangibleAssetAssignment = resolveActiveIntangibleAssignment(companyId, intangibleAsset, targetMember);
         } else {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
@@ -260,6 +264,47 @@ public class HrEventService {
         }
 
         return transferMember;
+    }
+
+    private void validateTransferMemberNotAlreadyAssigned(
+            HrEventAssetTargetCreateRequest request,
+            Member transferMember,
+            UUID companyId
+    ) {
+        if (request.getActionType() != HrEventAssetActionType.TRANSFER_REQUIRED) {
+            return;
+        }
+
+        if (request.getAssetType() == AssetType.TANGIBLE) {
+            boolean alreadyAssigned = tangibleAssetAssignmentRepository
+                    .findByCompany_IdAndTangibleAsset_IdAndAssignmentStatus(
+                            companyId,
+                            request.getAssetId(),
+                            com.ieumsae.assetieum.domain.tangibleasset.assignment.type.AssignmentStatus.ACTIVE
+                    )
+                    .map(assignment -> assignment.getMember().getId().equals(transferMember.getId()))
+                    .orElse(false);
+
+            if (alreadyAssigned) {
+                throw new BusinessException(ErrorCode.TANGIBLE_ASSET_DUPLICATED_MEMBER);
+            }
+
+            return;
+        }
+
+        if (request.getAssetType() == AssetType.INTANGIBLE) {
+            boolean alreadyAssigned = intangibleAssetAssignmentRepository
+                    .existsByCompany_IdAndIntangibleAsset_IdAndMember_IdAndAssignmentStatus(
+                            companyId,
+                            request.getAssetId(),
+                            transferMember.getId(),
+                            AssignmentStatus.ACTIVE
+                    );
+
+            if (alreadyAssigned) {
+                throw new BusinessException(ErrorCode.INTANGIBLE_ASSET_DUPLICATED_MEMBER);
+            }
+        }
     }
 
     private void validateTargetMember(Member assetMember, Member targetMember) {
