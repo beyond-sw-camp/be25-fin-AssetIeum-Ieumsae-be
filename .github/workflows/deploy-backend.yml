@@ -154,13 +154,15 @@ jobs:
 
           for attempt in $(seq 1 30); do
             if curl -fsS "$HEALTHCHECK_URL" >/dev/null; then
-              docker image prune -f
+              echo "Healthcheck succeeded: $HEALTHCHECK_URL"
+              docker image prune -f || true
               exit 0
             fi
             sleep 3
           done
 
           docker compose ps app
+          docker logs --tail=200 assetieum-be || true
           echo "Healthcheck failed: $HEALTHCHECK_URL"
           exit 1
           REMOTE_SCRIPT
