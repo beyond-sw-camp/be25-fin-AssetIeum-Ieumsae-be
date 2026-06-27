@@ -1,0 +1,158 @@
+name: Backend Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: backend-deploy
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'ap-northeast-2' }}
+  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY || 'assetieum-be' }}
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Grant execute permission for Gradle
+        run: chmod +x ./gradlew
+
+      - name: Run tests
+        run: ./gradlew clean test --no-daemon
+
+  build-and-push:
+    name: Build and Push Image
+    runs-on: ubuntu-latest
+    needs: test
+
+    permissions:
+      contents: read
+
+    outputs:
+      image-uri: ${{ steps.image.outputs.image-uri }}
+      image-tag: ${{ github.sha }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image names
+        id: image
+        run: |
+          IMAGE_REPOSITORY="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}"
+          echo "image-repository=$IMAGE_REPOSITORY" >> "$GITHUB_OUTPUT"
+          echo "image-uri=$IMAGE_REPOSITORY:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.image.outputs.image-repository }}:${{ github.sha }}
+            ${{ steps.image.outputs.image-repository }}:latest
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy-ec2:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+    needs: build-and-push
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Deploy with Docker Compose
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          AWS_REGION: ${{ env.AWS_REGION }}
+          ECR_REGISTRY: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+          EC2_PROJECT_PATH: ${{ secrets.EC2_PROJECT_PATH }}
+          HEALTHCHECK_URL: ${{ vars.HEALTHCHECK_URL || '' }}
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_KEY }}
+          port: ${{ secrets.EC2_PORT || 22 }}
+          envs: AWS_REGION,ECR_REGISTRY,EC2_PROJECT_PATH,HEALTHCHECK_URL
+          script: |
+            set -eu
+
+            cd "$EC2_PROJECT_PATH"
+
+            git fetch origin
+            git checkout main
+            git reset --hard origin/main
+
+            ECR_PASSWORD="$(aws ecr get-login-password --region "$AWS_REGION")"
+            printf '%s' "$ECR_PASSWORD" | docker login --username AWS --password-stdin "$ECR_REGISTRY"
+            unset ECR_PASSWORD
+
+            docker compose pull app
+            docker compose up -d --no-deps app
+
+            if [ -z "$HEALTHCHECK_URL" ]; then
+              APP_PORT="$(grep -E '^APP_PORT=' .env 2>/dev/null | tail -n 1 | cut -d '=' -f 2- || true)"
+              APP_PORT="${APP_PORT:-8080}"
+              HEALTHCHECK_URL="http://127.0.0.1:${APP_PORT}/api/v1/health"
+            fi
+
+            for attempt in $(seq 1 30); do
+              if curl -fsS "$HEALTHCHECK_URL" >/dev/null; then
+                docker image prune -f
+                exit 0
+              fi
+              sleep 3
+            done
+
+            docker compose ps app
+            echo "Healthcheck failed: $HEALTHCHECK_URL"
+            exit 1
