@@ -1,8 +1,6 @@
 services:
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: 651146011643.dkr.ecr.ap-northeast-2.amazonaws.com/assetieum-be:latest
     container_name: assetieum-be
     env_file:
       - .env
