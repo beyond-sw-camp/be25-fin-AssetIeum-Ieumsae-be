@@ -11,8 +11,9 @@ services:
       DB_URL: ${DB_URL}
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
-      REDIS_HOST: ${DOCKER_REDIS_HOST:-redis}
+      REDIS_HOST: ${REDIS_HOST}
       REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_SSL_ENABLED: ${REDIS_SSL_ENABLED:-true}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
       AWS_S3_ENABLED: ${AWS_S3_ENABLED:-true}
       AWS_S3_BUCKET: ${AWS_S3_BUCKET}
@@ -22,18 +23,8 @@ services:
       AWS_S3_ALLOWED_EXTENSIONS: ${AWS_S3_ALLOWED_EXTENSIONS:-jpg,jpeg,png,pdf,doc,docx,xls,xlsx}
     ports:
       - "${APP_PORT:-8080}:8080"
-    depends_on:
-      redis:
-        condition: service_started
+
     restart: unless-stopped
 
-  redis:
-    image: redis:7.2-alpine
-    container_name: assetieum-redis
-    command: ["redis-server", "--appendonly", "yes"]
-    volumes:
-      - redis-data:/data
-    restart: unless-stopped
 
-volumes:
-  redis-data:
+

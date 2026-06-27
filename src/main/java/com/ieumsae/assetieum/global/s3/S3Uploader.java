@@ -6,6 +6,7 @@ import java.net.URI;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Set;
@@ -18,8 +19,11 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
 @Component
 @RequiredArgsConstructor
@@ -29,6 +33,7 @@ public class S3Uploader {
 	private static final String DEFAULT_CONTENT_TYPE = "application/octet-stream";
 
 	private final S3Client s3Client;
+	private final S3Presigner s3Presigner;
 	private final S3Properties properties;
 
 	public S3UploadResult upload(MultipartFile file, String directory) {
@@ -72,6 +77,24 @@ public class S3Uploader {
 	public void deleteByUrl(String url) {
 		String key = resolveKeyFromUrl(url);
 		delete(key);
+	}
+
+	public String createPresignedGetUrl(String url, Duration duration) {
+		String key = resolveKeyFromUrl(url);
+		if (!StringUtils.hasText(key)) {
+			throw new IllegalArgumentException("Invalid S3 object URL.");
+		}
+
+		GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+			.bucket(properties.getBucket())
+			.key(key)
+			.build();
+		GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
+			.signatureDuration(duration)
+			.getObjectRequest(getObjectRequest)
+			.build();
+
+		return s3Presigner.presignGetObject(presignRequest).url().toString();
 	}
 
 	private void validateFile(MultipartFile file) {
