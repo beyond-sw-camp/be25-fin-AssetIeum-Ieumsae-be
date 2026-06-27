@@ -1,5 +1,6 @@
 package com.ieumsae.assetieum.domain.file.controller;
 
+import com.ieumsae.assetieum.domain.file.dto.FileDownloadUrlResponse;
 import com.ieumsae.assetieum.domain.file.dto.FileResponse;
 import com.ieumsae.assetieum.domain.file.dto.FileUploadResponse;
 import com.ieumsae.assetieum.domain.file.service.FileService;
@@ -52,6 +53,15 @@ public class FileController {
 	) {
 		List<FileResponse> response = fileService.getFiles(targetType, targetId, member.companyId());
 		return ApiResponse.ok("파일 목록 조회에 성공했습니다.", response);
+	}
+
+	@GetMapping("/{fileId}/download-url")
+	public ApiResponse<FileDownloadUrlResponse> createDownloadUrl(
+		@AuthenticationPrincipal AuthenticatedMember member,
+		@PathVariable Long fileId
+	) {
+		FileDownloadUrlResponse response = fileService.createDownloadUrl(fileId, member.companyId(), member.id());
+		return ApiResponse.ok("파일 다운로드 URL 생성에 성공했습니다.", response);
 	}
 
 	@DeleteMapping("/{fileId}")
