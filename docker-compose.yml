@@ -23,4 +23,8 @@ services:
       AWS_S3_ALLOWED_EXTENSIONS: ${AWS_S3_ALLOWED_EXTENSIONS:-jpg,jpeg,png,pdf,doc,docx,xls,xlsx}
     ports:
       - "${APP_PORT:-8080}:8080"
+
     restart: unless-stopped
+
+
+
