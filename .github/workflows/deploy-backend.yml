@@ -110,49 +110,102 @@ jobs:
       contents: read
 
     steps:
-      - name: Deploy with Docker Compose
-        uses: appleboy/ssh-action@v1.2.0
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy with SSM
         env:
           AWS_REGION: ${{ env.AWS_REGION }}
           ECR_REGISTRY: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+          EC2_INSTANCE_ID: ${{ secrets.EC2_INSTANCE_ID }}
           EC2_PROJECT_PATH: ${{ secrets.EC2_PROJECT_PATH }}
+          EC2_DEPLOY_USER: ${{ vars.EC2_DEPLOY_USER || secrets.EC2_USER || 'ubuntu' }}
           HEALTHCHECK_URL: ${{ vars.HEALTHCHECK_URL || '' }}
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_KEY }}
-          port: ${{ secrets.EC2_PORT || 22 }}
-          envs: AWS_REGION,ECR_REGISTRY,EC2_PROJECT_PATH,HEALTHCHECK_URL
-          script: |
-            set -eu
+        run: |
+          set -euo pipefail
 
-            cd "$EC2_PROJECT_PATH"
+          remote_script="$(cat <<'REMOTE_SCRIPT'
+          set -eu
 
-            git fetch origin
-            git checkout main
-            git reset --hard origin/main
+          cd "$EC2_PROJECT_PATH"
 
-            ECR_PASSWORD="$(aws ecr get-login-password --region "$AWS_REGION")"
-            printf '%s' "$ECR_PASSWORD" | docker login --username AWS --password-stdin "$ECR_REGISTRY"
-            unset ECR_PASSWORD
+          printf '%s' "$COMPOSE_FILE_B64" | base64 -d > docker-compose.yml.tmp
+          mv docker-compose.yml.tmp docker-compose.yml
 
-            docker compose pull app
-            docker compose up -d --no-deps app
+          ECR_PASSWORD="$(aws ecr get-login-password --region "$AWS_REGION")"
+          printf '%s' "$ECR_PASSWORD" | docker login --username AWS --password-stdin "$ECR_REGISTRY"
+          unset ECR_PASSWORD
 
-            if [ -z "$HEALTHCHECK_URL" ]; then
-              APP_PORT="$(grep -E '^APP_PORT=' .env 2>/dev/null | tail -n 1 | cut -d '=' -f 2- || true)"
-              APP_PORT="${APP_PORT:-8080}"
-              HEALTHCHECK_URL="http://127.0.0.1:${APP_PORT}/api/v1/health"
+          docker compose pull app
+          docker compose up -d --no-deps app
+
+          if [ -z "$HEALTHCHECK_URL" ]; then
+            APP_PORT="$(grep -E '^APP_PORT=' .env 2>/dev/null | tail -n 1 | cut -d '=' -f 2- || true)"
+            APP_PORT="${APP_PORT:-8080}"
+            HEALTHCHECK_URL="http://127.0.0.1:${APP_PORT}/api/v1/health"
+          fi
+
+          for attempt in $(seq 1 30); do
+            if curl -fsS "$HEALTHCHECK_URL" >/dev/null; then
+              docker image prune -f
+              exit 0
             fi
+            sleep 3
+          done
 
-            for attempt in $(seq 1 30); do
-              if curl -fsS "$HEALTHCHECK_URL" >/dev/null; then
-                docker image prune -f
-                exit 0
-              fi
-              sleep 3
-            done
+          docker compose ps app
+          echo "Healthcheck failed: $HEALTHCHECK_URL"
+          exit 1
+          REMOTE_SCRIPT
+          )"
 
-            docker compose ps app
-            echo "Healthcheck failed: $HEALTHCHECK_URL"
-            exit 1
+          compose_file_b64="$(base64 -w 0 docker-compose.yml)"
+
+          command="$(jq -nr \
+            --arg user "$EC2_DEPLOY_USER" \
+            --arg region "$AWS_REGION" \
+            --arg registry "$ECR_REGISTRY" \
+            --arg project_path "$EC2_PROJECT_PATH" \
+            --arg healthcheck_url "$HEALTHCHECK_URL" \
+            --arg compose_file_b64 "$compose_file_b64" \
+            --arg script "$remote_script" \
+            '"sudo -u \($user | @sh) env AWS_REGION=\($region | @sh) ECR_REGISTRY=\($registry | @sh) EC2_PROJECT_PATH=\($project_path | @sh) HEALTHCHECK_URL=\($healthcheck_url | @sh) COMPOSE_FILE_B64=\($compose_file_b64 | @sh) bash -lc \($script | @sh)"'
+          )"
+
+          jq -n --arg command "$command" '{commands: [$command]}' > ssm-parameters.json
+
+          command_id="$(
+            aws ssm send-command \
+              --instance-ids "$EC2_INSTANCE_ID" \
+              --document-name "AWS-RunShellScript" \
+              --comment "Deploy backend ${GITHUB_SHA}" \
+              --parameters file://ssm-parameters.json \
+              --query "Command.CommandId" \
+              --output text
+          )"
+
+          echo "SSM command id: $command_id"
+
+          set +e
+          aws ssm wait command-executed \
+            --command-id "$command_id" \
+            --instance-id "$EC2_INSTANCE_ID"
+          wait_status=$?
+          set -e
+
+          aws ssm get-command-invocation \
+            --command-id "$command_id" \
+            --instance-id "$EC2_INSTANCE_ID" \
+            --query "{Status:Status,StandardOutputContent:StandardOutputContent,StandardErrorContent:StandardErrorContent}" \
+            --output json
+
+          if [ "$wait_status" -ne 0 ]; then
+            exit "$wait_status"
+          fi
