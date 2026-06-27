@@ -389,9 +389,6 @@ public class AssetReturnTicketService {
 			tangibleAsset.collectReturn();
 			return;
 		}
-
-		// 무형자산 해지는 라이선스 사용 종료로 보고 취소 상태로 전환한다.
-		assetReturnTicket.getIntangibleAsset().cancel();
 	}
 
 	private void completeAssetStatus(AssetReturnTicket assetReturnTicket) {
