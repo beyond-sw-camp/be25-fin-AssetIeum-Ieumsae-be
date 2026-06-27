@@ -19,6 +19,17 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
 
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     permissions:
       contents: read
 
@@ -116,6 +127,10 @@ jobs:
             set -eu
 
             cd "$EC2_PROJECT_PATH"
+
+            git fetch origin
+            git checkout main
+            git reset --hard origin/main
 
             ECR_PASSWORD="$(aws ecr get-login-password --region "$AWS_REGION")"
             printf '%s' "$ECR_PASSWORD" | docker login --username AWS --password-stdin "$ECR_REGISTRY"
