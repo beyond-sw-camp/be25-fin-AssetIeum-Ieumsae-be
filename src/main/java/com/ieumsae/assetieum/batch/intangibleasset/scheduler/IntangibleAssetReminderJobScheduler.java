@@ -4,6 +4,7 @@ import com.ieumsae.assetieum.batch.intangibleasset.config.IntangibleAssetReminde
 import java.time.LocalDate;
 import java.time.ZoneId;
 import lombok.RequiredArgsConstructor;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.JobParametersBuilder;
@@ -23,6 +24,7 @@ public class IntangibleAssetReminderJobScheduler {
 	private final Job intangibleAssetReminderJob;
 
 	@Scheduled(cron = "0 0 10 * * *", zone = "Asia/Seoul")
+	@SchedulerLock(name = IntangibleAssetReminderJobConfig.JOB_NAME, lockAtMostFor = "PT30M")
 	public void run() throws Exception {
 		JobParameters jobParameters = new JobParametersBuilder()
 			.addString(
