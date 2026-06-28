@@ -346,6 +346,7 @@ public class AssetReturnTicketService {
 	private boolean canCollectAsset(Ticket ticket, AssetReturnTicket assetReturnTicket, Member viewer) {
 		return isAssetRole(viewer.getRole())
 			&& ticket.getTicketStatus() == TicketStatus.IN_PROGRESS
+			&& assetReturnTicket.getTangibleAsset() != null
 			&& assetReturnTicket.getStatus() == AssetReturnTicketStatus.REQUESTED
 			&& ticket.getAssignee() != null
 			&& ticket.getAssignee().getId().equals(viewer.getId());
@@ -354,9 +355,17 @@ public class AssetReturnTicketService {
 	private boolean canCompleteReturn(Ticket ticket, AssetReturnTicket assetReturnTicket, Member viewer) {
 		return isAssetRole(viewer.getRole())
 			&& ticket.getTicketStatus() == TicketStatus.IN_PROGRESS
-			&& assetReturnTicket.getStatus() == AssetReturnTicketStatus.COLLECTED
+			&& isCompletableAssetReturnStatus(assetReturnTicket)
 			&& ticket.getAssignee() != null
 			&& ticket.getAssignee().getId().equals(viewer.getId());
+	}
+
+	private boolean isCompletableAssetReturnStatus(AssetReturnTicket assetReturnTicket) {
+		if (assetReturnTicket.getTangibleAsset() != null) {
+			return assetReturnTicket.getStatus() == AssetReturnTicketStatus.COLLECTED;
+		}
+
+		return assetReturnTicket.getStatus() == AssetReturnTicketStatus.REQUESTED;
 	}
 
 	private void validateCollectable(Ticket ticket, AssetReturnTicket assetReturnTicket, Member collector) {
@@ -389,9 +398,6 @@ public class AssetReturnTicketService {
 			tangibleAsset.collectReturn();
 			return;
 		}
-
-		// 무형자산 해지는 라이선스 사용 종료로 보고 취소 상태로 전환한다.
-		assetReturnTicket.getIntangibleAsset().cancel();
 	}
 
 	private void completeAssetStatus(AssetReturnTicket assetReturnTicket) {
