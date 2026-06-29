@@ -2,6 +2,7 @@ package com.ieumsae.assetieum.domain.notification.dto;
 
 import com.ieumsae.assetieum.domain.notification.type.NotificationTargetType;
 import com.ieumsae.assetieum.domain.notification.type.NotificationType;
+import com.ieumsae.assetieum.domain.ticket.common.type.TicketType;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -13,6 +14,7 @@ public record NotificationSseMessage(
 	String content,
 	NotificationTargetType targetType,
 	UUID targetId,
+	TicketType ticketType,
 	boolean isRead,
 	LocalDateTime createdAt
 ) {
@@ -26,6 +28,7 @@ public record NotificationSseMessage(
 			response.getContent(),
 			response.getTargetType(),
 			response.getTargetId(),
+			response.getTicketType(),
 			response.isRead(),
 			response.getCreatedAt()
 		);
@@ -39,6 +42,7 @@ public record NotificationSseMessage(
 			.content(content)
 			.targetType(targetType)
 			.targetId(targetId)
+			.ticketType(ticketType)
 			.isRead(isRead)
 			.createdAt(createdAt)
 			.build();

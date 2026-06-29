@@ -10,6 +10,8 @@ import com.ieumsae.assetieum.domain.notification.entity.Notification;
 import com.ieumsae.assetieum.domain.notification.repository.NotificationRepository;
 import com.ieumsae.assetieum.domain.notification.type.NotificationTargetType;
 import com.ieumsae.assetieum.domain.notification.type.NotificationType;
+import com.ieumsae.assetieum.domain.ticket.common.repository.TicketRepository;
+import com.ieumsae.assetieum.domain.ticket.common.type.TicketType;
 import com.ieumsae.assetieum.global.common.page.PaginationRequest;
 import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.exception.BusinessException;
@@ -30,6 +32,7 @@ public class NotificationService {
 
 	private final NotificationRepository notificationRepository;
 	private final MemberRepository memberRepository;
+	private final TicketRepository ticketRepository;
 	private final NotificationSsePublisher notificationSsePublisher;
 
 	public PaginationResponse<NotificationListItemResponse> getNotifications(
@@ -43,7 +46,7 @@ public class NotificationService {
 				receiver.getId(),
 				receiver.getCompany().getId(),
 				request.toPageable()
-			).map(NotificationListItemResponse::from)
+			).map(this::toListItemResponse)
 		);
 	}
 
@@ -103,7 +106,7 @@ public class NotificationService {
 			targetType,
 			targetId
 		));
-		NotificationListItemResponse response = NotificationListItemResponse.from(notification);
+		NotificationListItemResponse response = toListItemResponse(notification);
 
 		if (!TransactionSynchronizationManager.isSynchronizationActive()) {
 			notificationSsePublisher.publish(receiver.getId(), response);
@@ -126,6 +129,23 @@ public class NotificationService {
 			throw new BusinessException(ErrorCode.INACTIVE_MEMBER);
 		}
 		return member;
+	}
+
+	private NotificationListItemResponse toListItemResponse(Notification notification) {
+		return NotificationListItemResponse.from(notification, resolveTicketType(notification));
+	}
+
+	private TicketType resolveTicketType(Notification notification) {
+		if (notification.getTargetType() != NotificationTargetType.TICKET) {
+			return null;
+		}
+
+		return ticketRepository.findByIdAndCompany_IdAndDeletedAtIsNull(
+				notification.getTargetId(),
+				notification.getCompany().getId()
+			)
+			.map(ticket -> ticket.getTicketType())
+			.orElse(null);
 	}
 
 	private Member findActiveMember(UUID memberId, UUID companyId) {
