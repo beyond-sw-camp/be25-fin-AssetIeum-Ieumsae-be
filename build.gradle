@@ -43,6 +43,10 @@ dependencies {
 	// Spring Batch
 	implementation 'org.springframework.boot:spring-boot-starter-batch'
 
+	// Distributed scheduler lock
+	implementation 'net.javacrumbs.shedlock:shedlock-spring:6.9.2'
+	implementation 'net.javacrumbs.shedlock:shedlock-provider-jdbc-template:6.9.2'
+
 	// =========================
 	// Authentication
 	// =========================

@@ -79,7 +79,7 @@ public class BudgetExecutionService {
                 budget.getUsedAmount(),
                 holdBefore,
                 budget.getHeldAmount(),
-                "Asset request department approval budget hold"
+                "자산 요청으로 인한 예산 집행 대기 금액"
         );
     }
 
@@ -108,7 +108,7 @@ public class BudgetExecutionService {
                 budget.getUsedAmount(),
                 holdBefore,
                 budget.getHeldAmount(),
-                "Purchase request department approval budget hold"
+                "구매 요청으로 인한 예산 집행 대기 금액"
         );
     }
 
@@ -125,7 +125,7 @@ public class BudgetExecutionService {
         }
 
         Budget budget = findBudgetForTicket(ticket, companyId);
-        decreaseHold(budget, ticket, null, amount, "Release budget hold after inventory assignment");
+        decreaseHold(budget, ticket, null, amount, "보유 재고 할당 후 집행 대기 금액 해제");
     }
 
     @Transactional
@@ -142,7 +142,7 @@ public class BudgetExecutionService {
         }
 
         Budget budget = findBudgetForTicket(ticket, companyId);
-        decreaseHold(budget, ticket, null, amount, "Release budget hold after ticket cancellation");
+        decreaseHold(budget, ticket, null, amount, "티켓 취소로 인한 집행 대기 금액 해제");
     }
 
     @Transactional
@@ -159,7 +159,7 @@ public class BudgetExecutionService {
             }
 
             Budget budget = findBudgetForTicket(ticket, companyId);
-            decreaseHold(budget, ticket, purchasePlan, amount, "Release budget hold after purchase plan cancellation");
+            decreaseHold(budget, ticket, purchasePlan, amount, "구매 계획 취소로 인한 집행 대기 금액 해제");
         }
     }
 
@@ -196,8 +196,8 @@ public class BudgetExecutionService {
             }
 
             Budget budget = findBudgetForTicket(ticket, companyId);
-            decreaseHold(budget, ticket, purchasePlan, amount, "Release budget hold before purchase plan execution");
-            increaseUsed(budget, ticket, purchasePlan, amount, "Execute budget after purchase plan completion");
+            decreaseHold(budget, ticket, purchasePlan, amount, "구매 계획 실행으로 인한 집행 대기 금액 해제");
+            increaseUsed(budget, ticket, purchasePlan, amount, "구매 계획 실행으로 인한 사용 금액");
         }
     }
 
@@ -227,8 +227,8 @@ public class BudgetExecutionService {
                 purchasePlan,
                 holdAmount,
                 actualAmount,
-                "Release budget hold before actual purchase execution",
-                "Execute budget with actual purchase amount"
+                "실제 구매로 인한 집행 대기 금액 해제",
+                "실제 결제 금액으로 예산 집행"
         );
     }
 
@@ -254,8 +254,8 @@ public class BudgetExecutionService {
                 null,
                 holdAmount,
                 actualAmount,
-                "Release budget hold before direct purchase execution",
-                "Execute budget with direct purchase actual amount"
+                "직접 구매로 인한 집행 대기 금액 해제",
+                "직접 결제 금액으로 예산 집행"
         );
     }
 
@@ -280,13 +280,13 @@ public class BudgetExecutionService {
         Budget budget = findBudgetForTicket(ticket, companyId);
         if (difference.signum() > 0) {
             validateAvailableBudget(budget, difference);
-            increaseUsed(budget, ticket, null, difference, "Adjust direct purchase used budget after actual amount increase");
+            increaseUsed(budget, ticket, null, difference, "실제 결제 금액 증가로 인한 사용 예산 집행");
             return;
         }
 
         BigDecimal recoveryAmount = difference.abs().min(budget.getUsedAmount());
         if (recoveryAmount.signum() > 0) {
-            decreaseUsed(budget, ticket, null, recoveryAmount, "Adjust direct purchase used budget after actual amount decrease");
+            decreaseUsed(budget, ticket, null, recoveryAmount, "실제 결제 금액 감소로 인한 사용 예산 집행");
         }
     }
 
@@ -304,7 +304,7 @@ public class BudgetExecutionService {
 
         Budget budget = findCompanyCommonBudget(ticket);
         validateAvailableBudget(budget, maintenanceCost);
-        increaseUsed(budget, ticket, null, maintenanceCost, "Execute company common budget for maintenance completion");
+        increaseUsed(budget, ticket, null, maintenanceCost, "유지보수로 인한 사내 공용 예산 집행");
     }
 
     @Transactional
@@ -326,7 +326,7 @@ public class BudgetExecutionService {
         if (recoveryAmount.signum() <= 0) {
             return;
         }
-        decreaseUsed(budget, ticket, null, recoveryAmount, "Recover used budget after purchase return completion");
+        decreaseUsed(budget, ticket, null, recoveryAmount, "구매 반품으로 인한 사용 예산 환불");
     }
 
     private List<Ticket> getAssetRequestTickets(List<PurchasePlanItem> items, UUID companyId) {

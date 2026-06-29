@@ -5,6 +5,7 @@ import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.BiConsumer;
 import org.springframework.stereotype.Repository;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -26,5 +27,11 @@ public class NotificationEmitterRepository {
 			receiverEmitters.remove(emitter);
 			return receiverEmitters.isEmpty() ? null : receiverEmitters;
 		});
+	}
+
+	public void forEach(BiConsumer<UUID, SseEmitter> consumer) {
+		emitters.forEach((receiverId, receiverEmitters) ->
+			receiverEmitters.forEach(emitter -> consumer.accept(receiverId, emitter))
+		);
 	}
 }

@@ -4,6 +4,12 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: org.mariadb.jdbc.Driver
+    hikari:
+      maximum-pool-size: ${DB_HIKARI_MAXIMUM_POOL_SIZE:5}
+      minimum-idle: ${DB_HIKARI_MINIMUM_IDLE:1}
+      connection-timeout: ${DB_HIKARI_CONNECTION_TIMEOUT:30000}
+      idle-timeout: ${DB_HIKARI_IDLE_TIMEOUT:600000}
+      max-lifetime: ${DB_HIKARI_MAX_LIFETIME:1800000}
 
   data:
     redis:
@@ -35,6 +41,7 @@ logging:
     root: info
     org.hibernate.SQL: off
     org.hibernate.orm.jdbc.bind: off
+    org.flywaydb: warn
 
 auth:
   refresh-token-cookie:
