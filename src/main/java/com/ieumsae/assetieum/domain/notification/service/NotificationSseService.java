@@ -10,6 +10,7 @@ import com.ieumsae.assetieum.global.security.AuthenticatedMember;
 import java.io.IOException;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -39,10 +40,15 @@ public class NotificationSseService {
 		return emitter;
 	}
 
-	public void send(UUID receiverId, NotificationListItemResponse response) {
+	public void sendLocal(UUID receiverId, NotificationListItemResponse response) {
 		for (SseEmitter emitter : notificationEmitterRepository.findAllByReceiverId(receiverId)) {
 			sendNotificationEvent(receiverId, emitter, response);
 		}
+	}
+
+	@Scheduled(fixedDelayString = "${app.notification.sse.heartbeat-interval-millis:30000}")
+	public void sendHeartbeat() {
+		notificationEmitterRepository.forEach(this::sendHeartbeatEvent);
 	}
 
 	private Member findActiveMember(UUID memberId, UUID companyId) {
@@ -76,6 +82,15 @@ public class NotificationSseService {
 				.name("notification")
 				.id(String.valueOf(response.getNotificationId()))
 				.data(response));
+		} catch (IOException exception) {
+			notificationEmitterRepository.delete(receiverId, emitter);
+			emitter.completeWithError(exception);
+		}
+	}
+
+	private void sendHeartbeatEvent(UUID receiverId, SseEmitter emitter) {
+		try {
+			emitter.send(SseEmitter.event().comment("heartbeat"));
 		} catch (IOException exception) {
 			notificationEmitterRepository.delete(receiverId, emitter);
 			emitter.completeWithError(exception);

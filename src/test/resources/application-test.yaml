@@ -49,3 +49,8 @@ cloud:
   aws:
     s3:
       enabled: false
+
+app:
+  notification:
+    sse:
+      redis-enabled: false

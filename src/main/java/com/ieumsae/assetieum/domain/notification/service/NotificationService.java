@@ -30,7 +30,7 @@ public class NotificationService {
 
 	private final NotificationRepository notificationRepository;
 	private final MemberRepository memberRepository;
-	private final NotificationSseService notificationSseService;
+	private final NotificationSsePublisher notificationSsePublisher;
 
 	public PaginationResponse<NotificationListItemResponse> getNotifications(
 		AuthenticatedMember authenticatedMember,
@@ -106,14 +106,14 @@ public class NotificationService {
 		NotificationListItemResponse response = NotificationListItemResponse.from(notification);
 
 		if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-			notificationSseService.send(receiver.getId(), response);
+			notificationSsePublisher.publish(receiver.getId(), response);
 			return;
 		}
 
 		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
 			@Override
 			public void afterCommit() {
-				notificationSseService.send(receiver.getId(), response);
+				notificationSsePublisher.publish(receiver.getId(), response);
 			}
 		});
 	}
