@@ -1,5 +1,6 @@
 package com.ieumsae.assetieum.batch.intangibleasset.config;
 
+import com.ieumsae.assetieum.domain.budget.budget.service.BudgetExecutionService;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.entity.IntangibleAsset;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.repository.IntangibleAssetRepository;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.type.BillingCycle;
@@ -43,6 +44,7 @@ public class IntangibleAssetReminderJobConfig {
 	private final PlatformTransactionManager transactionManager;
 	private final IntangibleAssetRepository intangibleAssetRepository;
 	private final IntangibleAssetAssignmentRepository intangibleAssetAssignmentRepository;
+	private final BudgetExecutionService budgetExecutionService;
 	private final NotificationService notificationService;
 
 	@Bean
@@ -67,7 +69,7 @@ public class IntangibleAssetReminderJobConfig {
 
 				assets.stream()
 					.filter(asset -> isBillingDate(asset, baseDate))
-					.forEach(this::sendBillingCycleNotification);
+					.forEach(asset -> processBillingCycle(asset, baseDate));
 
 				return RepeatStatus.FINISHED;
 			}, transactionManager)
@@ -159,6 +161,13 @@ public class IntangibleAssetReminderJobConfig {
 			NotificationTargetType.INTANGIBLE_ASSET,
 			asset.getId()
 		);
+	}
+
+	private void processBillingCycle(IntangibleAsset asset, LocalDate baseDate) {
+		if (Boolean.TRUE.equals(asset.getIsAutoRenewal())) {
+			budgetExecutionService.executeForIntangibleAssetBillingCycle(asset, baseDate);
+		}
+		sendBillingCycleNotification(asset);
 	}
 
 	private void sendExpirationTomorrowNotification(IntangibleAsset asset) {
