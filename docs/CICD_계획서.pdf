@@ -1,0 +1,978 @@
+<html><head><title>AssetIeum_CI/CD_계획서_정리본</title><style>
+/* cspell:disable-file */
+/* webkit printing magic: print all background colors */
+html {
+	-webkit-print-color-adjust: exact;
+}
+* {
+	box-sizing: border-box;
+	-webkit-print-color-adjust: exact;
+}
+
+html,
+body {
+	margin: 0;
+	padding: 0;
+}
+@media only screen {
+	body {
+		margin: 2em auto;
+		max-width: 900px;
+		color: rgb(55, 53, 47);
+	}
+}
+
+body {
+	line-height: 1.5;
+	white-space: pre-wrap;
+}
+
+a,
+a.visited {
+	color: inherit;
+	text-decoration: underline;
+}
+
+.pdf-relative-link-path {
+	font-size: 80%;
+	color: #444;
+}
+
+h1,
+h2,
+h3 {
+	letter-spacing: -0.01em;
+	line-height: 1.2;
+	font-weight: 600;
+	margin-bottom: 0;
+}
+
+/* Override strong tags inside headings to maintain consistent weight */
+h1 strong,
+h2 strong,
+h3 strong {
+	font-weight: 600;
+}
+
+.page-title {
+	font-size: 2.5rem;
+	font-weight: 700;
+	margin-top: 0;
+	margin-bottom: 0.75em;
+}
+
+h1 {
+	font-size: 1.875rem;
+	margin-top: 1.875rem;
+}
+
+h2 {
+	font-size: 1.5rem;
+	margin-top: 1.5rem;
+}
+
+h3 {
+	font-size: 1.25rem;
+	margin-top: 1.25rem;
+}
+
+.source {
+	border: 1px solid #ddd;
+	border-radius: 3px;
+	padding: 1.5em;
+	word-break: break-all;
+}
+
+.callout {
+	border-radius: 10px;
+	padding: 1rem;
+}
+
+figure {
+	margin: 1.25em 0;
+	page-break-inside: avoid;
+}
+
+figcaption {
+	opacity: 0.5;
+	font-size: 85%;
+	margin-top: 0.5em;
+}
+
+mark {
+	background-color: transparent;
+}
+
+.indented {
+	padding-left: 1.5em;
+}
+
+hr {
+	background: transparent;
+	display: block;
+	width: 100%;
+	height: 1px;
+	visibility: visible;
+	border: none;
+	border-bottom: 1px solid rgba(55, 53, 47, 0.09);
+}
+
+img {
+	max-width: 100%;
+}
+
+@media only print {
+	img {
+		max-height: 100vh;
+		object-fit: contain;
+	}
+
+	table.collection-content {
+		width: 100%;
+		table-layout: fixed;
+	}
+
+	table.collection-content th,
+	table.collection-content td {
+		overflow-wrap: anywhere;
+	}
+
+	table.collection-content td > .user,
+	table.collection-content td > time {
+		white-space: pre-wrap;
+	}
+}
+
+@page {
+	margin: 1in;
+}
+
+.collection-content-wrapper {
+	overflow-x: auto;
+}
+
+@media only print {
+	.collection-content-wrapper {
+		overflow-x: visible;
+	}
+}
+
+.collection-content {
+	font-size: 0.875rem;
+}
+
+.collection-content td {
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.column-list {
+	display: flex;
+	gap: 46px;
+}
+
+.column {
+	min-width: 0;
+	overflow: hidden;
+}
+
+.column > *:first-child {
+	margin-top: 0;
+}
+
+.table_of_contents-item {
+	display: block;
+	font-size: 0.875rem;
+	line-height: 1.3;
+	padding: 0.125rem;
+}
+
+.table_of_contents-indent-1 {
+	margin-left: 1.5rem;
+}
+
+.table_of_contents-indent-2 {
+	margin-left: 3rem;
+}
+
+.table_of_contents-indent-3 {
+	margin-left: 4.5rem;
+}
+
+.table_of_contents-link {
+	text-decoration: none;
+	opacity: 0.7;
+	border-bottom: 1px solid rgba(55, 53, 47, 0.18);
+}
+
+table,
+th,
+td {
+	border: 1px solid rgba(55, 53, 47, 0.09);
+}
+
+table {
+	border-collapse: collapse;
+	border-left: none;
+	border-right: none;
+}
+
+th,
+td {
+	font-weight: normal;
+	padding: 0.25em 0.5em;
+	line-height: 1.5;
+	min-height: 1.5em;
+	text-align: left;
+}
+
+th {
+	color: rgba(55, 53, 47, 0.6);
+}
+
+ol,
+ul {
+	margin: 0;
+	margin-block-start: 0.6em;
+	margin-block-end: 0.6em;
+}
+
+li > ol:first-child,
+li > ul:first-child {
+	margin-block-start: 0.6em;
+}
+
+ul > li {
+	list-style: disc;
+}
+
+ul.to-do-list {
+	padding-inline-start: 0;
+}
+
+ul.to-do-list > li {
+	list-style: none;
+}
+
+.to-do-children-checked {
+	text-decoration: line-through;
+	opacity: 0.375;
+}
+
+ul.toggle > li {
+	list-style: none;
+}
+
+ul {
+	padding-inline-start: 1.7em;
+}
+
+ul > li {
+	padding-left: 0.1em;
+}
+
+ol {
+	padding-inline-start: 1.6em;
+}
+
+ol.numbered-list.numbered-list-digits-2 {
+	padding-inline-start: 2em;
+}
+
+ol.numbered-list.numbered-list-digits-3plus {
+	padding-inline-start: 2.4em;
+}
+
+ol > li {
+	padding-left: 0.2em;
+}
+
+.mono ol {
+	padding-inline-start: 2em;
+}
+
+.mono ol > li {
+	text-indent: -0.4em;
+}
+
+.toggle {
+	padding-inline-start: 0em;
+	list-style-type: none;
+}
+
+/* Indent toggle children */
+.toggle > li > details {
+	padding-left: 1.7em;
+}
+
+.toggle > li > details > summary {
+	margin-left: -1.1em;
+}
+
+.selected-value {
+	display: inline-block;
+	padding: 0 0.5em;
+	background: rgba(206, 205, 202, 0.5);
+	border-radius: 3px;
+	margin-right: 0.5em;
+	margin-top: 0.3em;
+	margin-bottom: 0.3em;
+	white-space: nowrap;
+}
+
+.collection-title {
+	display: inline-block;
+	margin-right: 1em;
+}
+
+.page-description {
+	margin-bottom: 2em;
+}
+
+.simple-table {
+	margin-top: 1em;
+	font-size: 0.875rem;
+	empty-cells: show;
+}
+.simple-table td {
+	height: 29px;
+	min-width: 120px;
+}
+
+.simple-table th {
+	height: 29px;
+	min-width: 120px;
+}
+
+.simple-table-header-color {
+	background: rgb(247, 246, 243);
+	color: black;
+}
+.simple-table-header {
+	font-weight: 500;
+}
+
+time {
+	opacity: 0.5;
+}
+
+.icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	max-width: 1.2em;
+	max-height: 1.2em;
+	text-decoration: none;
+	vertical-align: text-bottom;
+	margin-right: 0.5em;
+}
+
+img.icon {
+	border-radius: 3px;
+}
+
+.callout img.notion-static-icon {
+	width: 1em;
+	height: 1em;
+}
+
+.callout p {
+	margin: 0;
+}
+
+.callout h1,
+.callout h2,
+.callout h3 {
+	margin: 0 0 0.6rem;
+}
+
+.user-icon {
+	width: 1.5em;
+	height: 1.5em;
+	border-radius: 100%;
+	margin-right: 0.5rem;
+}
+
+.user-icon-inner {
+	font-size: 0.8em;
+}
+
+.text-icon {
+	border: 1px solid #000;
+	text-align: center;
+}
+
+.page-cover-image {
+	display: block;
+	object-fit: cover;
+	width: 100%;
+	max-height: 30vh;
+}
+
+.page-header-icon {
+	font-size: 3rem;
+	margin-bottom: 1rem;
+}
+
+.page-header-icon-with-cover {
+	margin-top: -0.72em;
+	margin-left: 0.07em;
+}
+
+.page-header-icon img {
+	border-radius: 3px;
+}
+
+.link-to-page {
+	margin: 1em 0;
+	padding: 0;
+	border: none;
+	font-weight: 500;
+}
+
+p > .user {
+	opacity: 0.5;
+}
+
+td > .user,
+td > time {
+	white-space: nowrap;
+}
+
+input[type="checkbox"] {
+	transform: scale(1.5);
+	margin-right: 0.6em;
+	vertical-align: middle;
+}
+
+p {
+	margin-top: 0.5em;
+	margin-bottom: 0.5em;
+}
+
+.image {
+	border: none;
+	margin: 1.5em 0;
+	padding: 0;
+	border-radius: 0;
+	text-align: center;
+}
+
+.code,
+code {
+	background: rgba(135, 131, 120, 0.15);
+	border-radius: 3px;
+	padding: 0.2em 0.4em;
+	border-radius: 3px;
+	font-size: 85%;
+	tab-size: 2;
+}
+
+code {
+	color: #eb5757;
+}
+
+.code {
+	padding: 1.5em 1em;
+}
+
+.code-wrap {
+	white-space: pre-wrap;
+	word-break: break-all;
+}
+
+.code > code {
+	background: none;
+	padding: 0;
+	font-size: 100%;
+	color: inherit;
+}
+
+blockquote {
+	font-size: 1em;
+	margin: 1em 0;
+	padding-left: 1em;
+	border-left: 3px solid rgb(55, 53, 47);
+}
+
+blockquote.quote-large {
+	font-size: 1.25em;
+}
+
+.bookmark {
+	text-decoration: none;
+	max-height: 8em;
+	padding: 0;
+	display: flex;
+	width: 100%;
+	align-items: stretch;
+}
+
+.bookmark-title {
+	font-size: 0.85em;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	height: 1.75em;
+	white-space: nowrap;
+}
+
+.bookmark-text {
+	display: flex;
+	flex-direction: column;
+}
+
+.bookmark-info {
+	flex: 4 1 180px;
+	padding: 12px 14px 14px;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+}
+
+.bookmark-image {
+	width: 33%;
+	flex: 1 1 180px;
+	display: block;
+	position: relative;
+	object-fit: cover;
+	border-radius: 1px;
+}
+
+.bookmark-description {
+	color: rgba(55, 53, 47, 0.6);
+	font-size: 0.75em;
+	overflow: hidden;
+	max-height: 4.5em;
+	word-break: break-word;
+}
+
+.bookmark-href {
+	font-size: 0.75em;
+	margin-top: 0.25em;
+}
+
+.sans { font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", "Noto Sans Arabic", "Noto Sans Hebrew", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol"; }
+.code { font-family: "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace; }
+.serif { font-family: Lyon-Text, Georgia, ui-serif, serif; }
+.mono { font-family: iawriter-mono, Nitti, Menlo, Courier, monospace; }
+.pdf .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", "Noto Sans Arabic", "Noto Sans Hebrew", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK JP'; }
+.pdf:lang(zh-CN) .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", "Noto Sans Arabic", "Noto Sans Hebrew", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK SC'; }
+.pdf:lang(zh-TW) .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", "Noto Sans Arabic", "Noto Sans Hebrew", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK TC'; }
+.pdf:lang(ko-KR) .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", "Noto Sans Arabic", "Noto Sans Hebrew", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK KR'; }
+.pdf .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK JP'; }
+.pdf:lang(zh-CN) .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK SC'; }
+.pdf:lang(zh-TW) .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK TC'; }
+.pdf:lang(ko-KR) .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK KR'; }
+.pdf .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK JP'; }
+.pdf:lang(zh-CN) .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK SC'; }
+.pdf:lang(zh-TW) .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK TC'; }
+.pdf:lang(ko-KR) .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK KR'; }
+.pdf .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK JP'; }
+.pdf:lang(zh-CN) .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK SC'; }
+.pdf:lang(zh-TW) .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK TC'; }
+.pdf:lang(ko-KR) .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK KR'; }
+.highlight-default {
+	color: rgba(44, 44, 43, 1);
+}
+.highlight-gray {
+	color: rgba(125, 122, 117, 1);
+	fill: rgba(125, 122, 117, 1);
+}
+.highlight-brown {
+	color: rgba(159, 118, 90, 1);
+	fill: rgba(159, 118, 90, 1);
+}
+.highlight-orange {
+	color: rgba(210, 123, 45, 1);
+	fill: rgba(210, 123, 45, 1);
+}
+.highlight-yellow {
+	color: rgba(203, 148, 52, 1);
+	fill: rgba(203, 148, 52, 1);
+}
+.highlight-teal {
+	color: rgba(80, 148, 110, 1);
+	fill: rgba(80, 148, 110, 1);
+}
+.highlight-blue {
+	color: rgba(56, 125, 201, 1);
+	fill: rgba(56, 125, 201, 1);
+}
+.highlight-purple {
+	color: rgba(154, 107, 180, 1);
+	fill: rgba(154, 107, 180, 1);
+}
+.highlight-pink {
+	color: rgba(193, 76, 138, 1);
+	fill: rgba(193, 76, 138, 1);
+}
+.highlight-red {
+	color: rgba(207, 81, 72, 1);
+	fill: rgba(207, 81, 72, 1);
+}
+.highlight-default_background {
+	color: rgba(44, 44, 43, 1);
+}
+.highlight-gray_background {
+	background: rgba(42, 28, 0, 0.07);
+}
+.highlight-brown_background {
+	background: rgba(139, 46, 0, 0.086);
+}
+.highlight-orange_background {
+	background: rgba(224, 101, 1, 0.129);
+}
+.highlight-yellow_background {
+	background: rgba(211, 168, 0, 0.137);
+}
+.highlight-teal_background {
+	background: rgba(0, 100, 45, 0.09);
+}
+.highlight-blue_background {
+	background: rgba(0, 124, 215, 0.094);
+}
+.highlight-purple_background {
+	background: rgba(102, 0, 178, 0.078);
+}
+.highlight-pink_background {
+	background: rgba(197, 0, 93, 0.086);
+}
+.highlight-red_background {
+	background: rgba(223, 22, 0, 0.094);
+}
+.block-color-default {
+	color: inherit;
+	fill: inherit;
+}
+.block-color-gray {
+	color: rgba(125, 122, 117, 1);
+	fill: rgba(125, 122, 117, 1);
+}
+.block-color-brown {
+	color: rgba(159, 118, 90, 1);
+	fill: rgba(159, 118, 90, 1);
+}
+.block-color-orange {
+	color: rgba(210, 123, 45, 1);
+	fill: rgba(210, 123, 45, 1);
+}
+.block-color-yellow {
+	color: rgba(203, 148, 52, 1);
+	fill: rgba(203, 148, 52, 1);
+}
+.block-color-teal {
+	color: rgba(80, 148, 110, 1);
+	fill: rgba(80, 148, 110, 1);
+}
+.block-color-blue {
+	color: rgba(56, 125, 201, 1);
+	fill: rgba(56, 125, 201, 1);
+}
+.block-color-purple {
+	color: rgba(154, 107, 180, 1);
+	fill: rgba(154, 107, 180, 1);
+}
+.block-color-pink {
+	color: rgba(193, 76, 138, 1);
+	fill: rgba(193, 76, 138, 1);
+}
+.block-color-red {
+	color: rgba(207, 81, 72, 1);
+	fill: rgba(207, 81, 72, 1);
+}
+.block-color-default_background {
+	color: inherit;
+	fill: inherit;
+}
+.block-color-gray_background {
+	background: rgba(240, 239, 237, 1);
+}
+.block-color-brown_background {
+	background: rgba(245, 237, 233, 1);
+}
+.block-color-orange_background {
+	background: rgba(251, 235, 222, 1);
+}
+.block-color-yellow_background {
+	background: rgba(249, 243, 220, 1);
+}
+.block-color-teal_background {
+	background: rgba(232, 241, 236, 1);
+}
+.block-color-blue_background {
+	background: rgba(229, 242, 252, 1);
+}
+.block-color-purple_background {
+	background: rgba(243, 235, 249, 1);
+}
+.block-color-pink_background {
+	background: rgba(250, 233, 241, 1);
+}
+.block-color-red_background {
+	background: rgba(252, 233, 231, 1);
+}
+.select-value-color-default { background-color: rgba(42, 28, 0, 0.07); }
+.select-value-color-gray { background-color: rgba(28, 19, 1, 0.11); }
+.select-value-color-brown { background-color: rgba(127, 51, 0, 0.156); }
+.select-value-color-orange { background-color: rgba(196, 88, 0, 0.203); }
+.select-value-color-yellow { background-color: rgba(209, 156, 0, 0.282); }
+.select-value-color-green { background-color: rgba(0, 96, 38, 0.156); }
+.select-value-color-blue { background-color: rgba(0, 118, 217, 0.203); }
+.select-value-color-purple { background-color: rgba(92, 0, 163, 0.141); }
+.select-value-color-pink { background-color: rgba(183, 0, 78, 0.152); }
+.select-value-color-red { background-color: rgba(206, 24, 0, 0.164); }
+
+.checkbox {
+	display: inline-flex;
+	vertical-align: text-bottom;
+	width: 16;
+	height: 16;
+	background-size: 16px;
+	margin-left: 2px;
+	margin-right: 5px;
+}
+
+.checkbox-on {
+	background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%0A%3Crect%20width%3D%2216%22%20height%3D%2216%22%20fill%3D%22%2358A9D7%22%2F%3E%0A%3Cpath%20d%3D%22M6.71429%2012.2852L14%204.9995L12.7143%203.71436L6.71429%209.71378L3.28571%206.2831L2%207.57092L6.71429%2012.2852Z%22%20fill%3D%22white%22%2F%3E%0A%3C%2Fsvg%3E");
+}
+
+.checkbox-off {
+	background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%0A%3Crect%20x%3D%220.75%22%20y%3D%220.75%22%20width%3D%2214.5%22%20height%3D%2214.5%22%20fill%3D%22white%22%20stroke%3D%22%2336352F%22%20stroke-width%3D%221.5%22%2F%3E%0A%3C%2Fsvg%3E");
+}
+	
+</style></head><body class="pdf ko-KR" lang="ko-KR"><article id="38ed943b-cac2-80bb-822c-fe2533776543" class="page sans"><header><h1 class="page-title" dir="auto">AssetIeum_CI/CD_계획서_정리본</h1><p class="page-description" dir="auto"></p></header><div class="page-body"><div style="display:contents" dir="auto"><h2 id="38ed943b-cac2-812b-a226-f6db03154f50" class="">1. 현재 인프라 요약</h2></div><div style="display:contents" dir="ltr"><table id="38ed943b-cac2-812e-ac08-d77931647d51" class="simple-table"><thead class="simple-table-header"><div style="display:contents" dir="ltr"><tr id="38ed943b-cac2-81d3-8b8b-c5f5805ee9e4"><th id="muaG" class="simple-table-header-color simple-table-header">영역</th><th id="=TmU" class="simple-table-header-color simple-table-header" style="width:402px">구성</th></tr></div></thead><tbody><div style="display:contents" dir="ltr"><tr id="38ed943b-cac2-8189-b458-d081eb34044f"><td id="muaG" class="">Front End</td><td id="=TmU" class="" style="width:402px">Vue + Vite → Amazon S3 → CloudFront</td></tr></div><div style="display:contents" dir="ltr"><tr id="38ed943b-cac2-813a-8d64-cccc7d7d8e9a"><td id="muaG" class="">Back End</td><td id="=TmU" class="" style="width:402px">Spring Boot → Docker image → Amazon ECR → EC2 Docker</td></tr></div><div style="display:contents" dir="ltr"><tr id="38ed943b-cac2-816c-b8c9-d17164dbf9ad"><td id="muaG" class="">확장/복구</td><td id="=TmU" class="" style="width:402px">Launch Template + Auto Scaling Group + CloudWatch Alarm</td></tr></div><div style="display:contents" dir="ltr"><tr id="38ed943b-cac2-81d7-a4cf-e2922aaf47c7"><td id="muaG" class="">트래픽</td><td id="=TmU" class="" style="width:402px">ALB + Target Group</td></tr></div><div style="display:contents" dir="ltr"><tr id="38ed943b-cac2-815e-97ec-c518b2c60141"><td id="muaG" class="">운영 설정</td><td id="=TmU" class="" style="width:402px">AWS Parameter Store 에서 환경변수 조회 후 .env 생성</td></tr></div><div style="display:contents" dir="ltr"><tr id="38ed943b-cac2-8154-aa62-c1f5f8637562"><td id="muaG" class="">데이터 연결</td><td id="=TmU" class="" style="width:402px">RDS MariaDB, ElastiCache Redis, S3 파일 저장소</td></tr></div><div style="display:contents" dir="ltr"><tr id="38ed943b-cac2-814a-9ba1-f42cefdef650"><td id="muaG" class="">도메인</td><td id="=TmU" class="" style="width:402px">https://assetieum.com</td></tr></div><div style="display:contents" dir="ltr"><tr id="38ed943b-cac2-8134-9105-fc9c8a6c3a98"><td id="muaG" class="">CI/CD</td><td id="=TmU" class="" style="width:402px">GitHub Actions</td></tr></div></tbody></table></div><div style="display:contents" dir="auto"><h2 id="38ed943b-cac2-8152-ab1d-e7c2788ae2c3" class="">Assetleum CI/CD 전체 흐름</h2></div><div style="display:contents" dir="ltr"><figure id="38ed943b-cac2-80a8-83d2-f041e298a424" class="image"><img style="width:703.9874877929688px" src="https://prod-files-secure.s3.us-west-2.amazonaws.com/84a4e78a-d866-4598-b488-6e3e3978ecae/128bce7b-2b6e-44cc-a3b5-3537b205828a/CI.CD%EA%B5%AC%EC%A1%B0123.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&amp;X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&amp;X-Amz-Credential=ASIAZI2LB466WFQOG3IH%2F20260630%2Fus-west-2%2Fs3%2Faws4_request&amp;X-Amz-Date=20260630T073423Z&amp;X-Amz-Expires=21600&amp;X-Amz-Security-Token=IQoJb3JpZ2luX2VjEPf%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXVzLXdlc3QtMiJGMEQCICgd%2FlKH1mU9viYsRBuBZ0LYwELV%2FO4y%2FS1xdw8jZ2%2BcAiAofcHED4YztuYQMyt6dFn6M5zyQLRnSDDCtC1mEnIhcCqIBAjA%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F8BEAAaDDYzNzQyMzE4MzgwNSIMh7jIfhCjY9LAhQAlKtwDFB%2B0JZWNRFrfKopAcARoIWu1%2BUsdXxeW5WtbPyvfgI6%2FoI8%2BI%2BXcaRwXL6Deipb2U9HIno06GiknHm5M55%2FmN1pB3l4QqSQ4PCwIu9QVDUNuuM7KGIeVs2zTjH4ShHrbH91HH8xXIY05%2Bi9ThKjbV13icMRzj5ZcT5FI1Da47YzaolIR2NAOY4LesVtdoHSuq6W7%2FTCtujERdWniOq%2F918s%2F3YPqVoyLMopipCi3O08b5U8TNZy1UyYpeH3yIm3a68NDUCeEPdaZL98a8aLiyigCMB6FCAQ7zaaUTOC6xdyV20EvoOEQALQEseKVj3eAzdg5SrG%2FMiXCaO4LjmkvYRfzakDLJ%2FeL0%2Bf6szhp7lWQsfKdLmyPJ51lN58coQA9cYoSJqRxhbsNWtdnlfOdYCgl0wb6lIc7HmWEhWuK296LOXKTdT2FbT4xNOFtKFLNyrhO%2Fw0nTBSyC71FOBEit9Nt%2F8%2B9ViXQFl8pDqYCWwYCEdLqXJotPIPmgIhEftS9sg4w31Fw6prVM5BDRmerk7onzdzIG2VbltABI4gtWWBAksmOV8nOcfmpJMLNB5%2FUh9rvaPt9NXGACY4NfmXN%2BGP1vBJdNtfdkePek6TD3DY%2Fxqxa1hjxF4djhWgwscmN0gY6pgH5zRNb8QkUroFiXiGQ84Cm2kKKVKHh9IVx0wkE%2Fb6VGamvb55tKM7%2FyJTnwsvFlnvZkG5S2tyd%2F4fARmBGyIRh4F%2BuOMKqLlpGxGGTu%2BHQNTv%2F40u6WG0QLV8QdA%2BUy8bzE7mhxZSaO0fI2X9uQgt0%2BfY%2FRAVrjCJ6otAcsx7B9GF%2BRAgqm2Dya9uD4k7kc2SrwB1tQt%2FwyNkpBSSKTmQFS%2BWJGM1E&amp;X-Amz-Signature=7c26e06d9a6e853bcf767b8bcdc39dc01a881a571296d96b0c24eb35f3bfdfa3&amp;X-Amz-SignedHeaders=host&amp;x-amz-checksum-mode=ENABLED&amp;x-id=GetObject"/><figcaption>Front End 자동 배포와 Back End ECR/Auto Scaling 배포 흐름</figcaption></figure></div><div style="display:contents" dir="auto"><h2 id="38ed943b-cac2-81ab-914b-d1b47a83c0d8" class="">2. 프론트엔드 CI/CD 계획</h2></div><div style="display:contents" dir="auto"><p id="38ed943b-cac2-819f-93f2-c3ead8d004dc" class="">정적 웹 배포: GitHub Actions → S3 → CloudFront</p></div><div style="display:contents" dir="auto"><h2 id="38ed943b-cac2-8133-9870-fe0ce1cf8e97" class="">2.1 프론트엔드 배포 프로세스</h2></div><div style="display:contents" dir="auto"><ol type="1" id="5017e29c-77b2-45bf-bc17-0c05fb9497a9" class="numbered-list" start="1"><li>프론트엔드 코드 수정 후 GitHub 배포 브랜치에 Commit 및 Push</li></ol></div><div style="display:contents" dir="auto"><ol type="1" id="d217b2a6-be3b-4b55-8c9a-39fcf4a694ef" class="numbered-list" start="2"><li>GitHub Actions를 통한 소스 코드 불러오기 및 빌드 환경 구성</li></ol></div><div style="display:contents" dir="auto"><ol type="1" id="581b032e-3b8b-4af4-b26b-e7ae76458dc3" class="numbered-list" start="3"><li>프로젝트 의존성 설치 및 프론트엔드 애플리케이션 빌드</li></ol></div><div style="display:contents" dir="auto"><ol type="1" id="21a869ff-59f9-49b5-ae68-514088677e08" class="numbered-list" start="4"><li>빌드 과정에서 운영 API 및 실시간 알림 서버 주소 적용</li></ol></div><div style="display:contents" dir="auto"><ol type="1" id="d4cc5c40-430b-41c8-83a1-c1202c06f5e5" class="numbered-list" start="5"><li>생성된 정적 파일을 프론트엔드 배포용 S3 버킷에 업로드</li></ol></div><div style="display:contents" dir="auto"><ol type="1" id="e1fd3ef1-fcfd-4b58-b544-b896854acf51" class="numbered-list" start="6"><li>CloudFront 캐시 무효화를 통한 최신 파일 반영</li></ol></div><div style="display:contents" dir="auto"><ol type="1" id="c7f2f6c9-993b-4981-96d5-90737cf84f1a" class="numbered-list" start="7"><li>운영 프론트엔드 접속 및 주요 화면 표시 확인</li></ol></div><div style="display:contents" dir="auto"><ol type="1" id="15387d2b-b548-4d24-863a-64d191a3cdc0" class="numbered-list" start="8"><li>백엔드 API 및 실시간 알림 연결 상태 확인</li></ol></div><div style="display:contents" dir="auto"><h2 id="38ed943b-cac2-81d0-a870-c64f68bcd19c" class="">2.2 배포 전략</h2></div><div style="display:contents" dir="ltr"><table id="38ed943b-cac2-813a-ae78-f4aa3f1b192d" class="simple-table"><thead class="simple-table-header"><div style="display:contents" dir="ltr"><tr id="38ed943b-cac2-810e-8fc1-ee37cf227209"><th id="lAmf" class="simple-table-header-color simple-table-header">항목</th><th id="DaDY" class="simple-table-header-color simple-table-header" style="width:454px">계획</th></tr></div></thead><tbody><div style="display:contents" dir="ltr"><tr id="38ed943b-cac2-81c9-a998-f8c9a064e338"><td id="lAmf" class="">배포 방식</td><td id="DaDY" class="" style="width:454px">S3 정적 파일 교체와 CloudFront 캐시 무효화를 이용한 자동 배포</td></tr></div><div style="display:contents" dir="ltr"><tr id="38ed943b-cac2-8161-aa2b-c1bf2f3d132b"><td id="lAmf" class="">무중단 기준</td><td id="DaDY" class="" style="width:454px">정적 자산을 먼저 업로드한 뒤 캐시를 무효화하여 최신 파일을 제공</td></tr></div><div style="display:contents" dir="ltr"><tr id="38ed943b-cac2-8129-8e90-c3b0be316722"><td id="lAmf" class="">삭제 동기화</td><td id="DaDY" class="" style="width:454px">aws s3 sync –delete 적용 </td></tr></div><div style="display:contents" dir="ltr"><tr id="38ed943b-cac2-81f2-aea8-d95b76bf8a9b"><td id="lAmf" class="">버전 보관</td><td id="DaDY" class="" style="width:454px">GitHub Actions에서 빌드한 Docker 이미지를 ECR에 github.sha와 latest 태그로 push하여 관리</td></tr></div><div style="display:contents" dir="ltr"><tr id="38ed943b-cac2-81c9-93b4-c950f1e8b907"><td id="lAmf" class="">롤백</td><td id="DaDY" class="" style="width:454px">이전 빌드 재업로드 절차: GitHub Actions의 Backend Rollback workflow를 수동 실행하여 이전 ECR 이미지 태그를 latest로 재태깅한 뒤 ASG Instance Refresh를 수행한다.<br/>담당자: 배포 권한을 가진 백엔드/인프라 담당자</td></tr></div><div style="display:contents" dir="ltr"><tr id="38ed943b-cac2-813b-b266-d55af7a9884e"><td id="lAmf" class="">배포 로그</td><td id="DaDY" class="" style="width:454px">GitHub Actions 실행 로그와 EC2의 Docker 실행 로그를 통해 배포 결과를 확인하며, 배포 실패 시 컨테이너 상태와 최근 Docker 로그(최대 200줄)를 출력하여 원인 분석이 가능하도록 구성</td></tr></div></tbody></table></div><div style="display:contents" dir="auto"><h2 id="38ed943b-cac2-81cc-a3c2-e52f02d4734a" class="">2.3 보안 및 환경변수</h2></div><div style="display:contents" dir="auto"><ul id="38ed943b-cac2-81fa-b55a-f0d8362a24db" class="bulleted-list"><li style="list-style-type:disc">AWS 인증 방식: Access Key (GitHub Secret)</li></ul></div><div style="display:contents" dir="auto"><ul id="38ed943b-cac2-8197-9433-d99450beab07" class="bulleted-list"><li style="list-style-type:disc">GitHub Secrets/Variables 에는 실제 값만 저장하고 워크플로 파일에 민감 정보를 직접 작성하지 않습니다.</li></ul></div><div style="display:contents" dir="auto"><ul id="38ed943b-cac2-813f-a05d-e9435c6a1385" class="bulleted-list"><li style="list-style-type:disc">VITE_API_BASE_URL: <a href="https://api.assetieum.com/">https://api.assetieum.com</a>/api/v1</li></ul></div><div style="display:contents" dir="auto"><ul id="38ed943b-cac2-8166-9a76-e549bab467cd" class="bulleted-list"><li style="list-style-type:disc">VITE_SSE_BASE_URL: <a href="https://api.assetieum.com/">https://api.assetieum.com</a>/api/v1</li></ul></div><div style="display:contents" dir="auto"><ul id="38ed943b-cac2-8115-88b4-fcf6b1835eff" class="bulleted-list"><li style="list-style-type:disc">S3 와 CloudFront 작업에 필요한 최소 IAM 권한 범위: AmazonS3FullAccess, AmazonEC2ContainerRegistryReadOnly, AmazonSSMManagedInstanceCore</li></ul></div><div style="display:contents" dir="auto"><h2 id="38ed943b-cac2-819f-94f9-c5975e1c3024" class="">2.4 프론트엔드 GitHub Actions 템플릿</h2></div><div style="display:contents" dir="auto"><p id="38ed943b-cac2-81a7-9b9d-fc2a3c0483b2" class="">아래 값은 실제 리소스 정보로 교체해야 실행할 수 있습니다.</p></div><div style="display:contents" dir="auto"><script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js" integrity="sha512-7Z9J3l1+EYfeaPKcGXu3MS/7T+w19WtKQY/n+xzmw4hZhJ9tyYmcUS+4QqAlzhicE5LAfMQSF3iFTK9bQdTxXg==" crossorigin="anonymous" referrerPolicy="no-referrer"></script><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" integrity="sha512-tN7Ec6zAFaVSG3TpNAKtk4DOHNpSwKHxxrsiw4GHKESGPs5njn/0sMCUMl2svV4wo4BK/rCP7juYz+zx+l6oeQ==" crossorigin="anonymous" referrerPolicy="no-referrer"/><pre id="38ed943b-cac2-812a-aeb0-fc755f50a939" class="code code-wrap"><code style="white-space:pre-wrap;word-break:break-all">name: Frontend Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: frontend-deploy
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || &#x27;ap-northeast-2&#x27; }}
+  NODE_VERSION: ${{ vars.NODE_VERSION || &#x27;24&#x27; }}
+  VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || &#x27;/api/v1&#x27; }}
+  VITE_SSE_BASE_URL: ${{ vars.VITE_SSE_BASE_URL || &#x27;/api/v1&#x27; }}
+  VITE_USE_MOCKS: &#x27;false&#x27;
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+  deploy-s3-cloudfront:
+    name: Deploy to S3 and CloudFront
+    runs-on: ubuntu-latest
+    needs: test
+
+    permissions:
+      contents: read
+
+    env:
+      S3_BUCKET: ${{ vars.S3_BUCKET }}
+      CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate deploy configuration
+        run: |
+          set -eu
+          if [ -z &quot;$S3_BUCKET&quot; ]; then
+            echo &quot;Missing GitHub variable: S3_BUCKET&quot;
+            exit 1
+          fi
+          if [ -z &quot;$CLOUDFRONT_DISTRIBUTION_ID&quot; ]; then
+            echo &quot;Missing GitHub variable: CLOUDFRONT_DISTRIBUTION_ID&quot;
+            exit 1
+          fi
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Upload hashed assets
+        run: |
+          if [ -d dist/assets ]; then
+            aws s3 sync dist/assets &quot;s3://$S3_BUCKET/assets&quot; \
+              --delete \
+              --cache-control &quot;public,max-age=31536000,immutable&quot;
+          fi
+      - name: Upload entry and public files
+        run: |
+          aws s3 sync dist &quot;s3://$S3_BUCKET&quot; \
+            --delete \
+            --exclude &quot;assets/*&quot; \
+            --cache-control &quot;no-cache,no-store,must-revalidate&quot;
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id &quot;$CLOUDFRONT_DISTRIBUTION_ID&quot; \
+            --paths &quot;/*&quot;</code></pre></div><div style="display:contents" dir="auto"><h2 id="38ed943b-cac2-8136-a38b-cfe7b9053d92" class="">3. 백엔드 CI/CD 계획</h2></div><div style="display:contents" dir="auto"><p id="38ed943b-cac2-818b-a6bc-e74a36416c67" class="">Docker 이미지 배포: GitHub Actions → ECR → EC2/Auto Scaling</p></div><div style="display:contents" dir="auto"><h2 id="38ed943b-cac2-81ae-983f-d6681ea59911" class="">3.1 현재 상태와 목표 상태</h2></div><div style="display:contents" dir="ltr"><table id="38ed943b-cac2-81bb-8ed8-f691e3bb20b5" class="simple-table"><thead class="simple-table-header"><div style="display:contents" dir="ltr"><tr id="38ed943b-cac2-8131-b5d9-dd5b07ebc558"><th id="fag]" class="simple-table-header-color simple-table-header">구분</th><th id="ln=d" class="simple-table-header-color simple-table-header" style="width:325.1625061035156px">현재 확인 내용</th><th id="DRYm" class="simple-table-header-color simple-table-header" style="width:200.97500610351562px">계획서 반영</th></tr></div></thead><tbody><div style="display:contents" dir="ltr"><tr id="38ed943b-cac2-81e9-8e69-f6d260c6da63"><td id="fag]" class="">빌드/테스트</td><td id="ln=d" class="" style="width:325.1625061035156px">GitHub Actions, 테스트용 H2, Redis service</td><td id="DRYm" class="" style="width:200.97500610351562px">자동화 유지</td></tr></div><div style="display:contents" dir="ltr"><tr id="38ed943b-cac2-8176-af75-eaf1cac71da8"><td id="fag]" class="">이미지 배포</td><td id="ln=d" class="" style="width:325.1625061035156px">Docker build 후 ECR(assetieum-be) push</td><td id="DRYm" class="" style="width:200.97500610351562px">자동화 유지</td></tr></div><div style="display:contents" dir="ltr"><tr id="38ed943b-cac2-8179-abed-dd24f2a0beb8"><td id="fag]" class="">EC2 실행</td><td id="ln=d" class="" style="width:325.1625061035156px">ECR 이미지를 pull 하여 docker-compose 로 실행</td><td id="DRYm" class="" style="width:200.97500610351562px">자동화 유지</td></tr></div><div style="display:contents" dir="ltr"><tr id="38ed943b-cac2-81c5-a0f0-f00596998f7d"><td id="fag]" class="">Auto Scaling 반영</td><td id="ln=d" class="" style="width:325.1625061035156px">ASG Instance Refresh 전환 준비</td><td id="DRYm" class="" style="width:200.97500610351562px">현재 방식</td></tr></div></tbody></table></div><div style="display:contents" dir="auto"><h2 id="38ed943b-cac2-815f-8f50-f80ea51c824b" class="">3.2  백엔드 배포 프로세스</h2></div><div style="display:contents" dir="auto"><ol type="1" id="6f648215-d46e-4c74-9b21-1a7c69dd41ef" class="numbered-list" start="1"><li>백엔드 코드 수정 후 GitHub 배포 브랜치에 Commit 및 Push</li></ol></div><div style="display:contents" dir="auto"><ol type="1" id="788ed3d4-6a38-4712-a0d2-65c740ebfc6c" class="numbered-list" start="2"><li>GitHub Actions를 통한 코드 빌드 및 테스트</li></ol></div><div style="display:contents" dir="auto"><ol type="1" id="3646957f-4692-45b1-94fd-b21844954a98" class="numbered-list" start="3"><li>테스트 완료 후 백엔드 Docker 이미지 생성</li></ol></div><div style="display:contents" dir="auto"><ol type="1" id="8e84ba9b-85c1-4270-89f9-afb2239c2510" class="numbered-list" start="4"><li>생성된 Docker 이미지를 AWS ECR의 <code>assetieum-be</code> 저장소에 업로드</li></ol></div><div style="display:contents" dir="auto"><ol type="1" id="13fdc73a-169d-4509-bcb5-061c860df044" class="numbered-list" start="5"><li>Auto Scaling Group의 인스턴스 교체 작업 시작</li></ol></div><div style="display:contents" dir="auto"><ol type="1" id="610f3720-d404-4a6e-886d-d72e2866dbbb" class="numbered-list" start="6"><li>새로운 EC2 인스턴스 생성 및 운영 환경변수 설정</li></ol></div><div style="display:contents" dir="auto"><ol type="1" id="f9bcdfdf-90b6-4d48-9d3f-e1cd040d2afc" class="numbered-list" start="7"><li>ECR에서 최신 백엔드 이미지 다운로드</li></ol></div><div style="display:contents" dir="auto"><ol type="1" id="bcf89c58-6241-4761-b114-e86262dc2b67" class="numbered-list" start="8"><li>Docker Compose를 통한 백엔드 애플리케이션 실행</li></ol></div><div style="display:contents" dir="auto"><ol type="1" id="0dd09540-5c79-4031-abc0-93d5bb4c999d" class="numbered-list" start="9"><li>ALB Health Check를 통한 신규 서버 정상 동작 확인</li></ol></div><div style="display:contents" dir="auto"><ol type="1" id="d3ff5458-b59b-46b9-8264-2a9fd5575d53" class="numbered-list numbered-list-digits-2" start="10"><li>정상 확인 후 기존 EC2 인스턴스 순차 교체</li></ol></div><div style="display:contents" dir="auto"><ol type="1" id="b676dc50-008c-46e1-9579-d77541eed229" class="numbered-list numbered-list-digits-2" start="11"><li>배포 완료 후 API, Redis, RDS, S3 파일 업로드 기능 확인</li></ol></div><div style="display:contents" dir="auto"><h2 id="38ed943b-cac2-81f5-acda-edbc5177a9c3" class="">3.3 Back End 배포 전략 및 운영 기준</h2></div><div style="display:contents" dir="auto"><h2 id="38ed943b-cac2-81dc-b462-c42935cd04d9" class="">3.4 배포 전략</h2></div><div style="display:contents" dir="ltr"><table id="38ed943b-cac2-8107-9df8-f927ca21e414" class="simple-table"><thead class="simple-table-header"><div style="display:contents" dir="ltr"><tr id="38ed943b-cac2-8188-8db5-ee707e884da6"><th id="xDXz" class="simple-table-header-color simple-table-header">항목</th><th id="tH\A" class="simple-table-header-color simple-table-header" style="width:608px">계획</th></tr></div></thead><tbody><div style="display:contents" dir="ltr"><tr id="38ed943b-cac2-816e-ae48-fd0cb9cf4db1"><td id="xDXz" class="">배포 방식</td><td id="tH\A" class="" style="width:608px">ECR 이미지 기반 EC2 컨테이너 배포</td></tr></div><div style="display:contents" dir="ltr"><tr id="38ed943b-cac2-819e-9195-e9c0f84c1682"><td id="xDXz" class="">전환 전략</td><td id="tH\A" class="" style="width:608px">ASG Instance Refresh 기반 순차 교체 - (MinHealthyPercentage = 50 , InstanceWarmup = 180)</td></tr></div><div style="display:contents" dir="ltr"><tr id="38ed943b-cac2-8150-bddf-f5098e5c156e"><td id="xDXz" class="">트래픽 전환</td><td id="tH\A" class="" style="width:608px">새 인스턴스가 ALB Health Check 를 통과한 뒤 Target Group 에서 트래픽 수신</td></tr></div><div style="display:contents" dir="ltr"><tr id="38ed943b-cac2-8161-b00d-e4384901b83d"><td id="xDXz" class="">환경변수</td><td id="tH\A" class="" style="width:608px">Parameter Store → User Data/배포 스크립트 → .env 생성</td></tr></div><div style="display:contents" dir="ltr"><tr id="38ed943b-cac2-8107-a44e-e57d7ab5789f"><td id="xDXz" class="">자동 복구</td><td id="tH\A" class="" style="width:608px">ASG Self-Healing 으로 비정상 EC2 대체</td></tr></div><div style="display:contents" dir="ltr"><tr id="38ed943b-cac2-8143-9977-c1c2a97f5c0a"><td id="xDXz" class="">스케일링</td><td id="tH\A" class="" style="width:608px">CloudWatch CPU Alarm 기반 Scale Out/Scale In  <br/>Target CPU: 60%<br/>Instance Warmup: 300초<br/>Min/Desired/Max: 1 / 1 / 3</td></tr></div></tbody></table></div><div style="display:contents" dir="auto"><h2 id="38ed943b-cac2-812e-a5e6-cd02b3f2a163" class=""><mark class="highlight-default">3.5 롤백 계획</mark></h2></div><div style="display:contents" dir="ltr"><table id="38ed943b-cac2-8102-82a0-f91290e47d2c" class="simple-table"><thead class="simple-table-header"><div style="display:contents" dir="ltr"><tr id="38ed943b-cac2-81f7-a0e1-e38bfe89d469"><th id="i_~j" class="simple-table-header-color simple-table-header">단계</th><th id="QY&gt;I" class="simple-table-header-color simple-table-header" style="width:510px">필요 내용</th></tr></div></thead><tbody><div style="display:contents" dir="ltr"><tr id="38ed943b-cac2-8137-997c-cf199e480d94"><td id="i_~j" class="">1. 이전 버전 식별</td><td id="QY&gt;I" class="" style="width:510px">ECR Images에서 롤백 대상 이미지 태그 확인</td></tr></div><div style="display:contents" dir="ltr"><tr id="38ed943b-cac2-8199-bedc-c516cebd794c"><td id="i_~j" class="">2. 실행 이미지 변경</td><td id="QY&gt;I" class="" style="width:510px">GitHub Actions Rollback Workflow에서 <code>image_tag</code>에 이전 SHA 입력</td></tr></div><div style="display:contents" dir="ltr"><tr id="38ed943b-cac2-81e5-be64-dbdd7935d5ef"><td id="i_~j" class="">3. 재배포</td><td id="QY&gt;I" class="" style="width:510px">Workflow 실행 후 ECR <code>latest</code> 재태깅 및 ASG Instance Refresh 수행</td></tr></div><div style="display:contents" dir="ltr"><tr id="38ed943b-cac2-81c6-9ed9-d2e9ea385c46"><td id="i_~j" class="">4. 검증</td><td id="QY&gt;I" class="" style="width:510px">Health Check, 로그인, 핵심 API, 파일 업로드, Redis 연결 정상 여부 확인</td></tr></div><div style="display:contents" dir="ltr"><tr id="38ed943b-cac2-81d1-9fcf-ecd1434b25ad"><td id="i_~j" class="">5. 실패 대응</td><td id="QY&gt;I" class="" style="width:510px">Workflow 실패 시 로그 확인, 필요 시 기존 정상 SHA로 재실행</td></tr></div></tbody></table></div><div style="display:contents" dir="auto"><h2 id="38ed943b-cac2-81a0-b8d7-ff821f1631cf" class="">3.6 보안 관리</h2></div><div style="display:contents" dir="auto"><ul id="24e5a800-468a-4449-8ff4-01f943a5d34d" class="bulleted-list"><li style="list-style-type:disc">GitHub Actions 배포 인증 정보의 GitHub Secrets 저장 및 외부 노출 방지</li></ul></div><div style="display:contents" dir="auto"><ul id="0b93c9b5-c6de-4039-87ce-6b28aeb91c93" class="bulleted-list"><li style="list-style-type:disc">배포 작업에 필요한 AWS 권한만 최소 범위로 부여</li></ul></div><div style="display:contents" dir="auto"><ul id="ab4e2526-64a6-4a3b-a0b5-8eaf2f8ee072" class="bulleted-list"><li style="list-style-type:disc">EC2 인스턴스에 필요한 AWS 서비스 접근 권한만 IAM Role로 부여</li></ul></div><div style="display:contents" dir="auto"><ul id="acae0fba-5162-47bd-bd5c-2ed5131f1391" class="bulleted-list"><li style="list-style-type:disc">운영 환경변수 및 민감 정보의 Parameter Store 관리</li></ul></div><div style="display:contents" dir="auto"><ul id="0f141c25-b02e-425c-a223-1e25f6f3083c" class="bulleted-list"><li style="list-style-type:disc"><code>.env</code>, Access Key, 데이터베이스 비밀번호 등 민감 정보의 GitHub 저장소 업로드 금지</li></ul></div><div style="display:contents" dir="auto"><ul id="06d0f929-25f4-4c23-95a6-1281a470ac3d" class="bulleted-list"><li style="list-style-type:disc">운영 환경설정 및 인증 정보의 Docker 이미지와 AMI 포함 금지</li></ul></div><div style="display:contents" dir="auto"><ul id="3926a69c-dc6f-45c9-ac3e-0a61e8d8803e" class="bulleted-list"><li style="list-style-type:disc">S3, ECR, Parameter Store 등 AWS 리소스에 대한 접근 권한 제한</li></ul></div><div style="display:contents" dir="auto"><ul id="84458325-225c-4538-8b15-bc2b6f73e10f" class="bulleted-list"><li style="list-style-type:disc">ECR Docker 이미지 취약점 검사 및 오래된 이미지 정리</li></ul></div><div style="display:contents" dir="auto"><ul id="5b3afa3b-9750-4440-ac5a-e77a84a150da" class="bulleted-list"><li style="list-style-type:disc">배포 및 서버 접근 기록 확인을 위한 로그 관리</li></ul></div><div style="display:contents" dir="auto"><ul id="e42e17a6-210a-4946-9562-714fe7702268" class="bulleted-list"><li style="list-style-type:disc">Access Key와 비밀번호 등 인증 정보의 주기적인 점검 및 변경</li></ul></div><div style="display:contents" dir="auto"><h2 id="38ed943b-cac2-815a-bed1-e9df27798aba" class="">3.7 Back End GitHub Actions 템플릿 - Build &amp; ECR Push</h2></div><div style="display:contents" dir="auto"><pre id="38ed943b-cac2-8196-9272-e0a0f58bb903" class="code code-wrap"><code style="white-space:pre-wrap;word-break:break-all">name: Backend Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: backend-deploy
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || &#x27;ap-northeast-2&#x27; }}
+  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY || &#x27;assetieum-be&#x27; }}
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: &gt;-
+          --health-cmd &quot;redis-cli ping&quot;
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: &#x27;21&#x27;
+          cache: gradle
+
+      - name: Grant execute permission for Gradle
+        run: chmod +x ./gradlew
+
+      - name: Run tests
+        run: ./gradlew clean test --no-daemon
+
+  build-and-push:
+    name: Build and Push Image
+    runs-on: ubuntu-latest
+    needs: test
+
+    permissions:
+      contents: read
+
+    outputs:
+      image-uri: ${{ steps.image.outputs.image-uri }}
+      image-tag: ${{ github.sha }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image names
+        id: image
+        run: |
+          IMAGE_REPOSITORY=&quot;${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}&quot;
+          echo &quot;image-repository=$IMAGE_REPOSITORY&quot; &gt;&gt; &quot;$GITHUB_OUTPUT&quot;
+          echo &quot;image-uri=$IMAGE_REPOSITORY:${{ github.sha }}&quot; &gt;&gt; &quot;$GITHUB_OUTPUT&quot;
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.image.outputs.image-repository }}:${{ github.sha }}
+            ${{ steps.image.outputs.image-repository }}:latest
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  refresh-asg:
+    name: Refresh Auto Scaling Group
+    runs-on: ubuntu-latest
+    needs: build-and-push
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Start ASG instance refresh
+        run: |
+          aws autoscaling start-instance-refresh \
+            --auto-scaling-group-name &quot;${{ secrets.ASG_NAME }}&quot; \
+            --preferences MinHealthyPercentage=50,InstanceWarmup=180</code></pre></div><div style="display:contents" dir="auto"><h2 id="38ed943b-cac2-81fb-8faf-dfd59aed5b0c" class=""><mark class="highlight-default"><strong>4. Back End 서버 반영 단계</strong></mark></h2></div><div style="display:contents" dir="auto"><h2 id="38ed943b-cac2-812e-82a8-f8f6cdb25ddb" class="">4.1 ASG Instance Refresh</h2></div><div style="display:contents" dir="auto"><p id="38ed943b-cac2-81b3-bb02-c234b8100af6" class="">Launch Template/User Data 가 새 이미지 태그를 읽어 실행할 수 있어야 합니다. 이미지 참조 갱신이 빠지면 새 EC2 도 이전 이미지를 실행할 수 있습니다.</p></div><div style="display:contents" dir="auto"><pre id="38ed943b-cac2-81de-a044-df39b7ec8deb" class="code code-wrap"><code style="white-space:pre-wrap;word-break:break-all">- name: Start ASG instance refresh
+    run: |
+      aws autoscaling start-instance-refresh \
+        --auto-scaling-group-name &quot;${{ secrets.ASG_NAME }}&quot; \
+        --preferences MinHealthyPercentage=50,InstanceWarmup=180
+</code></pre></div><div style="display:contents" dir="auto"><h3 id="38ed943b-cac2-81c0-a53e-e0adb8d989d8" class="">4.3 EC2 부팅/배포 스크립트 필수 항목</h3></div><div style="display:contents" dir="ltr"><table id="0e6d0a9c-2f63-4b27-8e14-3dfebcf6e7ee" class="simple-table"><thead class="simple-table-header"><div style="display:contents" dir="ltr"><tr id="ba8a6a0d-662f-47a5-9df8-02ee94e7f4d6"><th id="}sfP" class="simple-table-header-color simple-table-header">순서</th><th id="}d}f" class="simple-table-header-color simple-table-header" style="width:580px">EC2에서 수행할 작업</th></tr></div></thead><tbody><div style="display:contents" dir="ltr"><tr id="93765ebf-8d77-4e4a-8414-56da27e83fa2"><td id="}sfP" class=""><strong>1</strong></td><td id="}d}f" class="" style="width:580px"><strong>AWS Systems Manager Parameter Store</strong>에서 운영 환경변수 조회<br/><strong>Parameter 경로:</strong> <code>/assetieum/prod/env</code></td></tr></div><div style="display:contents" dir="ltr"><tr id="29dcaf29-6f1d-44d7-8bf6-bdeccca2cdd6"><td id="}sfP" class=""><strong>2</strong></td><td id="}d}f" class="" style="width:580px">조회한 환경변수를 <code><strong>.env</strong></code><strong> 파일</strong>로 생성<br/><strong>생성 경로:</strong> <code>/home/ubuntu/&lt;PROJECT_DIRECTORY&gt;/.env</code></td></tr></div><div style="display:contents" dir="ltr"><tr id="4025100e-4cd1-4234-86bf-79d49ac6bf70"><td id="}sfP" class=""><strong>3</strong></td><td id="}d}f" class="" style="width:580px"><strong>Amazon ECR 로그인 후 Docker 이미지 다운로드(Pull)<br/>ECR Registry:</strong> <code>&lt;AWS_ACCOUNT_ID&gt;.dkr.ecr.&lt;REGION&gt;.amazonaws.com</code> <br/><strong>Repository:</strong> <code>assetieum-be</code><strong>Image Tag:</strong> <code>latest</code> </td></tr></div><div style="display:contents" dir="ltr"><tr id="b03c1a20-01b7-4503-b2a4-008b4cc256fe"><td id="}sfP" class=""><strong>4</strong></td><td id="}d}f" class="" style="width:580px"><strong>Docker Compose를 이용하여 애플리케이션 실행<br/>docker-compose.yml 경로:</strong> <code>/home/ubuntu/&lt;PROJECT_DIRECTORY&gt;/docker-compose.yml</code> <br/><strong>실행 명령:</strong> <code>docker compose pull</code> → <code>docker compose up -d</code></td></tr></div><div style="display:contents" dir="ltr"><tr id="101e6b33-9bf4-4df3-a95d-b25854bdd31c"><td id="}sfP" class=""><strong>5</strong></td><td id="}d}f" class="" style="width:580px"><strong>애플리케이션 Health Check 확인서비스 <br/>포트:</strong> <code>8080</code><strong>Health Check API:</strong> <code>GET /api/v1/health</code> <em>(HealthCheckController 직접 구현 )<br/></em>확인 명령: <code>curl http://localhost:8080/api/v1/health</code></td></tr></div><div style="display:contents" dir="ltr"><tr id="995d426a-bc5b-4343-8851-7089630db097"><td id="}sfP" class=""><strong>6</strong></td><td id="}d}f" class="" style="width:580px"><strong>CloudWatch:</strong> CPUUtilization 모니터링, Target Tracking 정책, Scale Out/Scale In 알람 확인 <br/><strong>애플리케이션 로그:</strong> <code>docker compose logs -f</code> 또는 <code>docker logs &lt;컨테이너명&gt;</code></td></tr></div></tbody></table></div></div></article></body></html>
