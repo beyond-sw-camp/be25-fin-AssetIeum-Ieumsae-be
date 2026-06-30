@@ -40,6 +40,10 @@ dependencies {
 	// Web MVC / REST API
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 
+	// Monitoring
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
+
 	// Spring Batch
 	implementation 'org.springframework.boot:spring-boot-starter-batch'
 
