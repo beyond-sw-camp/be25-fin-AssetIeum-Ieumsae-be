@@ -1,0 +1,72 @@
+name: Backend Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Rollback target ECR image tag, for example a previous Git commit SHA"
+        required: true
+      confirm:
+        description: "Type ROLLBACK to confirm"
+        required: true
+
+concurrency:
+  group: backend-deploy
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'ap-northeast-2' }}
+  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY || 'assetieum-be' }}
+
+jobs:
+  rollback:
+    name: Rollback Backend
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Validate rollback confirmation
+        run: |
+          if [ "${{ inputs.confirm }}" != "ROLLBACK" ]; then
+            echo "Rollback confirmation failed. Type ROLLBACK to run this workflow."
+            exit 1
+          fi
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Retag rollback image as latest
+        run: |
+          set -euo pipefail
+
+          image_manifest="$(
+            aws ecr batch-get-image \
+              --repository-name "${{ env.ECR_REPOSITORY }}" \
+              --image-ids imageTag="${{ inputs.image_tag }}" \
+              --query 'images[0].imageManifest' \
+              --output text
+          )"
+
+          if [ -z "$image_manifest" ] || [ "$image_manifest" = "None" ]; then
+            echo "ECR image tag not found: ${{ inputs.image_tag }}"
+            exit 1
+          fi
+
+          aws ecr put-image \
+            --repository-name "${{ env.ECR_REPOSITORY }}" \
+            --image-tag latest \
+            --image-manifest "$image_manifest"
+
+          echo "Retagged ${{ env.ECR_REPOSITORY }}:${{ inputs.image_tag }} as latest."
+
+      - name: Start ASG instance refresh
+        run: |
+          aws autoscaling start-instance-refresh \
+            --auto-scaling-group-name "${{ secrets.ASG_NAME }}" \
+            --preferences MinHealthyPercentage=50,InstanceWarmup=180

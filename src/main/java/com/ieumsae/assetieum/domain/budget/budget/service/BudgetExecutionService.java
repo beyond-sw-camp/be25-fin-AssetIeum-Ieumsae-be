@@ -308,6 +308,29 @@ public class BudgetExecutionService {
     }
 
     @Transactional
+    public void executeForIntangibleAssetBillingCycle(
+            IntangibleAsset asset,
+            LocalDate billingDate
+    ) {
+        if (asset == null
+                || asset.getPurchasePrice() == null
+                || asset.getPurchasePrice().signum() <= 0) {
+            return;
+        }
+
+        Budget budget = findBudgetForIntangibleAssetBillingCycle(asset, billingDate);
+        BigDecimal amount = asset.getPurchasePrice();
+        validateAvailableBudget(budget, amount);
+        increaseUsed(
+                budget,
+                null,
+                null,
+                amount,
+                "무형자산 자동 결제 인한 예산 집행 - 자산번호: " + asset.getAssetCode()
+        );
+    }
+
+    @Transactional
     public void recoverForPurchaseReturn(
             Ticket ticket,
             PurchaseReturnTicket purchaseReturnTicket
@@ -380,6 +403,29 @@ public class BudgetExecutionService {
         }
 
         return findDepartmentBudget(ticket);
+    }
+
+    private Budget findBudgetForIntangibleAssetBillingCycle(IntangibleAsset asset, LocalDate billingDate) {
+        int budgetYear = billingDate == null ? LocalDate.now().getYear() : billingDate.getYear();
+        if (asset.getIntangibleAssetItem() != null
+                && Boolean.TRUE.equals(asset.getIntangibleAssetItem().getIsStandard())) {
+            return budgetRepository.findByCompany_IdAndDepartmentIsNullAndBudgetYear(
+                            asset.getCompany().getId(),
+                            budgetYear
+                    )
+                    .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "회사 공용 예산이 없습니다."));
+        }
+
+        if (asset.getDepartment() == null) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "부서 비용 무형자산의 소유 부서가 없습니다.");
+        }
+
+        return budgetRepository.findByCompany_IdAndDepartment_IdAndBudgetYear(
+                        asset.getCompany().getId(),
+                        asset.getDepartment().getId(),
+                        budgetYear
+                )
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "해당 부서의 예산이 없습니다."));
     }
 
     private Budget findCompanyCommonBudget(Ticket ticket) {
