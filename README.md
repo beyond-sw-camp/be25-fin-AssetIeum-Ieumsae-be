@@ -227,6 +227,8 @@
 - [백엔드 단위테스트](https://docs.google.com/spreadsheets/d/1z-TKzG4AP284DwpEWPyhNDyRp2_YIFeRTpRxHoSSBkk/edit?gid=481770483#gid=481770483)
 - [프론트엔드 단위테스트](https://docs.google.com/spreadsheets/d/1z-TKzG4AP284DwpEWPyhNDyRp2_YIFeRTpRxHoSSBkk/edit?gid=324859763#gid=324859763)
 
+- [통합 테스트 결과서](docs/AssetIeum_통합_테스트_결과서.pdf)
+- [CI/CD 계획서](docs/AssetIeum_CICD_계획서_정리본.pdf)
 ### ERD
 - [ERD Cloud](https://www.erdcloud.com/d/jHtNFPTxxwohPjgER)
 <img width="4940" height="2772" alt="자산이음_ERD" src="https://github.com/user-attachments/assets/3d87a248-aa49-4d0a-835b-f6d44a3ca510" />
