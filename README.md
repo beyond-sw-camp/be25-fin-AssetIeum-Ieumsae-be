@@ -66,13 +66,16 @@
 1. [📍 주요 기능](#1-주요-기능)
 2. [🛠 기술 스택](#2-기술-스택)
 3. [🏗 시스템 아키텍처](#3-시스템-아키텍처)
-4. [🖥 상세 서비스 화면](#4-상세-서비스-화면)
-5. [📄 기술 문서](#5-기술-문서)
-6. [🚀 성능 테스트](#6-성능-테스트)
-7. [⚙️ 실행 방법](#7-실행-방법)
-8. [🔥 트러블 슈팅](#8-트러블-슈팅)
-9. [📝 회고](#9-회고)
-10. [📚 그 외 산출물](#10-그-외-산출물)
+4. [📋 요구사항 명세서](#4-요구사항-명세서)
+5. [🗂 테이블 명세서](#5-테이블-명세서)
+6. [🧩 ERD](#6-erd)
+7. [🎨 화면 기능 설계서](#7-화면-기능-설계서)
+8. [🖥 상세 서비스 화면](#8-상세-서비스-화면)
+9. [🧪 테스트 보고서](#9-테스트)
+10. [🚀 CI/CD 계획서](#12-cicd-계획서)
+11. [⚡ 성능 테스트](#13-성능-테스트)
+12. [🔥 트러블 슈팅](#15-트러블-슈팅)
+13. [📝 회고](#16-회고)
 
 <br>
 
@@ -144,41 +147,75 @@
 <img width="1639" height="743" alt="image" src="https://github.com/user-attachments/assets/eba26bed-48a7-41b4-a64a-fa4d701748e7" />
 
 
+
+<br>
+
+## 4. 요구사항 명세서
+
+- 📋[ 요구사항 명세서 ](https://docs.google.com/spreadsheets/d/1z-TKzG4AP284DwpEWPyhNDyRp2_YIFeRTpRxHoSSBkk/edit?gid=683579060#gid=683579060)
+
+
+<br>
+
+## 5. 테이블 명세서 
+- 🗂[ 테이블 명세서 ](https://docs.google.com/spreadsheets/d/1z-TKzG4AP284DwpEWPyhNDyRp2_YIFeRTpRxHoSSBkk/edit?gid=2140880264#gid=2140880264)
+
+
+
+<br>
+
+## 6. ERD
+- [ERD Cloud](https://www.erdcloud.com/d/jHtNFPTxxwohPjgER)
+<img width="4940" height="2772" alt="자산이음_ERD" src="https://github.com/user-attachments/assets/3d87a248-aa49-4d0a-835b-f6d44a3ca510" />
+
+<br>
+
+## 7. 화면 기능 설계서 
+- [ 화면 기능 설계서 ](https://www.figma.com/design/i5o7Xeb6cELARDILAXW309/%EC%9E%90%EC%82%B0-%EC%9D%B4%EC%9D%8C?node-id=399-509&t=ruWNjERUCQMxksow-0)
+
+
+<br>
+
+## 8. 상세 서비스 화면 
+
 ---
 
 <br>
 
-## 4. 상세 서비스 화면
+## 9. 백엔드 단위 테스트
+- [백엔드 단위테스트](https://docs.google.com/spreadsheets/d/1z-TKzG4AP284DwpEWPyhNDyRp2_YIFeRTpRxHoSSBkk/edit?gid=481770483#gid=481770483)
+
+<br>
+
+## 10. 프론트엔드 단위 테스트
+- [프론트엔드 단위테스트](https://docs.google.com/spreadsheets/d/1z-TKzG4AP284DwpEWPyhNDyRp2_YIFeRTpRxHoSSBkk/edit?gid=324859763#gid=324859763)
+
+
+<br>
+
+## 11. 통합 테스트 결과서 
+- [통합 테스트 결과서](docs/통합_테스트_결과서.pdf)
+
+<br>
+
+## 12. CI/CD 계획서 
+- [CI/CD 계획서](docs/CICD_계획서.pdf)
+
+<br>
+
+## 13. 성능 테스트
 
 ---
 
 <br>
 
-## 5. 기술 문서
+## 14. 트러블 슈팅
 
 ---
 
 <br>
 
-## 6. 성능 테스트
-
----
-
-<br>
-
-## 7. 실행 방법
-
----
-
-<br>
-
-## 8. 트러블 슈팅
-
----
-
-<br>
-
-## 9. 회고
+## 15. 회고
 
 <details>
 <summary><b>양준석</b></summary>
