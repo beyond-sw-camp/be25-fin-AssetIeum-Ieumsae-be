@@ -171,7 +171,7 @@
 <br>
 
 ## 7. 화면 기능 설계서 
-- [ 화면 기능 설계서 ](https://www.figma.com/design/i5o7Xeb6cELARDILAXW309/%EC%9E%90%EC%82%B0-%EC%9D%B4%EC%9D%8C?node-id=399-509&t=ruWNjERUCQMxksow-0)
+- [ 화면 기능 설계서 ](https://www.figma.com/design/i5o7Xeb6cELARDILAXW309/%EC%9E%90%EC%82%B0-%EC%9D%B4%EC%9D%8C?node-id=0-1&p=f&t=1X5kLdHK34VusLdq-0)
 
 
 <br>
@@ -194,7 +194,7 @@
 <br>
 
 ## 11. 통합 테스트 결과서 
-- [통합 테스트 결과서](docs/통합_테스트_결과서.pdf)
+- [통합 테스트 결과서](https://github.com/beyond-sw-camp/be25-fin-AssetIeum-Ieumsae-be/wiki/%ED%86%B5%ED%95%A9-%ED%85%8C%EC%8A%A4%ED%8A%B8-%EA%B2%B0%EA%B3%BC%EC%84%9C)
 
 <br>
 
