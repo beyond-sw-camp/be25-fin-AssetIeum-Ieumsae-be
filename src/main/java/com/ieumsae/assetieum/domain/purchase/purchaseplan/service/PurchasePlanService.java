@@ -690,7 +690,7 @@ public class PurchasePlanService {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
         }
 
-        purchasePlanItem.updateStatus();
+        purchasePlanItem.markReceivedIfNeeded();
         markLinkedPurchaseRequestReceivedIfNeeded(purchasePlanItem, companyId);
 
         for (PurchasePlanItem item : purchasePlanItems) {
@@ -746,6 +746,7 @@ public class PurchasePlanService {
         if (purchasePlanItem.getAssetType() == AssetType.TANGIBLE) {
             TangibleAssetItem tangibleAssetItem = findOrCreateTangibleItem(purchasePlanItem, request, companyId);
             purchasePlanItem.attachTangibleAssetItem(tangibleAssetItem);
+            purchasePlanItem.markItemRegistered();
             purchasePlanItemRepository.save(purchasePlanItem);
             return;
         }
@@ -753,6 +754,7 @@ public class PurchasePlanService {
         if (purchasePlanItem.getAssetType() == AssetType.INTANGIBLE) {
             IntangibleAssetItem intangibleAssetItem = findOrCreateIntangibleItem(purchasePlanItem, request, companyId);
             purchasePlanItem.attachIntangibleAssetItem(intangibleAssetItem);
+            purchasePlanItem.markItemRegistered();
             purchasePlanItemRepository.save(purchasePlanItem);
             return;
         }
@@ -976,7 +978,7 @@ public class PurchasePlanService {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
         }
 
-        if (purchasePlanItem.getPurchasePlanItemStatus() != PurchasePlanItemStatus.RECEIVED) {
+        if (purchasePlanItem.getPurchasePlanItemStatus() != PurchasePlanItemStatus.ITEM_REGISTERED) {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "자산을 등록할 수 없는 상태의 품목입니다.");
         }
     }
