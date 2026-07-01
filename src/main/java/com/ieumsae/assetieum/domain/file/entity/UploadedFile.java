@@ -16,6 +16,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -29,6 +30,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "files")
 public class UploadedFile {
+
+	private static final ZoneId SEOUL_ZONE = ZoneId.of("Asia/Seoul");
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -68,7 +71,7 @@ public class UploadedFile {
 	@PrePersist
 	void prePersist() {
 		if (createdAt == null) {
-			createdAt = LocalDateTime.now();
+			createdAt = LocalDateTime.now(SEOUL_ZONE);
 		}
 	}
 }

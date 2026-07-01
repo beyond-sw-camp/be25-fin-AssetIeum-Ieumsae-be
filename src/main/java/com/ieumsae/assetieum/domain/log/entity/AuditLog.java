@@ -15,16 +15,16 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -34,8 +34,9 @@ import org.hibernate.type.SqlTypes;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "audit_logs")
-@EntityListeners(AuditingEntityListener.class)
 public class AuditLog {
+
+	private static final ZoneId SEOUL_ZONE = ZoneId.of("Asia/Seoul");
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -71,7 +72,11 @@ public class AuditLog {
 	@Column(name = "after_value", nullable = false, columnDefinition = "TEXT")
 	private String afterValue;
 
-	@CreatedDate
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private LocalDateTime createdAt;
+
+	@PrePersist
+	protected void onCreate() {
+		this.createdAt = LocalDateTime.now(SEOUL_ZONE);
+	}
 }
