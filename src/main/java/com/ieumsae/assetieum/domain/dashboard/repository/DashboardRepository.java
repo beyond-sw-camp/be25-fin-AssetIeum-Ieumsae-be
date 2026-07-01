@@ -90,8 +90,7 @@ public class DashboardRepository {
 				+ countScheduledIntangibleAssignments(companyId, null, departmentId, now))
 			.rented(countOwnedTangibleAssets(companyId, departmentId, now)
 				+ countActiveIntangibleAssignments(companyId, null, departmentId, now))
-			.overdue(countOverdueTangibleAssets(companyId, departmentId, now)
-				+ countOverdueIntangibleAssignments(companyId, null, departmentId, now))
+			.overdue(countOverdueTangibleAssets(companyId, departmentId, now))
 			.build();
 	}
 
@@ -141,8 +140,7 @@ public class DashboardRepository {
 				+ countScheduledIntangibleAssignments(companyId, memberId, null, now))
 			.rented(countMemberOwnedTangibleAssets(companyId, memberId, now)
 				+ countActiveIntangibleAssignments(companyId, memberId, null, now))
-			.overdue(countMemberOverdueTangibleAssets(companyId, memberId, now)
-				+ countOverdueIntangibleAssignments(companyId, memberId, null, now))
+			.overdue(countMemberOverdueTangibleAssets(companyId, memberId, now))
 			.build();
 	}
 
@@ -917,18 +915,10 @@ public class DashboardRepository {
 		AssetType assetType,
 		PaginationRequest request
 	) {
-		if (assetType == AssetType.TANGIBLE) {
-			return getInUseTemporaryAssetDetails(companyId, memberId, departmentId, keyword, true, request);
-		}
 		if (assetType == AssetType.INTANGIBLE) {
-			return getActiveIntangibleAssetDetails(companyId, memberId, departmentId, keyword, true, request);
+			return toPaginationResponse(List.of(), request);
 		}
-
-		PaginationRequest allRequest = allRequest();
-		List<OwnedAssetDetailResponse> content = new ArrayList<>();
-		content.addAll(getInUseTemporaryAssetDetails(companyId, memberId, departmentId, keyword, true, allRequest).getContent());
-		content.addAll(getActiveIntangibleAssetDetails(companyId, memberId, departmentId, keyword, true, allRequest).getContent());
-		return toPaginationResponse(sortOwnedAssetDetails(content), request);
+		return getInUseTemporaryAssetDetails(companyId, memberId, departmentId, keyword, true, request);
 	}
 
 	private PaginationResponse<OwnedAssetDetailResponse> getOverdueAssetDetails(
@@ -1178,10 +1168,6 @@ public class DashboardRepository {
 
 	private long countActiveIntangibleAssignments(UUID companyId, UUID memberId, UUID departmentId, LocalDateTime now) {
 		return countIntangibleAssignments(companyId, memberId, departmentId, IntangibleDetailMode.ACTIVE, now);
-	}
-
-	private long countOverdueIntangibleAssignments(UUID companyId, UUID memberId, UUID departmentId, LocalDateTime now) {
-		return countIntangibleAssignments(companyId, memberId, departmentId, IntangibleDetailMode.OVERDUE, now);
 	}
 
 	private long countIntangibleAssignments(
