@@ -6,7 +6,6 @@ import com.ieumsae.assetieum.domain.log.type.LogSubjectType;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EntityListeners;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
@@ -17,9 +16,6 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -27,6 +23,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Getter
 @Entity
@@ -77,6 +76,6 @@ public class AuditLog {
 
 	@PrePersist
 	protected void onCreate() {
-		this.createdAt = LocalDateTime.now(SEOUL_ZONE);
+		this.createdAt = LocalDateTime.now();
 	}
 }

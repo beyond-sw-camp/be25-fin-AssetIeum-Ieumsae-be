@@ -8,7 +8,6 @@ import com.ieumsae.assetieum.domain.purchase.purchaseplan.entity.PurchasePlan;
 import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EntityListeners;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
@@ -19,14 +18,14 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Getter
 @Entity
@@ -93,6 +92,6 @@ public class BudgetHistory {
 
     @PrePersist
     protected void onCreate() {
-        this.createdAt = LocalDateTime.now(SEOUL_ZONE);
+        this.createdAt = LocalDateTime.now();
     }
 }
