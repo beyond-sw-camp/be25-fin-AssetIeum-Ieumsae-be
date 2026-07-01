@@ -45,6 +45,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -101,6 +102,13 @@ public class AssetRequestTicketService {
 			validateIntangibleAssignmentTargets(request.getAssignmentTargetMemberIds());
 			validateNonStandardIntangibleInventory(intangibleAssetItem, request.getQuantity(), companyId, requester.getDepartment().getId());
 		}
+		BigDecimal estimatedUnitPrice = resolveEstimatedUnitPrice(
+			request,
+			tangibleAssetItem,
+			intangibleAssetItem,
+			companyId,
+			requester.getDepartment().getId()
+		);
 
 		Ticket ticket = ticketRepository.save(Ticket.createAssetRequest(
 			requester.getCompany(),
@@ -118,7 +126,8 @@ public class AssetRequestTicketService {
 				requestedUsageType,
 				tangibleAssetItem,
 				intangibleAssetItem,
-				request.getQuantity()
+				request.getQuantity(),
+				estimatedUnitPrice
 			)
 		);
 		ticketAssignmentTargetService.saveRequiredTargets(
@@ -295,6 +304,41 @@ public class AssetRequestTicketService {
 		if (availableCount < quantity) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "비표준 유형자산 요청은 재고가 충분한 품목만 요청할 수 있습니다.");
 		}
+	}
+
+	private BigDecimal resolveEstimatedUnitPrice(
+		AssetRequestTicketCreateRequest request,
+		TangibleAssetItem tangibleAssetItem,
+		IntangibleAssetItem intangibleAssetItem,
+		UUID companyId,
+		UUID requesterDepartmentId
+	) {
+		int availableCount = tangibleAssetItem != null
+			? getAvailableTangibleAssetCount(companyId, tangibleAssetItem.getId())
+			: getAvailableIntangibleSeatCount(companyId, intangibleAssetItem.getId(), requesterDepartmentId);
+
+		if (availableCount >= request.getQuantity()) {
+			return null;
+		}
+
+		boolean standard = tangibleAssetItem != null
+			? Boolean.TRUE.equals(tangibleAssetItem.getIsStandard())
+			: Boolean.TRUE.equals(intangibleAssetItem.getIsStandard());
+		if (!standard) {
+			return null;
+		}
+		if (request.getEstimatedUnitPrice() == null) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "가용 재고가 부족한 표준 자산 요청은 구매 예상 단가가 필수입니다.");
+		}
+		return request.getEstimatedUnitPrice();
+	}
+
+	private int getAvailableTangibleAssetCount(UUID companyId, UUID itemId) {
+		return Math.toIntExact(tangibleAssetRepository.countByCompany_IdAndTangibleAssetItem_IdAndTangibleAssetStatus(
+			companyId,
+			itemId,
+			TangibleAssetStatus.AVAILABLE
+		));
 	}
 
 	private void validateIntangibleAssignmentTargets(List<UUID> assignmentTargetMemberIds) {

@@ -33,6 +33,7 @@ public interface AssetRequestTicketRepository extends JpaRepository<AssetRequest
 				from PurchasePlanItem ppi
 				join ppi.purchasePlan pp
 				where ppi.ticket = t
+					and pp.deletedAt is null
 					and pp.purchaseRequestStatus not in (
 						com.ieumsae.assetieum.domain.purchase.purchaseplan.type.PurchaseRequestStatus.REJECTED,
 						com.ieumsae.assetieum.domain.purchase.purchaseplan.type.PurchaseRequestStatus.CANCELLED

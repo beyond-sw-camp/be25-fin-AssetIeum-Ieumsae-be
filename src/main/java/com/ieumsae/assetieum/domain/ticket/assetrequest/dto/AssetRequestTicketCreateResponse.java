@@ -7,6 +7,7 @@ import com.ieumsae.assetieum.domain.ticket.common.type.AssetType;
 import com.ieumsae.assetieum.domain.ticket.common.type.RequestedUsageType;
 import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
 import com.ieumsae.assetieum.domain.ticket.common.type.TicketType;
+import java.math.BigDecimal;
 import java.util.UUID;
 import lombok.Builder;
 import lombok.Getter;
@@ -24,6 +25,7 @@ public class AssetRequestTicketCreateResponse {
 	private final AssetType assetType;
 	private final UUID assetItemId;
 	private final int quantity;
+	private final BigDecimal estimatedUnitPrice;
 
 	public static AssetRequestTicketCreateResponse from(
 		Ticket ticket,
@@ -41,6 +43,7 @@ public class AssetRequestTicketCreateResponse {
 			.assetType(assetType)
 			.assetItemId(assetItemId)
 			.quantity(assetRequestTicket.getQuantity())
+			.estimatedUnitPrice(assetRequestTicket.getEstimatedUnitPrice())
 			.build();
 	}
 }

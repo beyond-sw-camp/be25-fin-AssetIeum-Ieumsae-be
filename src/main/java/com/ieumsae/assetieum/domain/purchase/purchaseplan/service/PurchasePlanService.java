@@ -172,6 +172,7 @@ public class PurchasePlanService {
 
             // 구매계획에는 승인된 자산요청 또는 구매자산팀 구매요청 티켓만 연결한다.
             Ticket linkedTicket = findLinkedPurchasePlanTicket(request.getTicketId(), companyId);
+            validateLinkedAssetRequestPurchaseQuantity(linkedTicket, request.getQuantity(), companyId);
             purchasePlanItems.add(PurchasePlanItem.builder()
                     .company(company)
                     .purchasePlan(purchasePlan)
@@ -196,6 +197,24 @@ public class PurchasePlanService {
         }
 
         return purchasePlanItems;
+    }
+
+    private void validateLinkedAssetRequestPurchaseQuantity(
+            Ticket linkedTicket,
+            Integer quantity,
+            UUID companyId
+    ) {
+        if (linkedTicket == null || linkedTicket.getTicketType() != TicketType.ASSET_REQUEST) {
+            return;
+        }
+
+        int pendingTargetCount = ticketAssignmentTargetService.findPendingTargets(companyId, linkedTicket).size();
+        if (pendingTargetCount <= 0) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "구매가 필요한 미배정 대상자가 없습니다.");
+        }
+        if (quantity == null || quantity != pendingTargetCount) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "자산요청 구매계획 수량은 미배정 대상자 수와 일치해야 합니다.");
+        }
     }
 
     private UUID resolvePurchasePlanItemCategoryId(
@@ -513,7 +532,7 @@ public class PurchasePlanService {
             return List.of();
         }
 
-        List<TicketAssignmentTarget> targets = ticketAssignmentTargetService.findTargets(companyId, item.getTicket());
+        List<TicketAssignmentTarget> targets = resolveLinkedAssignmentTargets(item, companyId);
         return targets.stream()
                 .map(target -> target.getMember().getId())
                 .toList();
@@ -1086,9 +1105,9 @@ public class PurchasePlanService {
             return normalizeMemberIds(request.getMemberIds(), purchasePlanItem.getQuantity());
         }
 
-        List<TicketAssignmentTarget> targets = ticketAssignmentTargetService.findTargets(
-                purchasePlanItem.getCompany().getId(),
-                linkedTicket
+        List<TicketAssignmentTarget> targets = resolveLinkedAssignmentTargets(
+                purchasePlanItem,
+                purchasePlanItem.getCompany().getId()
         );
         if (!targets.isEmpty()) {
             if (targets.size() != purchasePlanItem.getQuantity()) {
@@ -1119,9 +1138,9 @@ public class PurchasePlanService {
             );
         }
 
-        List<TicketAssignmentTarget> targets = ticketAssignmentTargetService.findTargets(
-                purchasePlanItem.getCompany().getId(),
-                linkedTicket
+        List<TicketAssignmentTarget> targets = resolveLinkedAssignmentTargets(
+                purchasePlanItem,
+                purchasePlanItem.getCompany().getId()
         );
         if (!targets.isEmpty()) {
             int capacity = purchasePlanItem.getQuantity() * request.getSeatCount();
@@ -1154,6 +1173,9 @@ public class PurchasePlanService {
         Ticket linkedTicket = purchasePlanItem.getTicket();
         if (!usesTicketAssignmentTargets(linkedTicket)) {
             return List.of();
+        }
+        if (linkedTicket.getTicketType() == TicketType.ASSET_REQUEST) {
+            return ticketAssignmentTargetService.findPendingTargets(companyId, linkedTicket);
         }
         return ticketAssignmentTargetService.findTargets(companyId, linkedTicket);
     }
@@ -1279,6 +1301,10 @@ public class PurchasePlanService {
         Ticket ticket = ticketRepository.findWithLockByIdAndCompany_IdAndDeletedAtIsNull(linkedTicket.getId(), companyId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
         if (ticket.getTicketStatus() != TicketStatus.IN_PROGRESS) {
+            return;
+        }
+        if (ticket.getTicketType() == TicketType.ASSET_REQUEST
+                && !ticketAssignmentTargetService.allTargetsAssigned(companyId, ticket)) {
             return;
         }
 
