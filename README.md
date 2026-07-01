@@ -153,13 +153,13 @@
 
 ## 4. 요구사항 명세서
 
-- 📋[ 요구사항 명세서 ](https://docs.google.com/spreadsheets/d/1z-TKzG4AP284DwpEWPyhNDyRp2_YIFeRTpRxHoSSBkk/edit?gid=683579060#gid=683579060)
+- [ 요구사항 명세서 ](https://docs.google.com/spreadsheets/d/1z-TKzG4AP284DwpEWPyhNDyRp2_YIFeRTpRxHoSSBkk/edit?gid=683579060#gid=683579060)
 
 
 <br>
 
 ## 5. 테이블 명세서 
-- 🗂[ 테이블 명세서 ](https://docs.google.com/spreadsheets/d/1z-TKzG4AP284DwpEWPyhNDyRp2_YIFeRTpRxHoSSBkk/edit?gid=2140880264#gid=2140880264)
+- [ 테이블 명세서 ](https://docs.google.com/spreadsheets/d/1z-TKzG4AP284DwpEWPyhNDyRp2_YIFeRTpRxHoSSBkk/edit?gid=2140880264#gid=2140880264)
 
 
 
@@ -196,7 +196,7 @@
 <br>
 
 ## 11. CI/CD 계획서 
-- [CI/CD 계획서](docs/CICD_계획서.pdf)
+- [CI/CD 계획서](https://github.com/beyond-sw-camp/be25-fin-AssetIeum-Ieumsae-be/wiki/CICD-%EA%B3%84%ED%9A%8D%EC%84%9C)
 
 <br>
 
@@ -248,7 +248,7 @@
 
 <br>
 
-## 10. 그 외 산출물
+## 그 외 산출물
 
 ### 프로젝트 문서
 - [WBS](https://docs.google.com/spreadsheets/d/1z-TKzG4AP284DwpEWPyhNDyRp2_YIFeRTpRxHoSSBkk/edit?gid=0#gid=0)
