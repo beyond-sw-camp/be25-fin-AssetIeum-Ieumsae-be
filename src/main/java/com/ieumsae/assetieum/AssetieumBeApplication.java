@@ -14,7 +14,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TimeZone;
 
-@EnableJpaAuditing
+@EnableJpaAuditing(dateTimeProviderRef = "seoulDateTimeProvider")
 @EnableScheduling
 @SpringBootApplication
 public class AssetieumBeApplication {

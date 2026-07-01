@@ -14,15 +14,16 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -33,6 +34,8 @@ import org.hibernate.type.SqlTypes;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "notifications")
 public class Notification {
+
+	private static final ZoneId SEOUL_ZONE = ZoneId.of("Asia/Seoul");
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -68,9 +71,13 @@ public class Notification {
 	@Column(name = "is_read", nullable = false)
 	private boolean isRead;
 
-	@CreationTimestamp
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private LocalDateTime createdAt;
+
+	@PrePersist
+	protected void onCreate() {
+		this.createdAt = LocalDateTime.now(SEOUL_ZONE);
+	}
 
 	public static Notification create(
 		Company company,

@@ -35,6 +35,8 @@ import java.time.LocalDateTime;
 @Table(name = "budget_histories")
 public class BudgetHistory {
 
+    private static final ZoneId SEOUL_ZONE = ZoneId.of("Asia/Seoul");
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "history_id")
