@@ -12,16 +12,25 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TimeZone;
 
-@EnableJpaAuditing
+@EnableJpaAuditing(dateTimeProviderRef = "seoulDateTimeProvider")
 @EnableScheduling
 @SpringBootApplication
 public class AssetieumBeApplication {
 
+	private static final String DEFAULT_TIME_ZONE = "Asia/Seoul";
+
 	public static void main(String[] args) {
+		setDefaultTimeZone();
 		loadEnvIfExists();
 		validateRequiredEnv();
 		SpringApplication.run(AssetieumBeApplication.class, args);
+	}
+
+	private static void setDefaultTimeZone() {
+		TimeZone.setDefault(TimeZone.getTimeZone(DEFAULT_TIME_ZONE));
+		System.setProperty("user.timezone", DEFAULT_TIME_ZONE);
 	}
 
 	private static void loadEnvIfExists() {

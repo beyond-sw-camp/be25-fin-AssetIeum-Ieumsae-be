@@ -27,7 +27,6 @@ import com.ieumsae.assetieum.domain.tangibleasset.asset.type.UsageType;
 import com.ieumsae.assetieum.domain.ticket.assetrequest.type.AssetRequestTicketStatus;
 import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
 import com.ieumsae.assetieum.domain.ticket.common.type.AssetType;
-import com.ieumsae.assetieum.domain.ticket.rental.type.RentalTicketStatus;
 import com.ieumsae.assetieum.global.common.page.PaginationRequest;
 import com.ieumsae.assetieum.global.common.page.PaginationResponse;
 import com.ieumsae.assetieum.global.exception.BusinessException;
@@ -58,6 +57,12 @@ public class DashboardRepository {
 	private static final String TANGIBLE = "TANGIBLE";
 	private static final String INTANGIBLE = "INTANGIBLE";
 
+	private enum IntangibleDetailMode {
+		SCHEDULED,
+		ACTIVE,
+		OVERDUE
+	}
+
 	private final MemberRepository memberRepository;
 	private final EntityManager entityManager;
 
@@ -81,8 +86,10 @@ public class DashboardRepository {
 		LocalDateTime now = LocalDateTime.now();
 		return OwnedAssetSummaryResponse.builder()
 			.unassigned(countAvailableTangibleAssets(companyId, departmentId) + countAvailableIntangibleAssets(companyId, departmentId))
-			.rentalScheduled(countTangibleAssetsByStatus(companyId, departmentId, TangibleAssetStatus.RESERVED))
-			.rented(countRentedTangibleAssets(companyId, departmentId))
+			.rentalScheduled(countScheduledRentalTickets(companyId, null, departmentId, now)
+				+ countScheduledIntangibleAssignments(companyId, null, departmentId, now))
+			.rented(countOwnedTangibleAssets(companyId, departmentId, now)
+				+ countActiveIntangibleAssignments(companyId, null, departmentId, now))
 			.overdue(countOverdueTangibleAssets(companyId, departmentId, now))
 			.build();
 	}
@@ -119,7 +126,7 @@ public class DashboardRepository {
 	public RentalAssetSummaryResponse getEmployeeRentalAssetSummary(UUID companyId, UUID memberId) {
 		LocalDateTime now = LocalDateTime.now();
 		return RentalAssetSummaryResponse.builder()
-			.rentalScheduled(countMemberRentalScheduledTickets(companyId, memberId))
+			.rentalScheduled(countScheduledRentalTickets(companyId, memberId, null, now))
 			.rented(countMemberRentedTangibleAssets(companyId, memberId))
 			.overdue(countMemberOverdueTangibleAssets(companyId, memberId, now))
 			.build();
@@ -129,8 +136,10 @@ public class DashboardRepository {
 		LocalDateTime now = LocalDateTime.now();
 		return OwnedAssetSummaryResponse.builder()
 			.unassigned(0)
-			.rentalScheduled(countMemberRentalScheduledTickets(companyId, memberId))
-			.rented(countMemberRentedTangibleAssets(companyId, memberId))
+			.rentalScheduled(countScheduledRentalTickets(companyId, memberId, null, now)
+				+ countScheduledIntangibleAssignments(companyId, memberId, null, now))
+			.rented(countMemberOwnedTangibleAssets(companyId, memberId, now)
+				+ countActiveIntangibleAssignments(companyId, memberId, null, now))
 			.overdue(countMemberOverdueTangibleAssets(companyId, memberId, now))
 			.build();
 	}
@@ -149,10 +158,10 @@ public class DashboardRepository {
 		OwnedAssetDetailSearchRequest request
 	) {
 		return switch (request.getStatus()) {
-			case UNASSIGNED -> getUnassignedAssetDetails(companyId, request.getDepartmentId(), request.getKeyword(), request);
-			case RENTAL_SCHEDULED -> getRentalScheduledAssetDetails(companyId, null, request.getDepartmentId(), request.getKeyword(), request);
-			case RENTED -> getRentedAssetDetails(companyId, null, request.getDepartmentId(), request.getKeyword(), request);
-			case OVERDUE -> getOverdueAssetDetails(companyId, null, request.getDepartmentId(), request.getKeyword(), request);
+			case UNASSIGNED -> getUnassignedAssetDetails(companyId, request.getDepartmentId(), request.getKeyword(), request.getAssetType(), request);
+			case RENTAL_SCHEDULED -> getRentalScheduledAssetDetails(companyId, null, request.getDepartmentId(), request.getKeyword(), request.getAssetType(), request);
+			case RENTED -> getRentedAssetDetails(companyId, null, request.getDepartmentId(), request.getKeyword(), request.getAssetType(), request);
+			case OVERDUE -> getOverdueAssetDetails(companyId, null, request.getDepartmentId(), request.getKeyword(), request.getAssetType(), request);
 		};
 	}
 
@@ -163,9 +172,9 @@ public class DashboardRepository {
 	) {
 		return switch (request.getStatus()) {
 			case UNASSIGNED -> toPaginationResponse(List.of(), request);
-			case RENTAL_SCHEDULED -> getRentalScheduledAssetDetails(companyId, memberId, null, request.getKeyword(), request);
-			case RENTED -> getRentedAssetDetails(companyId, memberId, null, request.getKeyword(), request);
-			case OVERDUE -> getOverdueAssetDetails(companyId, memberId, null, request.getKeyword(), request);
+			case RENTAL_SCHEDULED -> getRentalScheduledAssetDetails(companyId, memberId, null, request.getKeyword(), request.getAssetType(), request);
+			case RENTED -> getRentedAssetDetails(companyId, memberId, null, request.getKeyword(), request.getAssetType(), request);
+			case OVERDUE -> getOverdueAssetDetails(companyId, memberId, null, request.getKeyword(), request.getAssetType(), request);
 		};
 	}
 
@@ -176,10 +185,10 @@ public class DashboardRepository {
 	) {
 		UUID departmentId = getMemberDepartmentId(companyId, memberId);
 		return switch (request.getStatus()) {
-			case UNASSIGNED -> getUnassignedAssetDetails(companyId, departmentId, request.getKeyword(), request);
-			case RENTAL_SCHEDULED -> getRentalScheduledAssetDetails(companyId, null, departmentId, request.getKeyword(), request);
-			case RENTED -> getRentedAssetDetails(companyId, null, departmentId, request.getKeyword(), request);
-			case OVERDUE -> getOverdueAssetDetails(companyId, null, departmentId, request.getKeyword(), request);
+			case UNASSIGNED -> getUnassignedAssetDetails(companyId, departmentId, request.getKeyword(), request.getAssetType(), request);
+			case RENTAL_SCHEDULED -> getRentalScheduledAssetDetails(companyId, null, departmentId, request.getKeyword(), request.getAssetType(), request);
+			case RENTED -> getRentedAssetDetails(companyId, null, departmentId, request.getKeyword(), request.getAssetType(), request);
+			case OVERDUE -> getOverdueAssetDetails(companyId, null, departmentId, request.getKeyword(), request.getAssetType(), request);
 		};
 	}
 
@@ -495,22 +504,48 @@ public class DashboardRepository {
 			.getSingleResult();
 	}
 
-	private long countMemberRentalScheduledTickets(UUID companyId, UUID memberId) {
+	private long countScheduledRentalTickets(UUID companyId, UUID memberId, UUID departmentId, LocalDateTime now) {
 		return entityManager.createQuery("""
 				select count(rt)
 				from RentalTicket rt
+				join rt.ticket t
+				join t.department d
+				join t.requester m
 				where rt.company.id = :companyId
-					and rt.ticket.requester.id = :memberId
-					and rt.status = :status
+					and rt.rentalStartDate > :now
 					and rt.deletedAt is null
+					and (:memberId is null or m.id = :memberId)
+					and (:departmentId is null or d.id = :departmentId)
 				""", Long.class)
 			.setParameter("companyId", companyId)
+			.setParameter("now", now)
 			.setParameter("memberId", memberId)
-			.setParameter("status", RentalTicketStatus.RESERVED)
+			.setParameter("departmentId", departmentId)
 			.getSingleResult();
 	}
 
 	private PaginationResponse<OwnedAssetDetailResponse> getUnassignedAssetDetails(
+		UUID companyId,
+		UUID departmentId,
+		String keyword,
+		AssetType assetType,
+		PaginationRequest request
+	) {
+		if (assetType == AssetType.TANGIBLE) {
+			return getUnassignedTangibleAssetDetails(companyId, departmentId, keyword, request);
+		}
+		if (assetType == AssetType.INTANGIBLE) {
+			return getUnassignedIntangibleAssetDetails(companyId, departmentId, keyword, request);
+		}
+
+		PaginationRequest allRequest = allRequest();
+		List<OwnedAssetDetailResponse> content = new ArrayList<>();
+		content.addAll(getUnassignedTangibleAssetDetails(companyId, departmentId, keyword, allRequest).getContent());
+		content.addAll(getUnassignedIntangibleAssetDetails(companyId, departmentId, keyword, allRequest).getContent());
+		return toPaginationResponse(sortOwnedAssetDetails(content), request);
+	}
+
+	private PaginationResponse<OwnedAssetDetailResponse> getUnassignedTangibleAssetDetails(
 		UUID companyId,
 		UUID departmentId,
 		String keyword,
@@ -563,12 +598,9 @@ public class DashboardRepository {
 				.assetId((UUID) row[0])
 				.assetName((String) row[1])
 				.categoryName((String) row[2])
-				.categoryOrProvider((String) row[2])
 				.assetCode((String) row[3])
-				.warrantyExpiredAt((LocalDateTime) row[4])
-				.dueDate((LocalDateTime) row[4])
-				.dayCount(calculateDashboardDayCount((LocalDateTime) row[4], LocalDateTime.now()))
-				.dayStatusLabel(resolveDashboardDayStatusLabel((LocalDateTime) row[4], LocalDateTime.now()))
+				.seatCount(1)
+				.availableSeatCount(1)
 				.build())
 			.toList();
 		return toPaginationResponse(content, request, total);
@@ -579,8 +611,31 @@ public class DashboardRepository {
 		UUID memberId,
 		UUID departmentId,
 		String keyword,
+		AssetType assetType,
 		PaginationRequest request
 	) {
+		if (assetType == AssetType.TANGIBLE) {
+			return getRentalScheduledTangibleAssetDetails(companyId, memberId, departmentId, keyword, request);
+		}
+		if (assetType == AssetType.INTANGIBLE) {
+			return getScheduledIntangibleAssetDetails(companyId, memberId, departmentId, keyword, request);
+		}
+
+		PaginationRequest allRequest = allRequest();
+		List<OwnedAssetDetailResponse> content = new ArrayList<>();
+		content.addAll(getRentalScheduledTangibleAssetDetails(companyId, memberId, departmentId, keyword, allRequest).getContent());
+		content.addAll(getScheduledIntangibleAssetDetails(companyId, memberId, departmentId, keyword, allRequest).getContent());
+		return toPaginationResponse(sortOwnedAssetDetails(content), request);
+	}
+
+	private PaginationResponse<OwnedAssetDetailResponse> getRentalScheduledTangibleAssetDetails(
+		UUID companyId,
+		UUID memberId,
+		UUID departmentId,
+		String keyword,
+		PaginationRequest request
+	) {
+		LocalDateTime now = LocalDateTime.now();
 		String keywordPattern = toKeywordPattern(normalizeKeyword(keyword));
 		List<Object[]> rows = entityManager.createQuery("""
 				select a.id, i.productName, a.assetCode, c.name, d.id, d.name, m.id, m.name, rt.rentalStartDate, rt.requestedDueDate
@@ -592,7 +647,7 @@ public class DashboardRepository {
 				join t.department d
 				join t.requester m
 				where rt.company.id = :companyId
-					and rt.status = :status
+					and rt.rentalStartDate > :now
 					and rt.deletedAt is null
 					and (:memberId is null or m.id = :memberId)
 					and (:departmentId is null or d.id = :departmentId)
@@ -604,14 +659,14 @@ public class DashboardRepository {
 				order by rt.rentalStartDate asc
 				""", Object[].class)
 			.setParameter("companyId", companyId)
-			.setParameter("status", RentalTicketStatus.RESERVED)
+			.setParameter("now", now)
 			.setParameter("memberId", memberId)
 			.setParameter("departmentId", departmentId)
 			.setParameter("keyword", keywordPattern)
 			.setFirstResult((int) request.toPageable().getOffset())
 			.setMaxResults(request.getSize())
 			.getResultList();
-		Long total = countRentalScheduledAssetDetails(companyId, memberId, departmentId, keywordPattern);
+		Long total = countRentalScheduledAssetDetails(companyId, memberId, departmentId, keywordPattern, now);
 		List<OwnedAssetDetailResponse> content = rows.stream()
 			.map(row -> {
 				LocalDateTime returnDueDate = (LocalDateTime) row[9];
@@ -621,23 +676,25 @@ public class DashboardRepository {
 					.assetName((String) row[1])
 					.assetCode((String) row[2])
 					.categoryName((String) row[3])
-					.categoryOrProvider((String) row[3])
 					.departmentId((UUID) row[4])
 					.departmentName((String) row[5])
 					.renterId((UUID) row[6])
 					.renterName((String) row[7])
-					.usedStartedAt((LocalDateTime) row[8])
-					.returnDueDate(returnDueDate)
 					.dueDate(returnDueDate)
-					.dayCount(calculateDashboardDayCount(returnDueDate, LocalDateTime.now()))
-					.dayStatusLabel(resolveDashboardDayStatusLabel(returnDueDate, LocalDateTime.now()))
+					.dayCount(calculateDashboardDayCount(returnDueDate, now))
 					.build();
 			})
 			.toList();
 		return toPaginationResponse(content, request, total);
 	}
 
-	private Long countRentalScheduledAssetDetails(UUID companyId, UUID memberId, UUID departmentId, String keywordPattern) {
+	private Long countRentalScheduledAssetDetails(
+		UUID companyId,
+		UUID memberId,
+		UUID departmentId,
+		String keywordPattern,
+		LocalDateTime now
+	) {
 		return entityManager.createQuery("""
 				select count(rt)
 				from RentalTicket rt
@@ -647,7 +704,7 @@ public class DashboardRepository {
 				join t.department d
 				join t.requester m
 				where rt.company.id = :companyId
-					and rt.status = :status
+					and rt.rentalStartDate > :now
 					and rt.deletedAt is null
 					and (:memberId is null or m.id = :memberId)
 					and (:departmentId is null or d.id = :departmentId)
@@ -658,11 +715,186 @@ public class DashboardRepository {
 						or lower(m.name) like :keyword)
 				""", Long.class)
 			.setParameter("companyId", companyId)
-			.setParameter("status", RentalTicketStatus.RESERVED)
+			.setParameter("now", now)
 			.setParameter("memberId", memberId)
 			.setParameter("departmentId", departmentId)
 			.setParameter("keyword", keywordPattern)
 			.getSingleResult();
+	}
+
+	private PaginationResponse<OwnedAssetDetailResponse> getUnassignedIntangibleAssetDetails(
+		UUID companyId,
+		UUID departmentId,
+		String keyword,
+		PaginationRequest request
+	) {
+		String keywordPattern = toKeywordPattern(normalizeKeyword(keyword));
+		List<Object[]> rows = entityManager.createQuery("""
+				select a.id, i.productName, c.name, i.provider, a.assetCode, a.startedAt, a.expiredAt, a.seatCount, count(aa)
+				from IntangibleAsset a
+				join a.intangibleAssetItem i
+				join i.intangibleAssetCategory c
+				left join IntangibleAssetAssignment aa
+					on aa.intangibleAsset = a and aa.assignmentStatus = :assignmentStatus
+				where a.company.id = :companyId
+					and (:departmentId is null or a.department.id = :departmentId)
+					and a.intangibleAssetStatus in :statuses
+					and (:keyword is null
+						or lower(i.productName) like :keyword
+						or lower(c.name) like :keyword
+						or lower(coalesce(i.provider, '')) like :keyword
+						or lower(a.assetCode) like :keyword)
+				group by a.id, i.productName, c.name, i.provider, a.assetCode, a.startedAt, a.expiredAt, a.seatCount, a.createdAt
+				having a.seatCount > count(aa)
+				order by a.createdAt desc
+				""", Object[].class)
+			.setParameter("companyId", companyId)
+			.setParameter("departmentId", departmentId)
+			.setParameter("statuses", List.of(IntangibleAssetStatus.AVAILABLE, IntangibleAssetStatus.IN_USE))
+			.setParameter("assignmentStatus", AssignmentStatus.ACTIVE)
+			.setParameter("keyword", keywordPattern)
+			.getResultList();
+
+		List<OwnedAssetDetailResponse> content = rows.stream()
+			.map(row -> {
+				Integer seatCount = (Integer) row[7];
+				Long activeCount = (Long) row[8];
+				int availableSeatCount = Math.max(seatCount - Math.toIntExact(activeCount), 0);
+				LocalDateTime expiredAt = (LocalDateTime) row[6];
+				return OwnedAssetDetailResponse.builder()
+					.assetType(AssetType.INTANGIBLE)
+					.assetId((UUID) row[0])
+					.assetName((String) row[1])
+					.categoryName((String) row[2])
+					.assetCode((String) row[4])
+					.seatCount(seatCount)
+					.availableSeatCount(availableSeatCount)
+					.build();
+			})
+			.toList();
+
+		return toPaginationResponse(content, request);
+	}
+
+	private PaginationResponse<OwnedAssetDetailResponse> getScheduledIntangibleAssetDetails(
+		UUID companyId,
+		UUID memberId,
+		UUID departmentId,
+		String keyword,
+		PaginationRequest request
+	) {
+		return getAssignedIntangibleAssetDetails(companyId, memberId, departmentId, keyword, IntangibleDetailMode.SCHEDULED, request);
+	}
+
+	private PaginationResponse<OwnedAssetDetailResponse> getActiveIntangibleAssetDetails(
+		UUID companyId,
+		UUID memberId,
+		UUID departmentId,
+		String keyword,
+		boolean overdueOnly,
+		PaginationRequest request
+	) {
+		return getAssignedIntangibleAssetDetails(
+			companyId,
+			memberId,
+			departmentId,
+			keyword,
+			overdueOnly ? IntangibleDetailMode.OVERDUE : IntangibleDetailMode.ACTIVE,
+			request
+		);
+	}
+
+	private PaginationResponse<OwnedAssetDetailResponse> getAssignedIntangibleAssetDetails(
+		UUID companyId,
+		UUID memberId,
+		UUID departmentId,
+		String keyword,
+		IntangibleDetailMode mode,
+		PaginationRequest request
+	) {
+		LocalDateTime now = LocalDateTime.now();
+		String keywordPattern = toKeywordPattern(normalizeKeyword(keyword));
+		List<Object[]> rows = entityManager.createQuery("""
+				select a.id, i.productName, a.assetCode, c.name, i.provider, d.id, d.name, m.id, m.name, a.startedAt, a.expiredAt, a.seatCount
+				from IntangibleAssetAssignment aa
+				join aa.intangibleAsset a
+				join a.intangibleAssetItem i
+				join i.intangibleAssetCategory c
+				join aa.department d
+				join aa.member m
+				where aa.company.id = :companyId
+					and aa.assignmentStatus = :assignmentStatus
+					and a.intangibleAssetStatus <> :cancelledStatus
+					and (:memberId is null or m.id = :memberId)
+					and (:departmentId is null or d.id = :departmentId)
+					and (
+						(:mode = 'SCHEDULED' and a.startedAt is not null and a.startedAt > :now)
+						or (:mode = 'ACTIVE' and (a.startedAt is null or a.startedAt <= :now) and (a.expiredAt is null or a.expiredAt >= :now))
+						or (:mode = 'OVERDUE' and a.expiredAt is not null and a.expiredAt < :now)
+					)
+					and (:keyword is null
+						or lower(i.productName) like :keyword
+						or lower(a.assetCode) like :keyword
+						or lower(c.name) like :keyword
+						or lower(coalesce(i.provider, '')) like :keyword
+						or lower(d.name) like :keyword
+						or lower(m.name) like :keyword)
+				order by a.expiredAt asc, a.startedAt asc
+				""", Object[].class)
+			.setParameter("companyId", companyId)
+			.setParameter("assignmentStatus", AssignmentStatus.ACTIVE)
+			.setParameter("cancelledStatus", IntangibleAssetStatus.CANCELLED)
+			.setParameter("memberId", memberId)
+			.setParameter("departmentId", departmentId)
+			.setParameter("mode", mode.name())
+			.setParameter("now", now)
+			.setParameter("keyword", keywordPattern)
+			.getResultList();
+
+		List<OwnedAssetDetailResponse> content = rows.stream()
+			.map(row -> {
+				LocalDateTime expiredAt = (LocalDateTime) row[10];
+				return OwnedAssetDetailResponse.builder()
+					.assetType(AssetType.INTANGIBLE)
+					.assetId((UUID) row[0])
+					.assetName((String) row[1])
+					.assetCode((String) row[2])
+					.categoryName((String) row[3])
+					.departmentId((UUID) row[5])
+					.departmentName((String) row[6])
+					.renterId((UUID) row[7])
+					.renterName((String) row[8])
+					.dueDate(expiredAt)
+					.seatCount((Integer) row[11])
+					.dayCount(calculateDashboardDayCount(expiredAt, now))
+					.overdueDays(mode == IntangibleDetailMode.OVERDUE && expiredAt != null ? ChronoUnit.DAYS.between(expiredAt, now) : null)
+					.build();
+			})
+			.toList();
+
+		return toPaginationResponse(content, request);
+	}
+
+	private PaginationResponse<OwnedAssetDetailResponse> getRentedAssetDetails(
+		UUID companyId,
+		UUID memberId,
+		UUID departmentId,
+		String keyword,
+		AssetType assetType,
+		PaginationRequest request
+	) {
+		if (assetType == AssetType.TANGIBLE) {
+			return getInUseTemporaryAssetDetails(companyId, memberId, departmentId, keyword, false, request);
+		}
+		if (assetType == AssetType.INTANGIBLE) {
+			return getActiveIntangibleAssetDetails(companyId, memberId, departmentId, keyword, false, request);
+		}
+
+		PaginationRequest allRequest = allRequest();
+		List<OwnedAssetDetailResponse> content = new ArrayList<>();
+		content.addAll(getInUseTemporaryAssetDetails(companyId, memberId, departmentId, keyword, false, allRequest).getContent());
+		content.addAll(getActiveIntangibleAssetDetails(companyId, memberId, departmentId, keyword, false, allRequest).getContent());
+		return toPaginationResponse(sortOwnedAssetDetails(content), request);
 	}
 
 	private PaginationResponse<OwnedAssetDetailResponse> getRentedAssetDetails(
@@ -673,6 +905,20 @@ public class DashboardRepository {
 		PaginationRequest request
 	) {
 		return getInUseTemporaryAssetDetails(companyId, memberId, departmentId, keyword, false, request);
+	}
+
+	private PaginationResponse<OwnedAssetDetailResponse> getOverdueAssetDetails(
+		UUID companyId,
+		UUID memberId,
+		UUID departmentId,
+		String keyword,
+		AssetType assetType,
+		PaginationRequest request
+	) {
+		if (assetType == AssetType.INTANGIBLE) {
+			return toPaginationResponse(List.of(), request);
+		}
+		return getInUseTemporaryAssetDetails(companyId, memberId, departmentId, keyword, true, request);
 	}
 
 	private PaginationResponse<OwnedAssetDetailResponse> getOverdueAssetDetails(
@@ -704,12 +950,11 @@ public class DashboardRepository {
 				join a.member m
 				where a.company.id = :companyId
 					and a.tangibleAssetStatus = :status
-					and a.usageType = :usageType
 					and (:memberId is null or m.id = :memberId)
 					and (:departmentId is null or d.id = :departmentId)
 					and (
-						(:overdueOnly = true and a.returnDueDate < :now)
-						or (:overdueOnly = false and (a.returnDueDate is null or a.returnDueDate >= :now))
+						(:overdueOnly = true and a.usageType = :temporaryUsageType and a.returnDueDate < :now)
+						or (:overdueOnly = false and (a.usageType = :permanentUsageType or a.returnDueDate is null or a.returnDueDate >= :now))
 					)
 					and (:keyword is null
 						or lower(i.productName) like :keyword
@@ -720,7 +965,8 @@ public class DashboardRepository {
 				""", Object[].class)
 			.setParameter("companyId", companyId)
 			.setParameter("status", TangibleAssetStatus.IN_USE)
-			.setParameter("usageType", UsageType.TEMPORARY)
+			.setParameter("temporaryUsageType", UsageType.TEMPORARY)
+			.setParameter("permanentUsageType", UsageType.PERMANENT)
 			.setParameter("memberId", memberId)
 			.setParameter("departmentId", departmentId)
 			.setParameter("overdueOnly", overdueOnly)
@@ -739,16 +985,12 @@ public class DashboardRepository {
 					.assetName((String) row[1])
 					.assetCode((String) row[2])
 					.categoryName((String) row[3])
-					.categoryOrProvider((String) row[3])
 					.departmentId((UUID) row[4])
 					.departmentName((String) row[5])
 					.renterId((UUID) row[6])
 					.renterName((String) row[7])
-					.usedStartedAt((LocalDateTime) row[8])
-					.returnDueDate(returnDueDate)
 					.dueDate(returnDueDate)
 					.dayCount(calculateDashboardDayCount(returnDueDate, now))
-					.dayStatusLabel(resolveDashboardDayStatusLabel(returnDueDate, now))
 					.overdueDays(overdueOnly && returnDueDate != null ? ChronoUnit.DAYS.between(returnDueDate, now) : null)
 					.build();
 			})
@@ -772,12 +1014,11 @@ public class DashboardRepository {
 				join a.member m
 				where a.company.id = :companyId
 					and a.tangibleAssetStatus = :status
-					and a.usageType = :usageType
 					and (:memberId is null or m.id = :memberId)
 					and (:departmentId is null or d.id = :departmentId)
 					and (
-						(:overdueOnly = true and a.returnDueDate < :now)
-						or (:overdueOnly = false and (a.returnDueDate is null or a.returnDueDate >= :now))
+						(:overdueOnly = true and a.usageType = :temporaryUsageType and a.returnDueDate < :now)
+						or (:overdueOnly = false and (a.usageType = :permanentUsageType or a.returnDueDate is null or a.returnDueDate >= :now))
 					)
 					and (:keyword is null
 						or lower(i.productName) like :keyword
@@ -787,7 +1028,8 @@ public class DashboardRepository {
 				""", Long.class)
 			.setParameter("companyId", companyId)
 			.setParameter("status", TangibleAssetStatus.IN_USE)
-			.setParameter("usageType", UsageType.TEMPORARY)
+			.setParameter("temporaryUsageType", UsageType.TEMPORARY)
+			.setParameter("permanentUsageType", UsageType.PERMANENT)
 			.setParameter("memberId", memberId)
 			.setParameter("departmentId", departmentId)
 			.setParameter("overdueOnly", overdueOnly)
@@ -809,6 +1051,23 @@ public class DashboardRepository {
 			.setParameter("memberId", memberId)
 			.setParameter("status", TangibleAssetStatus.IN_USE)
 			.setParameter("usageType", UsageType.TEMPORARY)
+			.getSingleResult();
+	}
+
+	private long countMemberOwnedTangibleAssets(UUID companyId, UUID memberId, LocalDateTime now) {
+		return entityManager.createQuery("""
+				select count(a)
+				from TangibleAsset a
+				where a.company.id = :companyId
+					and a.member.id = :memberId
+					and a.tangibleAssetStatus = :status
+					and (a.usageType = :permanentUsageType or a.returnDueDate is null or a.returnDueDate >= :now)
+				""", Long.class)
+			.setParameter("companyId", companyId)
+			.setParameter("memberId", memberId)
+			.setParameter("status", TangibleAssetStatus.IN_USE)
+			.setParameter("permanentUsageType", UsageType.PERMANENT)
+			.setParameter("now", now)
 			.getSingleResult();
 	}
 
@@ -882,16 +1141,66 @@ public class DashboardRepository {
 	}
 
 	private long countAvailableIntangibleAssets(UUID companyId, UUID departmentId) {
-		return entityManager.createQuery("""
-				select coalesce(sum(a.seatCount), 0)
+		List<Object[]> rows = entityManager.createQuery("""
+				select a.seatCount, count(aa)
 				from IntangibleAsset a
+				left join IntangibleAssetAssignment aa
+					on aa.intangibleAsset = a and aa.assignmentStatus = :assignmentStatus
 				where a.company.id = :companyId
 					and (:departmentId is null or a.department.id = :departmentId)
-					and a.intangibleAssetStatus = :status
-				""", Long.class)
+					and a.intangibleAssetStatus in :statuses
+				group by a.id, a.seatCount
+				""", Object[].class)
 			.setParameter("companyId", companyId)
 			.setParameter("departmentId", departmentId)
-			.setParameter("status", IntangibleAssetStatus.AVAILABLE)
+			.setParameter("statuses", List.of(IntangibleAssetStatus.AVAILABLE, IntangibleAssetStatus.IN_USE))
+			.setParameter("assignmentStatus", AssignmentStatus.ACTIVE)
+			.getResultList();
+
+		return rows.stream()
+			.mapToLong(row -> Math.max((Integer) row[0] - Math.toIntExact((Long) row[1]), 0))
+			.sum();
+	}
+
+	private long countScheduledIntangibleAssignments(UUID companyId, UUID memberId, UUID departmentId, LocalDateTime now) {
+		return countIntangibleAssignments(companyId, memberId, departmentId, IntangibleDetailMode.SCHEDULED, now);
+	}
+
+	private long countActiveIntangibleAssignments(UUID companyId, UUID memberId, UUID departmentId, LocalDateTime now) {
+		return countIntangibleAssignments(companyId, memberId, departmentId, IntangibleDetailMode.ACTIVE, now);
+	}
+
+	private long countIntangibleAssignments(
+		UUID companyId,
+		UUID memberId,
+		UUID departmentId,
+		IntangibleDetailMode mode,
+		LocalDateTime now
+	) {
+		return entityManager.createQuery("""
+				select count(aa)
+				from IntangibleAssetAssignment aa
+				join aa.intangibleAsset a
+				join aa.member m
+				join aa.department d
+				where aa.company.id = :companyId
+					and aa.assignmentStatus = :assignmentStatus
+					and a.intangibleAssetStatus <> :cancelledStatus
+					and (:memberId is null or m.id = :memberId)
+					and (:departmentId is null or d.id = :departmentId)
+					and (
+						(:mode = 'SCHEDULED' and a.startedAt is not null and a.startedAt > :now)
+						or (:mode = 'ACTIVE' and (a.startedAt is null or a.startedAt <= :now) and (a.expiredAt is null or a.expiredAt >= :now))
+						or (:mode = 'OVERDUE' and a.expiredAt is not null and a.expiredAt < :now)
+					)
+				""", Long.class)
+			.setParameter("companyId", companyId)
+			.setParameter("assignmentStatus", AssignmentStatus.ACTIVE)
+			.setParameter("cancelledStatus", IntangibleAssetStatus.CANCELLED)
+			.setParameter("memberId", memberId)
+			.setParameter("departmentId", departmentId)
+			.setParameter("mode", mode.name())
+			.setParameter("now", now)
 			.getSingleResult();
 	}
 
@@ -922,6 +1231,23 @@ public class DashboardRepository {
 			.setParameter("departmentId", departmentId)
 			.setParameter("status", TangibleAssetStatus.IN_USE)
 			.setParameter("usageType", UsageType.TEMPORARY)
+			.getSingleResult();
+	}
+
+	private long countOwnedTangibleAssets(UUID companyId, UUID departmentId, LocalDateTime now) {
+		return entityManager.createQuery("""
+				select count(a)
+				from TangibleAsset a
+				where a.company.id = :companyId
+					and (:departmentId is null or a.department.id = :departmentId)
+					and a.tangibleAssetStatus = :status
+					and (a.usageType = :permanentUsageType or a.returnDueDate is null or a.returnDueDate >= :now)
+				""", Long.class)
+			.setParameter("companyId", companyId)
+			.setParameter("departmentId", departmentId)
+			.setParameter("status", TangibleAssetStatus.IN_USE)
+			.setParameter("permanentUsageType", UsageType.PERMANENT)
+			.setParameter("now", now)
 			.getSingleResult();
 	}
 
@@ -2032,6 +2358,22 @@ public class DashboardRepository {
 			return null;
 		}
 		return dueDate.isBefore(now) ? "OVERDUE" : "REMAINING";
+	}
+
+	private PaginationRequest allRequest() {
+		PaginationRequest request = new PaginationRequest();
+		request.setPage(0);
+		request.setSize(Integer.MAX_VALUE);
+		return request;
+	}
+
+	private List<OwnedAssetDetailResponse> sortOwnedAssetDetails(List<OwnedAssetDetailResponse> content) {
+		return content.stream()
+			.sorted(Comparator
+				.comparing(OwnedAssetDetailResponse::getDueDate, Comparator.nullsLast(Comparator.naturalOrder()))
+				.thenComparing(OwnedAssetDetailResponse::getAssetName, Comparator.nullsLast(String::compareTo))
+				.thenComparing(OwnedAssetDetailResponse::getAssetCode, Comparator.nullsLast(String::compareTo)))
+			.toList();
 	}
 
 	private String resolveExpirationPeriodStatus(LocalDateTime expirationDate, LocalDateTime now) {
