@@ -35,8 +35,6 @@ import java.util.UUID;
 @Table(name = "activity_logs")
 public class ActivityLog {
 
-	private static final ZoneId SEOUL_ZONE = ZoneId.of("Asia/Seoul");
-
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@Column(name = "activity_log_id")
