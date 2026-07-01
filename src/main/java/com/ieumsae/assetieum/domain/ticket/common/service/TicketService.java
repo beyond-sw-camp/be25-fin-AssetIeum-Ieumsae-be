@@ -39,8 +39,11 @@ import com.ieumsae.assetieum.domain.ticket.common.dto.TicketRejectionRequest;
 import com.ieumsae.assetieum.domain.ticket.common.dto.TicketSearchRequest;
 import com.ieumsae.assetieum.domain.ticket.common.dto.TicketStatisticsResponse;
 import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
+import com.ieumsae.assetieum.domain.ticket.common.entity.TicketAssignmentTarget;
 import com.ieumsae.assetieum.domain.ticket.common.repository.TicketRepository;
+import com.ieumsae.assetieum.domain.ticket.common.type.AssetType;
 import com.ieumsae.assetieum.domain.ticket.common.type.RequestMethod;
+import com.ieumsae.assetieum.domain.ticket.common.type.RequestedUsageType;
 import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
 import com.ieumsae.assetieum.domain.ticket.common.type.TicketType;
 import com.ieumsae.assetieum.domain.ticket.maintenance.entity.MaintenanceTicket;
@@ -90,6 +93,7 @@ public class TicketService {
 	private final MaintenanceTicketRepository maintenanceTicketRepository;
 	private final AssetReturnTicketRepository assetReturnTicketRepository;
 	private final TicketApprovalResolver ticketApprovalResolver;
+	private final TicketAssignmentTargetService ticketAssignmentTargetService;
 	private final BudgetExecutionService budgetExecutionService;
 	private final LogService logService;
 	private final NotificationService notificationService;
@@ -241,6 +245,7 @@ public class TicketService {
 		validateAssignee(ticket, assignee);
 
 		ticket.approveAsset(assignee, LocalDateTime.now());
+		assignAvailableAssetRequestAssetsIfNeeded(ticket, companyId);
 		// 대여/대여연장은 구매자산팀 승인 후 실제 처리 API를 기다리기 위해 처리중으로 전환한다.
 		startProcessingAfterAssetApprovalIfNeeded(ticket, companyId);
 		logService.recordAuditLog(assignee, AuditLogAction.INFORMATION_CHANGE, LogSubjectType.TICKET, ticket.getId(), "자산 승인");
@@ -444,6 +449,70 @@ public class TicketService {
 		}
 	}
 
+	private void assignAvailableAssetRequestAssetsIfNeeded(Ticket ticket, UUID companyId) {
+		if (ticket.getTicketType() != TicketType.ASSET_REQUEST) {
+			return;
+		}
+
+		AssetRequestTicket assetRequestTicket = assetRequestTicketRepository
+			.findByIdAndCompany_IdAndDeletedAtIsNull(ticket.getId(), companyId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+		if (assetRequestTicket.getTangibleAssetItem() == null) {
+			return;
+		}
+
+		List<TicketAssignmentTarget> pendingTargets = ticketAssignmentTargetService.findPendingTargets(companyId, ticket);
+		if (pendingTargets.isEmpty()) {
+			return;
+		}
+
+		List<TangibleAsset> assets = tangibleAssetRepository.findAvailableAssetsWithLock(
+			companyId,
+			assetRequestTicket.getTangibleAssetItem().getId(),
+			TangibleAssetStatus.AVAILABLE,
+			PageRequest.of(0, pendingTargets.size())
+		);
+
+		for (int i = 0; i < assets.size(); i++) {
+			TicketAssignmentTarget target = pendingTargets.get(i);
+			Member targetMember = target.getMember();
+			TangibleAsset asset = assets.get(i);
+			TangibleAssetAssignment assignment = TangibleAssetAssignment.builder()
+				.company(ticket.getCompany())
+				.tangibleAsset(asset)
+				.member(targetMember)
+				.department(targetMember.getDepartment())
+				.assignmentType(UsageType.PERMANENT)
+				.assignmentStatus(AssignmentStatus.ACTIVE)
+				.build();
+			tangibleAssetAssignmentRepository.save(assignment);
+			asset.markInUse(
+				targetMember,
+				targetMember.getDepartment(),
+				UsageType.PERMANENT,
+				resolveAssetUsageType(assetRequestTicket.getRequestedUsageType()),
+				assignment.getAssignedAt(),
+				null
+			);
+			ticketAssignmentTargetService.markAssigned(
+				target,
+				AssetType.TANGIBLE,
+				asset.getId(),
+				assignment.getAssignedAt()
+			);
+		}
+
+		int remainingTargetCount = ticketAssignmentTargetService.findPendingTargets(companyId, ticket).size();
+		if (remainingTargetCount == 0) {
+			budgetExecutionService.releaseHoldForInventoryAssignment(ticket, companyId);
+			assetRequestTicket.complete();
+			ticket.changeProcessingStatus(TicketStatus.COMPLETED, LocalDateTime.now());
+			return;
+		}
+
+		budgetExecutionService.reconcileHoldForAssetRequestPendingQuantity(ticket, companyId, remainingTargetCount);
+	}
+
 	private boolean shouldStartProcessingAfterAssetApproval(Ticket ticket, UUID companyId) {
 		if (ticket.getTicketType() == TicketType.ASSET_REQUEST) {
 			return false;
@@ -471,6 +540,13 @@ public class TicketService {
 
 	private AssetUsageType resolveAssetUsageType(RentalTicket rentalTicket) {
 		return switch (rentalTicket.getRequestedUsageType()) {
+			case PERSONAL -> AssetUsageType.PERSONAL;
+			case DEPARTMENT -> AssetUsageType.DEPARTMENT;
+		};
+	}
+
+	private AssetUsageType resolveAssetUsageType(RequestedUsageType requestedUsageType) {
+		return switch (requestedUsageType) {
 			case PERSONAL -> AssetUsageType.PERSONAL;
 			case DEPARTMENT -> AssetUsageType.DEPARTMENT;
 		};

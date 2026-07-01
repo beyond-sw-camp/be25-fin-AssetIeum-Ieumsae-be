@@ -57,7 +57,8 @@ public class PurchasePlanCandidateTicketResponse {
 
     public static PurchasePlanCandidateTicketResponse from(
             AssetRequestTicket assetRequestTicket,
-            BigDecimal estimatedUnitPrice
+            BigDecimal estimatedUnitPrice,
+            int quantity
     ) {
         Ticket ticket = assetRequestTicket.getTicket();
         TangibleAssetItem tangibleItem = assetRequestTicket.getTangibleAssetItem();
@@ -76,7 +77,7 @@ public class PurchasePlanCandidateTicketResponse {
                 .itemName(tangibleItem != null ? tangibleItem.getProductName() : intangibleItem.getProductName())
                 .categoryName(resolveCategoryName(tangibleItem, intangibleItem))
                 .isStandard(resolveIsStandard(tangibleItem, intangibleItem))
-                .quantity(assetRequestTicket.getQuantity())
+                .quantity(quantity)
                 .estimatedUnitPrice(estimatedUnitPrice)
                 .requestedAt(ticket.getCreatedAt())
                 .build();

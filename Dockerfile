@@ -10,6 +10,9 @@ FROM eclipse-temurin:21-jre
 
 WORKDIR /app
 
+ENV TZ=Asia/Seoul
+ENV JAVA_TOOL_OPTIONS="-Duser.timezone=Asia/Seoul"
+
 COPY --from=builder /build/build/libs/*.jar app.jar
 
 EXPOSE 8080

@@ -7,6 +7,7 @@ import com.ieumsae.assetieum.domain.ticket.common.entity.TicketAssignmentTarget;
 import com.ieumsae.assetieum.domain.ticket.common.repository.TicketAssignmentTargetRepository;
 import com.ieumsae.assetieum.domain.ticket.common.type.AssetType;
 import com.ieumsae.assetieum.domain.ticket.common.type.RequestedUsageType;
+import com.ieumsae.assetieum.domain.ticket.common.type.TicketAssignmentTargetStatus;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import java.time.LocalDateTime;
@@ -138,6 +139,18 @@ public class TicketAssignmentTargetService {
 
 	public List<TicketAssignmentTarget> resolveTargetsOrEmpty(UUID companyId, Ticket ticket) {
 		return findTargets(companyId, ticket);
+	}
+
+	public List<TicketAssignmentTarget> findPendingTargets(UUID companyId, Ticket ticket) {
+		return findTargets(companyId, ticket).stream()
+			.filter(target -> target.getStatus() == TicketAssignmentTargetStatus.PENDING)
+			.toList();
+	}
+
+	public boolean allTargetsAssigned(UUID companyId, Ticket ticket) {
+		List<TicketAssignmentTarget> targets = findTargets(companyId, ticket);
+		return !targets.isEmpty()
+			&& targets.stream().allMatch(target -> target.getStatus() == TicketAssignmentTargetStatus.ASSIGNED);
 	}
 
 	public void validateCapacity(List<TicketAssignmentTarget> targets, int capacity) {
