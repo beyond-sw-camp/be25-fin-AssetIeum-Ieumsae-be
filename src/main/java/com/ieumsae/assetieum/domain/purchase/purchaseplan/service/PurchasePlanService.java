@@ -710,6 +710,12 @@ public class PurchasePlanService {
         }
 
         purchasePlanItem.markReceivedIfNeeded();
+
+        if (Boolean.TRUE.equals(purchasePlanItem.getIsStandard())
+                && (purchasePlanItem.getTangibleAssetItem() != null || purchasePlanItem.getIntangibleAssetItem() != null)) {
+            purchasePlanItem.markItemRegistered();
+        }
+
         markLinkedPurchaseRequestReceivedIfNeeded(purchasePlanItem, companyId);
 
         for (PurchasePlanItem item : purchasePlanItems) {
