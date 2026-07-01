@@ -129,6 +129,35 @@ public class BudgetExecutionService {
     }
 
     @Transactional
+    public void reconcileHoldForAssetRequestPendingQuantity(Ticket ticket, UUID companyId, int pendingQuantity) {
+        if (ticket.getTicketType() != TicketType.ASSET_REQUEST) {
+            return;
+        }
+
+        AssetRequestTicket assetRequestTicket = findAssetRequestTicket(ticket.getId(), companyId);
+        if (!isStandardAssetRequest(assetRequestTicket)) {
+            return;
+        }
+
+        BigDecimal desiredHoldAmount = resolveEstimatedUnitPrice(assetRequestTicket, companyId)
+                .multiply(BigDecimal.valueOf(Math.max(pendingQuantity, 0)));
+        BigDecimal outstandingHoldAmount = getOutstandingHoldAmount(ticket, companyId);
+        BigDecimal difference = desiredHoldAmount.subtract(outstandingHoldAmount);
+        if (difference.signum() == 0) {
+            return;
+        }
+
+        Budget budget = findBudgetForAssetRequest(ticket, assetRequestTicket);
+        if (difference.signum() > 0) {
+            validateAvailableBudget(budget, difference);
+            increaseHold(budget, ticket, null, difference, "자산요청 미배정 수량 변경으로 인한 집행 대기 금액 증가");
+            return;
+        }
+
+        decreaseHold(budget, ticket, null, difference.abs(), "자산요청 미배정 수량 변경으로 인한 집행 대기 금액 감소");
+    }
+
+    @Transactional
     public void releaseHoldForCancellation(Ticket ticket, UUID companyId) {
         if (ticket.getTicketType() != TicketType.ASSET_REQUEST
                 && ticket.getTicketType() != TicketType.PURCHASE_REQUEST) {
@@ -517,7 +546,20 @@ public class BudgetExecutionService {
     }
 
     private BigDecimal resolveEstimatedAmount(AssetRequestTicket ticket, UUID companyId) {
-        BigDecimal unitPrice;
+        int shortageQuantity = resolveShortageQuantity(ticket, companyId);
+        if (shortageQuantity <= 0) {
+            return BigDecimal.ZERO;
+        }
+
+        return resolveEstimatedUnitPrice(ticket, companyId).multiply(BigDecimal.valueOf(shortageQuantity));
+    }
+
+    private BigDecimal resolveEstimatedUnitPrice(AssetRequestTicket ticket, UUID companyId) {
+        BigDecimal unitPrice = ticket.getEstimatedUnitPrice();
+        if (unitPrice != null) {
+            return unitPrice;
+        }
+
         if (ticket.getTangibleAssetItem() != null) {
             unitPrice = tangibleAssetRepository.findRecentPurchasePrices(
                             companyId,
@@ -538,7 +580,25 @@ public class BudgetExecutionService {
                     .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "자산요청 예산 산정에 사용할 구매금액이 없습니다."));
         }
 
-        return unitPrice.multiply(BigDecimal.valueOf(ticket.getQuantity()));
+        return unitPrice;
+    }
+
+    private int resolveShortageQuantity(AssetRequestTicket ticket, UUID companyId) {
+        int availableCount;
+        if (ticket.getTangibleAssetItem() != null) {
+            availableCount = Math.toIntExact(tangibleAssetRepository.countByCompany_IdAndTangibleAssetItem_IdAndTangibleAssetStatus(
+                    companyId,
+                    ticket.getTangibleAssetItem().getId(),
+                    TangibleAssetStatus.AVAILABLE
+            ));
+        } else {
+            availableCount = getAvailableIntangibleSeatCount(
+                    companyId,
+                    ticket.getIntangibleAssetItem().getId(),
+                    ticket.getTicket().getDepartment().getId()
+            );
+        }
+        return Math.max(ticket.getQuantity() - availableCount, 0);
     }
 
     private BigDecimal resolvePurchaseReturnRecoveryAmount(PurchaseReturnTicket ticket) {
@@ -611,6 +671,31 @@ public class BudgetExecutionService {
                 ticket,
                 purchasePlan,
                 BudgetHistoryType.HOLD_DECREASE,
+                amount,
+                usedBefore,
+                budget.getUsedAmount(),
+                holdBefore,
+                budget.getHeldAmount(),
+                description
+        );
+    }
+
+    private void increaseHold(
+            Budget budget,
+            Ticket ticket,
+            PurchasePlan purchasePlan,
+            BigDecimal amount,
+            String description
+    ) {
+        BigDecimal holdBefore = budget.getHeldAmount();
+        BigDecimal usedBefore = budget.getUsedAmount();
+        budget.increaseHold(amount);
+
+        saveHistory(
+                budget,
+                ticket,
+                purchasePlan,
+                BudgetHistoryType.HOLD_INCREASE,
                 amount,
                 usedBefore,
                 budget.getUsedAmount(),

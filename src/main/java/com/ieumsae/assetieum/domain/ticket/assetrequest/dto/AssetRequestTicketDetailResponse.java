@@ -15,6 +15,7 @@ import com.ieumsae.assetieum.domain.ticket.common.type.AssetType;
 import com.ieumsae.assetieum.domain.ticket.common.type.RequestedUsageType;
 import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
 import com.ieumsae.assetieum.domain.ticket.common.type.TicketType;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -59,6 +60,7 @@ public class AssetRequestTicketDetailResponse {
 	private final CategorySummary assetCategory;
 	private final ItemSummary assetItem;
 	private final int quantity;
+	private final BigDecimal estimatedUnitPrice;
 	private final List<TicketAssignmentTargetResponse> assignmentTargets;
 	private final MemberRole viewerRole;
 	private final ViewOptions viewOptions;
@@ -102,6 +104,7 @@ public class AssetRequestTicketDetailResponse {
 			.assetCategory(CategorySummary.from(assetRequestTicket))
 			.assetItem(ItemSummary.from(assetRequestTicket))
 			.quantity(assetRequestTicket.getQuantity())
+			.estimatedUnitPrice(assetRequestTicket.getEstimatedUnitPrice())
 			.assignmentTargets(assignmentTargets)
 			.viewerRole(viewerRole)
 			.viewOptions(ViewOptions.from(requesterView))

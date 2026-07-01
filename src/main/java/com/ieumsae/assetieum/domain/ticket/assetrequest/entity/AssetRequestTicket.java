@@ -17,6 +17,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.MapsId;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import lombok.AccessLevel;
@@ -60,6 +61,9 @@ public class AssetRequestTicket {
 	@Column(nullable = false)
 	private int quantity;
 
+	@Column(name = "expected_price", precision = 15, scale = 2)
+	private BigDecimal estimatedUnitPrice;
+
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "tangible_asset_item_id")
 	private TangibleAssetItem tangibleAssetItem;
@@ -77,7 +81,8 @@ public class AssetRequestTicket {
 		RequestedUsageType requestedUsageType,
 		TangibleAssetItem tangibleAssetItem,
 		IntangibleAssetItem intangibleAssetItem,
-		int quantity
+		int quantity,
+		BigDecimal estimatedUnitPrice
 	) {
 		return AssetRequestTicket.builder()
 			.ticket(ticket)
@@ -87,6 +92,7 @@ public class AssetRequestTicket {
 			.tangibleAssetItem(tangibleAssetItem)
 			.intangibleAssetItem(intangibleAssetItem)
 			.quantity(quantity)
+			.estimatedUnitPrice(estimatedUnitPrice)
 			.build();
 	}
 

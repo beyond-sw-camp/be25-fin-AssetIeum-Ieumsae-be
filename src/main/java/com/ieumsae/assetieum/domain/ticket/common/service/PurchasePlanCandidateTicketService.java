@@ -39,6 +39,7 @@ public class PurchasePlanCandidateTicketService {
     private final IntangibleAssetAssignmentRepository intangibleAssetAssignmentRepository;
     private final AssetRequestTicketRepository assetRequestTicketRepository;
     private final PurchaseRequestTicketRepository purchaseRequestTicketRepository;
+    private final TicketAssignmentTargetService ticketAssignmentTargetService;
 
     public PaginationResponse<PurchasePlanCandidateTicketResponse> getPurchasePlanCandidateTickets(
             PurchasePlanCandidateTicketSearchRequest request,
@@ -50,10 +51,11 @@ public class PurchasePlanCandidateTicketService {
         List<PurchasePlanCandidateTicketResponse> candidates = new ArrayList<>();
         candidates.addAll(assetRequestTicketRepository.findPurchasePlanCandidates(companyId)
                 .stream()
-                .filter(ticket -> !hasEnoughInventory(ticket, companyId))
+                .filter(ticket -> needsPurchasePlan(ticket, companyId))
                 .map(ticket -> PurchasePlanCandidateTicketResponse.from(
                         ticket,
-                        resolveRecentPurchasePrice(ticket, companyId)
+                        resolveEstimatedUnitPrice(ticket, companyId),
+                        resolvePurchaseQuantity(ticket, companyId)
                 ))
                 .toList());
         candidates.addAll(purchaseRequestTicketRepository.findPurchasePlanCandidates(companyId)
@@ -77,7 +79,11 @@ public class PurchasePlanCandidateTicketService {
         return PaginationResponse.from(page);
     }
 
-    private BigDecimal resolveRecentPurchasePrice(AssetRequestTicket ticket, UUID companyId) {
+    private BigDecimal resolveEstimatedUnitPrice(AssetRequestTicket ticket, UUID companyId) {
+        if (ticket.getEstimatedUnitPrice() != null) {
+            return ticket.getEstimatedUnitPrice();
+        }
+
         if (ticket.getTangibleAssetItem() != null) {
             return tangibleAssetRepository.findRecentPurchasePrices(
                             companyId,
@@ -99,6 +105,13 @@ public class PurchasePlanCandidateTicketService {
                 .orElse(null);
     }
 
+    private boolean needsPurchasePlan(AssetRequestTicket ticket, UUID companyId) {
+        if (ticket.getTangibleAssetItem() != null) {
+            return !ticketAssignmentTargetService.findPendingTargets(companyId, ticket.getTicket()).isEmpty();
+        }
+        return !hasEnoughInventory(ticket, companyId);
+    }
+
     private boolean hasEnoughInventory(AssetRequestTicket ticket, UUID companyId) {
         if (ticket.getTangibleAssetItem() != null) {
             long availableCount = tangibleAssetRepository.countByCompany_IdAndTangibleAssetItem_IdAndTangibleAssetStatus(
@@ -114,6 +127,18 @@ public class PurchasePlanCandidateTicketService {
                 ticket.getIntangibleAssetItem().getId(),
                 ticket.getTicket().getDepartment().getId()
         ) >= ticket.getQuantity();
+    }
+
+    private int resolvePurchaseQuantity(AssetRequestTicket ticket, UUID companyId) {
+        if (ticket.getTangibleAssetItem() == null) {
+            return ticket.getQuantity();
+        }
+
+        int pendingTargetCount = ticketAssignmentTargetService.findPendingTargets(companyId, ticket.getTicket()).size();
+        if (pendingTargetCount > 0) {
+            return pendingTargetCount;
+        }
+        return ticket.getQuantity();
     }
 
     private int getAvailableIntangibleSeatCount(UUID companyId, UUID itemId, UUID requesterDepartmentId) {
