@@ -713,8 +713,7 @@ public class PurchasePlanService {
 
         purchasePlanItem.markReceivedIfNeeded();
 
-        if (Boolean.TRUE.equals(purchasePlanItem.getIsStandard())
-                && (purchasePlanItem.getTangibleAssetItem() != null || purchasePlanItem.getIntangibleAssetItem() != null)) {
+        if (purchasePlanItem.getTangibleAssetItem() != null || purchasePlanItem.getIntangibleAssetItem() != null) {
             purchasePlanItem.markItemRegistered();
         }
 

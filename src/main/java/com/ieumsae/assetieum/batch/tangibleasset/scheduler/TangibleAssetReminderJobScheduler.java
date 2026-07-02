@@ -23,7 +23,8 @@ public class TangibleAssetReminderJobScheduler {
 	private final JobLauncher jobLauncher;
 	private final Job tangibleAssetReminderJob;
 
-	@Scheduled(cron = "0 0 10 * * *", zone = "Asia/Seoul")
+//	@Scheduled(cron = "0 0 10 * * *", zone = "Asia/Seoul")
+	@Scheduled(cron = "0 * * * * *", zone = "Asia/Seoul") // 테스트를 위해 현재는 매 분마다 실행되도록
 	@SchedulerLock(name = TangibleAssetReminderJobConfig.JOB_NAME, lockAtMostFor = "PT30M")
 	public void run() throws Exception {
 		JobParameters jobParameters = new JobParametersBuilder()
