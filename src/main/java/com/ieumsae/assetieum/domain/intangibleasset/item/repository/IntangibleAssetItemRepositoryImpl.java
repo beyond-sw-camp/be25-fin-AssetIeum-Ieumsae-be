@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import static com.ieumsae.assetieum.domain.department.entity.QDepartment.department;
 import static com.ieumsae.assetieum.domain.intangibleasset.asset.entity.QIntangibleAsset.intangibleAsset;
 import static com.ieumsae.assetieum.domain.intangibleasset.assignment.entity.QIntangibleAssetAssignment.intangibleAssetAssignment;
 import static com.ieumsae.assetieum.domain.intangibleasset.category.entity.QIntangibleAssetCategory.intangibleAssetCategory;
@@ -118,9 +119,10 @@ public class IntangibleAssetItemRepositoryImpl implements IntangibleAssetItemRep
                         intangibleAsset.intangibleAssetItem.id,
                         intangibleAsset.id,
                         intangibleAsset.seatCount,
-                        intangibleAsset.department.id
+                        department.id
                 )
                 .from(intangibleAsset)
+                .leftJoin(intangibleAsset.department, department)
                 .where(
                         intangibleAsset.company.id.eq(companyId),
                         intangibleAsset.intangibleAssetItem.id.in(itemIds),
@@ -143,7 +145,7 @@ public class IntangibleAssetItemRepositoryImpl implements IntangibleAssetItemRep
             UUID itemId = asset.get(intangibleAsset.intangibleAssetItem.id);
             UUID assetId = asset.get(intangibleAsset.id);
             Integer seatCount = asset.get(intangibleAsset.seatCount);
-            UUID assetDepartmentId = asset.get(intangibleAsset.department.id);
+            UUID assetDepartmentId = asset.get(department.id);
             // 부서 기준 조회에서는 미소속 seat과 같은 부서 seat만 할당 가능 수에 포함한다.
             if (availableDepartmentId != null
                     && assetDepartmentId != null
