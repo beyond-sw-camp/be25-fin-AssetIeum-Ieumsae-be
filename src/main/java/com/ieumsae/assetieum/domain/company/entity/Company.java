@@ -1,5 +1,7 @@
 package com.ieumsae.assetieum.domain.company.entity;
 
+import com.ieumsae.assetieum.global.common.util.KstDateTime;
+
 import com.ieumsae.assetieum.global.common.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -44,7 +46,7 @@ public class Company extends BaseEntity {
 	}
 
 	public LocalDateTime delete() {
-		this.deletedAt = LocalDateTime.now();
+		this.deletedAt = KstDateTime.now();
 		return deletedAt;
 	}
 }

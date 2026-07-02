@@ -1,5 +1,7 @@
 package com.ieumsae.assetieum.domain.tangibleasset.assignment.entity;
 
+import com.ieumsae.assetieum.global.common.util.KstDateTime;
+
 import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.department.entity.Department;
 import com.ieumsae.assetieum.domain.member.entity.Member;
@@ -64,7 +66,7 @@ public class TangibleAssetAssignment extends BaseEntity {
 
     @Column(name = "assigned_at", nullable = false)
     @Builder.Default
-    private LocalDateTime assignedAt = LocalDateTime.now();
+    private LocalDateTime assignedAt = KstDateTime.now();
 
     @Column(name = "ended_at")
     private LocalDateTime endedAt;

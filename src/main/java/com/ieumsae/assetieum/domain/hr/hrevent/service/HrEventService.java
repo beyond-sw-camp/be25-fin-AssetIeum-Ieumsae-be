@@ -1,5 +1,7 @@
 package com.ieumsae.assetieum.domain.hr.hrevent.service;
 
+import com.ieumsae.assetieum.global.common.util.KstDateTime;
+
 import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.company.repository.CompanyRepository;
 import com.ieumsae.assetieum.domain.department.entity.Department;
@@ -455,7 +457,7 @@ public class HrEventService {
         List<HrEventAssetTarget> hrEventAssetTargets =
                 hrEventAssetTargetRepository.findAllByHrEvent_IdAndCompany_Id(hrEvent.getId(), hrEvent.getCompany().getId());
 
-        LocalDateTime completedAt = LocalDateTime.now();
+        LocalDateTime completedAt = KstDateTime.now();
         for (HrEventAssetTarget target : hrEventAssetTargets) {
             target.complete(completedAt);
         }

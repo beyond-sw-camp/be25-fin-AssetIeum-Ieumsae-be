@@ -1,5 +1,7 @@
 package com.ieumsae.assetieum.domain.tangibleasset.asset.service;
 
+import com.ieumsae.assetieum.global.common.util.KstDateTime;
+
 import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.company.repository.CompanyRepository;
 import com.ieumsae.assetieum.domain.department.entity.Department;
@@ -92,7 +94,7 @@ public class TangibleAssetService {
         Member member = findMember(request.getMemberId(), companyId);
         Department department = resolveDepartment(request.getDepartmentId(), member, companyId);
         LocalDateTime usedStartedAt = member != null && request.getUsedStartedAt() == null
-                ? LocalDateTime.now()
+                ? KstDateTime.now()
                 : request.getUsedStartedAt();
         TangibleAssetStatus status = member != null ? TangibleAssetStatus.IN_USE : resolveCreateStatus(request);
 
@@ -303,7 +305,7 @@ public class TangibleAssetService {
             return;
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = KstDateTime.now();
         if (currentStartedAt != null && !currentStartedAt.isAfter(now)) {
             throw new BusinessException(
                     ErrorCode.TANGIBLE_ASSET_INVALID_REQUEST,

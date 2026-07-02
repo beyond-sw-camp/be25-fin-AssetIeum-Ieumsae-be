@@ -1,5 +1,7 @@
 package com.ieumsae.assetieum.domain.log.entity;
 
+import com.ieumsae.assetieum.global.common.util.KstDateTime;
+
 import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.log.type.ActivityLogAction;
 import com.ieumsae.assetieum.domain.log.type.LogSubjectType;
@@ -68,6 +70,6 @@ public class ActivityLog {
 
 	@PrePersist
 	protected void onCreate() {
-		this.createdAt = LocalDateTime.now();
+		this.createdAt = KstDateTime.now();
 	}
 }

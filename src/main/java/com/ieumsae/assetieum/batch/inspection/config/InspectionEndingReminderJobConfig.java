@@ -1,5 +1,7 @@
 package com.ieumsae.assetieum.batch.inspection.config;
 
+import com.ieumsae.assetieum.global.common.util.KstDateTime;
+
 import com.ieumsae.assetieum.domain.inspection.inspection.entity.Inspection;
 import com.ieumsae.assetieum.domain.inspection.inspection.type.InspectionStatus;
 import com.ieumsae.assetieum.domain.inspection.target.entity.InspectionTarget;
@@ -101,7 +103,7 @@ public class InspectionEndingReminderJobConfig {
                 .get(INSPECTION_END_DATE_PARAMETER);
 
         if (parameter == null) {
-            return LocalDate.now().plusDays(1);
+            return KstDateTime.today().plusDays(1);
         }
         return LocalDate.parse(parameter.toString());
     }
