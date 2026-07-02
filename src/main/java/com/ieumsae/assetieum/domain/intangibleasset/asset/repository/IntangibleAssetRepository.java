@@ -58,6 +58,26 @@ public interface IntangibleAssetRepository extends JpaRepository<IntangibleAsset
             Pageable pageable
     );
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select asset
+            from IntangibleAsset asset
+            where asset.company.id = :companyId
+              and asset.intangibleAssetItem.id = :itemId
+              and asset.intangibleAssetStatus in :statuses
+              and (
+                    asset.department is null
+                    or asset.department.id = :departmentId
+                  )
+            order by asset.createdAt asc
+            """)
+    List<IntangibleAsset> findAssignableAssetsForDepartmentWithLock(
+            UUID companyId,
+            UUID itemId,
+            List<IntangibleAssetStatus> statuses,
+            UUID departmentId
+    );
+
     @Query("""
             select asset.purchasePrice / asset.seatCount
             from IntangibleAsset asset
