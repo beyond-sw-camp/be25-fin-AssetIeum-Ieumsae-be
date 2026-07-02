@@ -23,6 +23,7 @@ public class AssetieumBeApplication {
 
 	public static void main(String[] args) {
 		setDefaultTimeZone();
+		printTimeZoneLog();
 		loadEnvIfExists();
 		validateRequiredEnv();
 		SpringApplication.run(AssetieumBeApplication.class, args);
@@ -31,6 +32,16 @@ public class AssetieumBeApplication {
 	private static void setDefaultTimeZone() {
 		TimeZone.setDefault(TimeZone.getTimeZone(DEFAULT_TIME_ZONE));
 		System.setProperty("user.timezone", DEFAULT_TIME_ZONE);
+	}
+	private static void printTimeZoneLog() {
+		System.out.println("======================================");
+		System.out.println("Default TimeZone      : " + TimeZone.getDefault().getID());
+		System.out.println("user.timezone         : " + System.getProperty("user.timezone"));
+		System.out.println("System ZoneId         : " + java.time.ZoneId.systemDefault());
+		System.out.println("LocalDateTime.now()   : " + java.time.LocalDateTime.now());
+		System.out.println("ZonedDateTime.now()   : " + java.time.ZonedDateTime.now());
+		System.out.println("Instant.now()         : " + java.time.Instant.now());
+		System.out.println("======================================");
 	}
 
 	private static void loadEnvIfExists() {

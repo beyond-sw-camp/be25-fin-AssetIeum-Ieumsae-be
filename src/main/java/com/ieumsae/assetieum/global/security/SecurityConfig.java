@@ -52,6 +52,7 @@ public class SecurityConfig {
 				.requestMatchers("/actuator/**").permitAll()
 				.requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
 				.requestMatchers(HttpMethod.POST, "/api/v1/auth/reissue").permitAll()
+				.requestMatchers("/error").permitAll()
 				.anyRequest().authenticated()
 			)
 			.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
@@ -91,6 +92,9 @@ public class SecurityConfig {
 		ErrorCode errorCode,
 		String message
 	) throws IOException {
+		if (response.isCommitted()) {
+			return;
+		}
 		response.setStatus(errorCode.getStatus().value());
 		response.setContentType(MediaType.APPLICATION_JSON_VALUE);
 		response.setCharacterEncoding(StandardCharsets.UTF_8.name());
