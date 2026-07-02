@@ -1,5 +1,7 @@
 package com.ieumsae.assetieum.domain.hr.hrevent.entity;
 
+import com.ieumsae.assetieum.global.common.util.KstDateTime;
+
 import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.department.entity.Department;
 import com.ieumsae.assetieum.domain.hr.hrevent.type.HrEventType;
@@ -83,16 +85,16 @@ public class HrEvent extends BaseEntity {
 
     public void delete() {
         this.hrEventStatus = HrEventStatus.CANCELLED;
-        this.cancelledAt = LocalDateTime.now();
+        this.cancelledAt = KstDateTime.now();
     }
 
     public void process() {
         this.hrEventStatus = HrEventStatus.IN_PROGRESS;
-        this.executedAt = LocalDateTime.now();
+        this.executedAt = KstDateTime.now();
     }
 
     public void complete() {
         this.hrEventStatus = HrEventStatus.COMPLETED;
-        this.completedAt = LocalDateTime.now();
+        this.completedAt = KstDateTime.now();
     }
 }

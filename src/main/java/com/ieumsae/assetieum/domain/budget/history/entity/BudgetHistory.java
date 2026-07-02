@@ -1,5 +1,7 @@
 package com.ieumsae.assetieum.domain.budget.history.entity;
 
+import com.ieumsae.assetieum.global.common.util.KstDateTime;
+
 import com.ieumsae.assetieum.domain.budget.budget.entity.Budget;
 import com.ieumsae.assetieum.domain.budget.history.type.BudgetHistoryType;
 import com.ieumsae.assetieum.domain.company.entity.Company;
@@ -90,6 +92,6 @@ public class BudgetHistory {
 
     @PrePersist
     protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
+        this.createdAt = KstDateTime.now();
     }
 }

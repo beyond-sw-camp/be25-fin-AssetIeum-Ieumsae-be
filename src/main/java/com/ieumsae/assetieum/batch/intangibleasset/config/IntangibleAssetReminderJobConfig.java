@@ -1,5 +1,7 @@
 package com.ieumsae.assetieum.batch.intangibleasset.config;
 
+import com.ieumsae.assetieum.global.common.util.KstDateTime;
+
 import com.ieumsae.assetieum.domain.budget.budget.service.BudgetExecutionService;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.entity.IntangibleAsset;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.repository.IntangibleAssetRepository;
@@ -102,7 +104,7 @@ public class IntangibleAssetReminderJobConfig {
 						ACTIVE_STATUSES,
 						baseDate.plusDays(1).atStartOfDay()
 					);
-				LocalDateTime expiredAt = LocalDateTime.now();
+				LocalDateTime expiredAt = KstDateTime.now();
 
 				for (IntangibleAsset asset : assets) {
 					endActiveAssignments(asset, expiredAt);
@@ -214,7 +216,7 @@ public class IntangibleAssetReminderJobConfig {
 			.get(BASE_DATE_PARAMETER);
 
 		if (parameter == null) {
-			return LocalDate.now();
+			return KstDateTime.today();
 		}
 		return LocalDate.parse(parameter.toString());
 	}

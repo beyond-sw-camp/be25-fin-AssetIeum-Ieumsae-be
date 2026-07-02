@@ -1,5 +1,7 @@
 package com.ieumsae.assetieum.domain.purchase.purchaseplan.entity;
 
+import com.ieumsae.assetieum.global.common.util.KstDateTime;
+
 import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.purchase.purchaseplan.type.PurchaseRequestStatus;
@@ -80,7 +82,7 @@ public class PurchasePlan extends BaseEntity {
     public LocalDateTime delete() {
         this.purchaseRequestStatus = PurchaseRequestStatus.CANCELLED;
 
-        this.deletedAt = LocalDateTime.now();
+        this.deletedAt = KstDateTime.now();
         return this.deletedAt;
     }
 
@@ -88,15 +90,15 @@ public class PurchasePlan extends BaseEntity {
         this.purchaseRequestStatus = status;
 
         if (status == PurchaseRequestStatus.APPROVED) {
-            this.approvedAt = LocalDateTime.now();
+            this.approvedAt = KstDateTime.now();
         }
 
         if (status == PurchaseRequestStatus.ORDERED) {
-            this.orderedAt = LocalDateTime.now();
+            this.orderedAt = KstDateTime.now();
         }
 
         if (status == PurchaseRequestStatus.DELIVERED) {
-            this.deliveryDate = LocalDateTime.now();
+            this.deliveryDate = KstDateTime.now();
         }
     }
 

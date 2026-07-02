@@ -1,5 +1,7 @@
 package com.ieumsae.assetieum.batch.inspection.config;
 
+import com.ieumsae.assetieum.global.common.util.KstDateTime;
+
 import com.ieumsae.assetieum.domain.inspection.inspection.entity.Inspection;
 import com.ieumsae.assetieum.domain.inspection.inspection.repository.InspectionRepository;
 import com.ieumsae.assetieum.domain.inspection.inspection.type.InspectionStatus;
@@ -129,7 +131,7 @@ public class InspectionStartJobConfig {
                 .get(INSPECTION_START_DATE_PARAMETER);
 
         if (parameter == null) {
-            return LocalDate.now();
+            return KstDateTime.today();
         }
         return LocalDate.parse(parameter.toString());
     }

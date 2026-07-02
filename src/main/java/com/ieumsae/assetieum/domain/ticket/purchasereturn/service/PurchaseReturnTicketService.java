@@ -1,5 +1,7 @@
 package com.ieumsae.assetieum.domain.ticket.purchasereturn.service;
 
+import com.ieumsae.assetieum.global.common.util.KstDateTime;
+
 import com.ieumsae.assetieum.domain.budget.budget.service.BudgetExecutionService;
 import com.ieumsae.assetieum.domain.intangibleasset.assignment.entity.IntangibleAssetAssignment;
 import com.ieumsae.assetieum.domain.intangibleasset.assignment.repository.IntangibleAssetAssignmentRepository;
@@ -137,7 +139,7 @@ public class PurchaseReturnTicketService {
 
 		validateCollectable(ticket, purchaseReturnTicket, collector);
 
-		LocalDateTime collectedAt = LocalDateTime.now();
+		LocalDateTime collectedAt = KstDateTime.now();
 		// 반품 회수 시 배정 이력을 종료하고 자산을 회수 완료 상태로 전환한다.
 		endActiveAssignment(purchaseReturnTicket, companyId, collectedAt);
 		markAssetCollected(purchaseReturnTicket);
@@ -159,7 +161,7 @@ public class PurchaseReturnTicketService {
 
 		validateCompletable(ticket, purchaseReturnTicket, processor);
 
-		LocalDateTime processedAt = LocalDateTime.now();
+		LocalDateTime processedAt = KstDateTime.now();
 		// 반품 완료 시 별도 환불금액 입력 없이 자산 구매가 기준으로 사용 예산을 회복한다.
 		budgetExecutionService.recoverForPurchaseReturn(ticket, purchaseReturnTicket);
 		if (purchaseReturnTicket.getTangibleAsset() != null) {

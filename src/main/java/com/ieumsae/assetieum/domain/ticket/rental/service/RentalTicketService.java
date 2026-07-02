@@ -1,5 +1,7 @@
 package com.ieumsae.assetieum.domain.ticket.rental.service;
 
+import com.ieumsae.assetieum.global.common.util.KstDateTime;
+
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.type.MemberRole;
 import com.ieumsae.assetieum.domain.log.service.LogService;
@@ -241,7 +243,7 @@ public class RentalTicketService {
 		rentalTicket.reserveAsset(selectedAsset);
 		rentalTicket.markAssigned();
 		// 배정됨 상태를 거친 뒤 공통 티켓과 상세 티켓을 모두 완료 처리한다.
-		ticket.changeProcessingStatus(TicketStatus.COMPLETED, LocalDateTime.now());
+		ticket.changeProcessingStatus(TicketStatus.COMPLETED, KstDateTime.now());
 		rentalTicket.complete();
 		logService.recordAuditLog(assignee, AuditLogAction.ASSIGN, LogSubjectType.TICKET, ticket.getId(), "대여 자산 배정");
 		notifyMember(ticket.getRequester(), "대여 자산이 배정되었습니다.", "요청하신 대여 자산이 배정되었습니다.", ticket);
@@ -276,7 +278,7 @@ public class RentalTicketService {
 		// 대여연장 완료의 기준은 자산과 배정 이력의 반납 예정일 확정이다.
 		asset.updateReturnDueDate(request.getReturnDueDate());
 		assignment.updateEndedAt(request.getReturnDueDate());
-		ticket.changeProcessingStatus(TicketStatus.COMPLETED, LocalDateTime.now());
+		ticket.changeProcessingStatus(TicketStatus.COMPLETED, KstDateTime.now());
 		rentalTicket.complete();
 		logService.recordAuditLog(assignee, AuditLogAction.INFORMATION_CHANGE, LogSubjectType.TICKET, ticket.getId(), "대여 연장 처리");
 		notifyMember(ticket.getRequester(), "대여 연장 처리가 완료되었습니다.", "반납 예정일이 변경되었습니다.", ticket);

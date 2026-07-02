@@ -1,5 +1,7 @@
 package com.ieumsae.assetieum.domain.budget.budget.service;
 
+import com.ieumsae.assetieum.global.common.util.KstDateTime;
+
 import com.ieumsae.assetieum.domain.budget.budget.entity.Budget;
 import com.ieumsae.assetieum.domain.budget.budget.repository.BudgetRepository;
 import com.ieumsae.assetieum.domain.budget.history.entity.BudgetHistory;
@@ -435,7 +437,7 @@ public class BudgetExecutionService {
     }
 
     private Budget findBudgetForIntangibleAssetBillingCycle(IntangibleAsset asset, LocalDate billingDate) {
-        int budgetYear = billingDate == null ? LocalDate.now().getYear() : billingDate.getYear();
+        int budgetYear = billingDate == null ? KstDateTime.today().getYear() : billingDate.getYear();
         if (asset.getIntangibleAssetItem() != null
                 && Boolean.TRUE.equals(asset.getIntangibleAssetItem().getIsStandard())) {
             return budgetRepository.findByCompany_IdAndDepartmentIsNullAndBudgetYear(
@@ -460,7 +462,7 @@ public class BudgetExecutionService {
     private Budget findCompanyCommonBudget(Ticket ticket) {
         return budgetRepository.findByCompany_IdAndDepartmentIsNullAndBudgetYear(
                         ticket.getCompany().getId(),
-                        LocalDate.now().getYear()
+                        KstDateTime.today().getYear()
                 )
                 .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "회사 공통 예산이 없습니다."));
     }
@@ -469,7 +471,7 @@ public class BudgetExecutionService {
         return budgetRepository.findByCompany_IdAndDepartment_IdAndBudgetYear(
                         ticket.getCompany().getId(),
                         ticket.getDepartment().getId(),
-                        LocalDate.now().getYear()
+                        KstDateTime.today().getYear()
                 )
                 .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "해당 부서의 올해 예산이 없습니다."));
     }

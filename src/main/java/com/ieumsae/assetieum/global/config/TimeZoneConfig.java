@@ -1,8 +1,7 @@
 package com.ieumsae.assetieum.global.config;
 
+import com.ieumsae.assetieum.global.common.util.KstDateTime;
 import jakarta.annotation.PostConstruct;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.Optional;
 import java.util.TimeZone;
 import org.springframework.context.annotation.Bean;
@@ -13,7 +12,6 @@ import org.springframework.data.auditing.DateTimeProvider;
 public class TimeZoneConfig {
 
 	private static final String DEFAULT_TIME_ZONE = "Asia/Seoul";
-	private static final ZoneId DEFAULT_ZONE_ID = ZoneId.of(DEFAULT_TIME_ZONE);
 
 	@PostConstruct
 	public void setDefaultTimeZone() {
@@ -22,6 +20,6 @@ public class TimeZoneConfig {
 
 	@Bean
 	public DateTimeProvider seoulDateTimeProvider() {
-		return () -> Optional.of(LocalDateTime.now(DEFAULT_ZONE_ID));
+		return () -> Optional.of(KstDateTime.now());
 	}
 }
