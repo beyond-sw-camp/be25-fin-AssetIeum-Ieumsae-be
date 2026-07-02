@@ -11,6 +11,9 @@ spring:
       idle-timeout: ${DB_HIKARI_IDLE_TIMEOUT:600000}
       max-lifetime: ${DB_HIKARI_MAX_LIFETIME:1800000}
 
+  jackson:
+    time-zone: Asia/Seoul
+
   data:
     redis:
       host: ${REDIS_HOST}
