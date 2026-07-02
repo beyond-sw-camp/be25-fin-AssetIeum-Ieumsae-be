@@ -1,5 +1,7 @@
 package com.ieumsae.assetieum.global.common.util;
 
+import com.ieumsae.assetieum.global.common.util.KstDateTime;
+
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -28,7 +30,7 @@ public class CodeGenerator {
             throw new IllegalArgumentException("companyId must not be null");
         }
 
-        String date = LocalDate.now().format(DATE_FORMATTER);
+        String date = KstDateTime.today().format(DATE_FORMATTER);
         String redisKey = redisKeyPrefix + companyId + ":" + date;
         Long sequence = redisTemplate.opsForValue().increment(redisKey);
 

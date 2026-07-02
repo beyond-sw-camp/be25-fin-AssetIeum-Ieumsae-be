@@ -1,5 +1,7 @@
 package com.ieumsae.assetieum.domain.purchase.purchaseplan.service;
 
+import com.ieumsae.assetieum.global.common.util.KstDateTime;
+
 import com.ieumsae.assetieum.domain.budget.budget.service.BudgetExecutionService;
 import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.company.repository.CompanyRepository;
@@ -624,7 +626,7 @@ public class PurchasePlanService {
             ).orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
             // 현재 상태가 변경 대상 상태와 일치하는 티켓만 다음 상태로 변경한다.
             if (ticket.getTicketStatus() == currentStatus) {
-                ticket.changeProcessingStatus(nextStatus, java.time.LocalDateTime.now());
+                ticket.changeProcessingStatus(nextStatus, KstDateTime.now());
                 syncPurchaseRequestDetailStatus(ticket, companyId, nextStatus);
             }
         }
@@ -711,8 +713,7 @@ public class PurchasePlanService {
 
         purchasePlanItem.markReceivedIfNeeded();
 
-        if (Boolean.TRUE.equals(purchasePlanItem.getIsStandard())
-                && (purchasePlanItem.getTangibleAssetItem() != null || purchasePlanItem.getIntangibleAssetItem() != null)) {
+        if (purchasePlanItem.getTangibleAssetItem() != null || purchasePlanItem.getIntangibleAssetItem() != null) {
             purchasePlanItem.markItemRegistered();
         }
 
@@ -1197,7 +1198,7 @@ public class PurchasePlanService {
         if (targets.isEmpty()) {
             return;
         }
-        ticketAssignmentTargetService.markAssigned(targets.get(index), assetType, assetId, java.time.LocalDateTime.now());
+        ticketAssignmentTargetService.markAssigned(targets.get(index), assetType, assetId, KstDateTime.now());
     }
 
     private UUID resolveAssetDepartmentId(PurchasePlanItem purchasePlanItem, UUID requestedDepartmentId) {
@@ -1317,7 +1318,7 @@ public class PurchasePlanService {
         }
 
         completeLinkedTicketDetail(ticket, companyId);
-        ticket.changeProcessingStatus(TicketStatus.COMPLETED, java.time.LocalDateTime.now());
+        ticket.changeProcessingStatus(TicketStatus.COMPLETED, KstDateTime.now());
         budgetExecutionService.executeForPurchasePlanItemRegistration(
                 purchasePlanItem.getPurchasePlan(),
                 purchasePlanItem,

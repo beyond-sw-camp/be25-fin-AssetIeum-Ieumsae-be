@@ -1,5 +1,7 @@
 package com.ieumsae.assetieum.domain.ticket.assetreturn.service;
 
+import com.ieumsae.assetieum.global.common.util.KstDateTime;
+
 import com.ieumsae.assetieum.domain.intangibleasset.assignment.entity.IntangibleAssetAssignment;
 import com.ieumsae.assetieum.domain.intangibleasset.assignment.repository.IntangibleAssetAssignmentRepository;
 import com.ieumsae.assetieum.domain.intangibleasset.assignment.service.IntangibleAssetAssignmentService;
@@ -147,7 +149,7 @@ public class AssetReturnTicketService {
 
 		validateCollectable(ticket, assetReturnTicket, collector);
 
-		LocalDateTime collectedAt = LocalDateTime.now();
+		LocalDateTime collectedAt = KstDateTime.now();
 		// 회수 시점에 배정 이력을 종료하고, 자산을 실제 회수 완료 상태로 전환한다.
 		endActiveAssignment(assetReturnTicket, companyId, collectedAt);
 		markAssetCollected(assetReturnTicket);
@@ -170,7 +172,7 @@ public class AssetReturnTicketService {
 
 		validateCompletable(ticket, assetReturnTicket, processor);
 
-		LocalDateTime processedAt = LocalDateTime.now();
+		LocalDateTime processedAt = KstDateTime.now();
 		// 완료 처리는 상세 티켓과 공통 티켓을 함께 종료한다.
 		completeAssetStatus(assetReturnTicket);
 		assetReturnTicket.complete(processedAt);

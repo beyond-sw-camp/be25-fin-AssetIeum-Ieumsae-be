@@ -1,5 +1,7 @@
 package com.ieumsae.assetieum.domain.ticket.purchaserequest.service;
 
+import com.ieumsae.assetieum.global.common.util.KstDateTime;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -685,7 +687,7 @@ public class PurchaseRequestTicketService {
 
 	private void completeDirectPurchaseTicket(Ticket ticket, PurchaseRequestTicket purchaseRequestTicket) {
 		purchaseRequestTicket.complete();
-		ticket.changeProcessingStatus(TicketStatus.COMPLETED, LocalDateTime.now());
+		ticket.changeProcessingStatus(TicketStatus.COMPLETED, KstDateTime.now());
 		logService.recordAuditLog(ticket.getRequester(), AuditLogAction.INFORMATION_CHANGE, LogSubjectType.TICKET, ticket.getId(), "구매 자산 배정 완료");
 		notifyMember(ticket.getRequester(), "구매 자산 배정이 완료되었습니다.", "구매 요청하신 자산이 배정되었습니다.", ticket);
 	}

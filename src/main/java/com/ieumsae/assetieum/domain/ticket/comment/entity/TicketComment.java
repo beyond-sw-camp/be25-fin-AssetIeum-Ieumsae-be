@@ -1,5 +1,7 @@
 package com.ieumsae.assetieum.domain.ticket.comment.entity;
 
+import com.ieumsae.assetieum.global.common.util.KstDateTime;
+
 import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
@@ -65,7 +67,7 @@ public class TicketComment extends BaseEntity {
 	}
 
 	public LocalDateTime delete() {
-		this.deletedAt = LocalDateTime.now();
+		this.deletedAt = KstDateTime.now();
 		return this.deletedAt;
 	}
 }

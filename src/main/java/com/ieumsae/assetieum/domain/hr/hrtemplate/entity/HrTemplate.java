@@ -1,5 +1,7 @@
 package com.ieumsae.assetieum.domain.hr.hrtemplate.entity;
 
+import com.ieumsae.assetieum.global.common.util.KstDateTime;
+
 import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.department.entity.Department;
 import com.ieumsae.assetieum.global.common.BaseEntity;
@@ -47,7 +49,7 @@ public class HrTemplate extends BaseEntity {
     private LocalDateTime deletedAt;
 
     public LocalDateTime delete() {
-        this.deletedAt = LocalDateTime.now();
+        this.deletedAt = KstDateTime.now();
         return this.deletedAt;
     }
 

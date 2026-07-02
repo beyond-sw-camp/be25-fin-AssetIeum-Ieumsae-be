@@ -1,5 +1,7 @@
 package com.ieumsae.assetieum.domain.intangibleasset.asset.service;
 
+import com.ieumsae.assetieum.global.common.util.KstDateTime;
+
 import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.company.repository.CompanyRepository;
 import com.ieumsae.assetieum.domain.department.entity.Department;
@@ -91,7 +93,7 @@ public class IntangibleAssetService {
         Member member = findMember(request.getMemberId(), companyId);
         Department department = resolveDepartment(request.getDepartmentId(), member, companyId);
         LocalDateTime startedAt = member != null && request.getStartedAt() == null
-                ? LocalDateTime.now()
+                ? KstDateTime.now()
                 : request.getStartedAt();
         IntangibleAssetStatus status = member != null ? IntangibleAssetStatus.IN_USE : resolveCreateStatus(request);
 
@@ -189,7 +191,7 @@ public class IntangibleAssetService {
             return;
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = KstDateTime.now();
         if (currentStartedAt != null && !currentStartedAt.isAfter(now)) {
             throw new BusinessException(
                     ErrorCode.INTANGIBLE_ASSET_INVALID_REQUEST,

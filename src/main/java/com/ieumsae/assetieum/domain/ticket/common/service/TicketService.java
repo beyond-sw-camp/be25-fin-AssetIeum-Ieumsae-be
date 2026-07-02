@@ -1,5 +1,7 @@
 package com.ieumsae.assetieum.domain.ticket.common.service;
 
+import com.ieumsae.assetieum.global.common.util.KstDateTime;
+
 import com.ieumsae.assetieum.domain.budget.budget.service.BudgetExecutionService;
 import com.ieumsae.assetieum.domain.department.entity.Department;
 import com.ieumsae.assetieum.domain.department.repository.DepartmentRepository;
@@ -131,7 +133,7 @@ public class TicketService {
 
 		releaseReservedRentalAssetIfNeeded(ticket, companyId);
 		budgetExecutionService.releaseHoldForCancellation(ticket, companyId);
-		ticket.cancel(LocalDateTime.now());
+		ticket.cancel(KstDateTime.now());
 		syncCancelledDetailStatusIfNeeded(ticket, companyId);
 		syncCancelledPurchaseRequestStatusIfNeeded(ticket, companyId);
 		syncCancelledRentalStatusIfNeeded(ticket, companyId);
@@ -152,7 +154,7 @@ public class TicketService {
 
 		releaseReservedRentalAssetIfNeeded(ticket, companyId);
 		budgetExecutionService.releaseHoldForCancellation(ticket, companyId);
-		ticket.cancel(LocalDateTime.now());
+		ticket.cancel(KstDateTime.now());
 		syncCancelledDetailStatusIfNeeded(ticket, companyId);
 		syncCancelledPurchaseRequestStatusIfNeeded(ticket, companyId);
 		syncCancelledRentalStatusIfNeeded(ticket, companyId);
@@ -180,7 +182,7 @@ public class TicketService {
 		reserveRentalAssetIfNeeded(ticket, companyId);
 		budgetExecutionService.holdForAssetRequest(ticket, companyId);
 		budgetExecutionService.holdForPurchaseRequest(ticket, companyId);
-		ticket.approveDepartment(LocalDateTime.now());
+		ticket.approveDepartment(KstDateTime.now());
 		logService.recordAuditLog(approver, AuditLogAction.INFORMATION_CHANGE, LogSubjectType.TICKET, ticket.getId(), "부서 승인");
 		notifyTicketAssignee(ticket, "티켓이 부서 승인되었습니다.", "담당 티켓을 확인하고 후속 처리를 진행하세요.");
 		notifyTicketRequester(ticket, "티켓이 부서 승인되었습니다.", "자산 승인 처리를 진행하세요.");
@@ -199,7 +201,7 @@ public class TicketService {
 		reserveRentalAssetIfNeeded(ticket, companyId);
 		budgetExecutionService.holdForAssetRequest(ticket, companyId);
 		budgetExecutionService.holdForPurchaseRequest(ticket, companyId);
-		ticket.approveDepartment(LocalDateTime.now());
+		ticket.approveDepartment(KstDateTime.now());
 		logService.recordAuditLog(ticket.getApprover(), AuditLogAction.INFORMATION_CHANGE, LogSubjectType.TICKET, ticket.getId(), "부서 승인");
 		notifyTicketAssignee(ticket, "티켓이 부서 승인되었습니다.", "담당 티켓을 확인하고 후속 처리를 진행하세요.");
 		notifyTicketRequester(ticket, "티켓이 부서 승인되었습니다.", "자산 승인 처리를 진행하세요.");
@@ -219,7 +221,7 @@ public class TicketService {
 		validateDepartmentApprover(ticket, approver);
 		validateTicketStatus(ticket, TicketStatus.REQUESTED, "요청 상태의 티켓만 부서장 반려 처리할 수 있습니다.");
 
-		ticket.rejectDepartment(request.getRejectionReason().trim(), LocalDateTime.now());
+		ticket.rejectDepartment(request.getRejectionReason().trim(), KstDateTime.now());
 		syncCancelledDetailStatusIfNeeded(ticket, companyId);
 		syncCancelledPurchaseRequestStatusIfNeeded(ticket, companyId);
 		syncCancelledRentalStatusIfNeeded(ticket, companyId);
@@ -244,7 +246,7 @@ public class TicketService {
 		validateTicketStatus(ticket, TicketStatus.DEPARTMENT_APPROVED, "부서장 승인된 티켓만 구매자산팀 승인 처리할 수 있습니다.");
 		validateAssignee(ticket, assignee);
 
-		ticket.approveAsset(assignee, LocalDateTime.now());
+		ticket.approveAsset(assignee, KstDateTime.now());
 		assignAvailableAssetRequestAssetsIfNeeded(ticket, companyId);
 		// 대여/대여연장은 구매자산팀 승인 후 실제 처리 API를 기다리기 위해 처리중으로 전환한다.
 		startProcessingAfterAssetApprovalIfNeeded(ticket, companyId);
@@ -269,7 +271,7 @@ public class TicketService {
 
 		releaseReservedRentalAssetIfNeeded(ticket, companyId);
 		budgetExecutionService.releaseHoldForCancellation(ticket, companyId);
-		ticket.rejectAsset(assignee, request.getRejectionReason().trim(), LocalDateTime.now());
+		ticket.rejectAsset(assignee, request.getRejectionReason().trim(), KstDateTime.now());
 		syncCancelledDetailStatusIfNeeded(ticket, companyId);
 		syncCancelledPurchaseRequestStatusIfNeeded(ticket, companyId);
 		syncCancelledRentalStatusIfNeeded(ticket, companyId);
@@ -298,7 +300,7 @@ public class TicketService {
 			validatePurchasePlanNotLinkedForCancel(ticket, companyId);
 		}
 
-		ticket.changeProcessingStatus(request.getTicketStatus(), LocalDateTime.now());
+		ticket.changeProcessingStatus(request.getTicketStatus(), KstDateTime.now());
 
 		releaseReservedRentalAssetForProcessingCancelIfNeeded(ticket, companyId, request.getTicketStatus());
 		releaseBudgetForProcessingCancelIfNeeded(ticket, companyId, request.getTicketStatus());
@@ -445,7 +447,7 @@ public class TicketService {
 
 	private void startProcessingAfterAssetApprovalIfNeeded(Ticket ticket, UUID companyId) {
 		if (shouldStartProcessingAfterAssetApproval(ticket, companyId)) {
-			ticket.changeProcessingStatus(TicketStatus.IN_PROGRESS, LocalDateTime.now());
+			ticket.changeProcessingStatus(TicketStatus.IN_PROGRESS, KstDateTime.now());
 		}
 	}
 
@@ -506,7 +508,7 @@ public class TicketService {
 		if (remainingTargetCount == 0) {
 			budgetExecutionService.releaseHoldForInventoryAssignment(ticket, companyId);
 			assetRequestTicket.complete();
-			ticket.changeProcessingStatus(TicketStatus.COMPLETED, LocalDateTime.now());
+			ticket.changeProcessingStatus(TicketStatus.COMPLETED, KstDateTime.now());
 			return;
 		}
 

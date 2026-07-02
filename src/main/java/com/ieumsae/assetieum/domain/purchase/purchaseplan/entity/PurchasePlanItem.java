@@ -1,5 +1,7 @@
 package com.ieumsae.assetieum.domain.purchase.purchaseplan.entity;
 
+import com.ieumsae.assetieum.global.common.util.KstDateTime;
+
 import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.department.entity.Department;
 import com.ieumsae.assetieum.domain.intangibleasset.item.entity.IntangibleAssetItem;
@@ -114,7 +116,7 @@ public class PurchasePlanItem extends BaseEntity {
     }
 
     public void updateStatus() {
-        this.receivedAt = LocalDateTime.now();
+        this.receivedAt = KstDateTime.now();
         this.purchasePlanItemStatus = PurchasePlanItemStatus.RECEIVED;
     }
 

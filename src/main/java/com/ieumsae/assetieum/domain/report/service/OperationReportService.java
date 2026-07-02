@@ -1,5 +1,7 @@
 package com.ieumsae.assetieum.domain.report.service;
 
+import com.ieumsae.assetieum.global.common.util.KstDateTime;
+
 import com.ieumsae.assetieum.domain.report.dto.OperationReportPageRequest;
 import com.ieumsae.assetieum.domain.report.dto.OperationReportPeriodRequest;
 import com.ieumsae.assetieum.domain.report.dto.PurchaseOperationReportResponse;
@@ -48,7 +50,7 @@ public class OperationReportService {
 		UUID companyId,
 		Integer topDelayedUserLimit
 	) {
-		LocalDateTime now = LocalDateTime.now();
+		LocalDateTime now = KstDateTime.now();
 		int topLimit = resolveTopDelayedUserLimit(topDelayedUserLimit);
 		long totalUnreturnedAssetCount = countUnreturnedAssets(companyId);
 		List<Object[]> overdueRows = findOverdueAssets(companyId, now);
@@ -455,7 +457,7 @@ public class OperationReportService {
 	}
 
 	private Period resolvePeriod(LocalDateTime requestStartDate, LocalDateTime requestEndDate) {
-		LocalDateTime endDate = requestEndDate == null ? LocalDateTime.now() : requestEndDate;
+		LocalDateTime endDate = requestEndDate == null ? KstDateTime.now() : requestEndDate;
 		LocalDateTime startDate = requestStartDate == null ? endDate.minusDays(30) : requestStartDate;
 		return new Period(startDate, endDate);
 	}

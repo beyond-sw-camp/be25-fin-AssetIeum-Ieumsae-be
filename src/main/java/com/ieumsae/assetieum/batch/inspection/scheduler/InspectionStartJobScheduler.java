@@ -24,7 +24,8 @@ public class InspectionStartJobScheduler {
     private final Job inspectionStartJob;
 
     // 매일 자정에 오늘 시작일인 전수조사를 대상으로 inspectionStartJob을 실행합니다.
-    @Scheduled(cron = "0 0 0 * * *", zone = "Asia/Seoul")
+//    @Scheduled(cron = "0 0 0 * * *", zone = "Asia/Seoul")
+    @Scheduled(cron = "0 * * * * *", zone = "Asia/Seoul") // 테스트를 위해 현재는 매 분마다 실행되도록
     @SchedulerLock(name = InspectionStartJobConfig.JOB_NAME, lockAtMostFor = "PT30M")
     public void run() throws Exception {
         // JobParameters가 같으면 Spring Batch가 같은 JobInstance로 판단하므로 실행 기준일을 명시합니다.
