@@ -123,6 +123,7 @@
   <img src="https://img.shields.io/badge/docker--compose-2496ED?style=for-the-badge&logo=docker&logoColor=white">
   <img src="https://img.shields.io/badge/aws cloudfront-F38020?style=for-the-badge&logo=cloudflare&logoColor=white">
   <img src="https://img.shields.io/badge/aws-F38020?style=for-the-badge&logo=cloudflare&logoColor=white">
+  
 
 </p>
 
@@ -130,6 +131,12 @@
 <p>
   <img src="https://img.shields.io/badge/github-181717?style=for-the-badge&logo=github&logoColor=white">
   <img src="https://img.shields.io/badge/github%20actions-2088FF?style=for-the-badge&logo=githubactions&logoColor=white">
+</p>
+
+### 📊 Monitoring
+<p>
+  <img src="https://img.shields.io/badge/Prometheus-E6522C?style=for-the-badge&logo=prometheus&logoColor=white">
+  <img src="https://img.shields.io/badge/Grafana-F46800?style=for-the-badge&logo=grafana&logoColor=white">
 </p>
 
 ### 🤝 Collaboration
@@ -206,7 +213,7 @@
 <br>
 
 ## 13. 트러블 슈팅
-
+- [트러블 슈팅](https://github.com/beyond-sw-camp/be25-fin-AssetIeum-Ieumsae-be/wiki/%ED%8A%B8%EB%9F%AC%EB%B8%94-%EC%8A%88%ED%8C%85)
 ---
 
 <br>
@@ -239,6 +246,14 @@
 
 <details>
 <summary><b>이민경</b></summary>
+  최종 프로젝트를 진행하면서 가장 어려웠던 점은 기능을 구현하는 것보다 프로젝트의 전체 흐름을 맞춰가는 과정이었다. 처음에는 자산 관리 업무와 도메인을 이해하는 것부터 쉽지 않았고 기능이 많다 보니 각 기능이 어떤 순서로 연결되고 어떤 데이터를 주고받는지 파악하는 데도 시간이 필요했다. 팀원들과 요구사항을 계속 정리하고 의견을 맞춰가며 기능을 하나씩 구현하면서 프로젝트를 완성해 나갔다.
+
+담당 파트였던 백엔드에서는 자산 요청, 구매 계획, 자산 배정, 대여·반납, 알림 등 여러 기능이 서로 연결되어 있어 단순히 CRUD를 구현하는 것보다 상태 흐름과 데이터가 올바르게 연결되는지를 계속 확인해야 했다. 특히 자산 요청은 재고가 있으면 바로 배정하고 부족하면 구매 계획으로 이어지는 흐름을 구현하면서 예산, 재고, 배정 이력이 함께 변경되는 부분을 여러 번 수정하고 보완했다. 또한 프론트엔드와 API를 연동하는 과정에서는 응답 형식과 예외 처리, 상태값을 맞추기 위해 여러 차례 수정 작업을 진행했고 서로의 요구사항을 맞춰가는 과정의 중요성도 느낄 수 있었다.
+
+배포 과정에서는 ECR과 Auto Scaling Group 기반으로 환경을 구성하며 운영 환경을 직접 확인했고 인증 오류와 시간대 문제를 해결하면서 로컬에서 정상적으로 동작하던 기능도 운영 환경에서는 예상하지 못한 문제가 발생할 수 있다는 점을 경험했다. 특히 컨테이너가 실제로 새로 생성되었는지, 배포가 정상적으로 반영되었는지, 환경 설정이 올바르게 적용되었는지를 직접 확인하면서 기능 구현만큼 운영 환경을 점검하는 과정도 중요하다는 것을 느꼈다.
+
+이번 프로젝트를 진행하면서 기능 하나를 구현하는 것보다 여러 기능이 자연스럽게 연결되고 실제 운영 환경에서도 안정적으로 동작하도록 만드는 과정이 더 어렵다는 것을 느꼈다. 개발뿐 아니라 협업 과정에서 요구사항을 조율하고 배포 이후에도 문제를 확인하고 해결하는 경험까지 할 수 있었던 점이 가장 기억에 남았고 이번 프로젝트를 통해 백엔드 개발 전반에 대해 한 단계 더 깊게 경험할 수 있었다. 팀원분들도 그동안 정말 수고 많으셨습니다!!
+
 <br>
 
 </details>
