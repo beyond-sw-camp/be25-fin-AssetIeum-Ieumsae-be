@@ -1,5 +1,7 @@
 package com.ieumsae.assetieum.domain.intangibleasset.item.entity;
 
+import com.ieumsae.assetieum.global.common.util.KstDateTime;
+
 import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.intangibleasset.category.entity.IntangibleAssetCategory;
 import com.ieumsae.assetieum.domain.intangibleasset.item.dto.IntangibleAssetItemUpdateRequest;
@@ -70,7 +72,7 @@ public class IntangibleAssetItem extends BaseEntity {
     private LocalDateTime deletedAt;
 
     public void delete() {
-        this.deletedAt = LocalDateTime.now();
+        this.deletedAt = KstDateTime.now();
     }
 
     public void update(

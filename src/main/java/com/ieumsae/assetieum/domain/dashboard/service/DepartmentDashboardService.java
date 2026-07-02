@@ -1,5 +1,7 @@
 package com.ieumsae.assetieum.domain.dashboard.service;
 
+import com.ieumsae.assetieum.global.common.util.KstDateTime;
+
 import com.ieumsae.assetieum.domain.budget.history.type.BudgetHistoryType;
 import com.ieumsae.assetieum.domain.dashboard.dto.DepartmentBudgetDetailResponse;
 import com.ieumsae.assetieum.domain.dashboard.dto.DepartmentBudgetDetailResponse.BudgetCategoryUsage;
@@ -32,7 +34,7 @@ public class DepartmentDashboardService {
 	private final EntityManager entityManager;
 
 	public DepartmentBudgetDetailResponse getDepartmentBudgetDetails(UUID companyId, UUID departmentId, Integer year) {
-		int targetYear = year == null ? LocalDateTime.now().getYear() : year;
+		int targetYear = year == null ? KstDateTime.now().getYear() : year;
 
 		Object[] budgetOverview = (Object[]) entityManager.createQuery("""
 				select b.department.name, b.totalAmount, b.usedAmount, (b.totalAmount - b.usedAmount - b.heldAmount)
@@ -131,7 +133,7 @@ public class DepartmentDashboardService {
 			.setParameter("eventType", eventType)
 			.getSingleResult();
 
-		LocalDateTime now = LocalDateTime.now();
+		LocalDateTime now = KstDateTime.now();
 		List<HrLifecycleEventResponse> content = rows.stream()
 			.map(row -> {
 				UUID id = (UUID) row[0];

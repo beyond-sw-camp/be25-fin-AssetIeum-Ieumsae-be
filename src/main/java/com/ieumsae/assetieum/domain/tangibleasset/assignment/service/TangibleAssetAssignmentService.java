@@ -1,5 +1,7 @@
 package com.ieumsae.assetieum.domain.tangibleasset.assignment.service;
 
+import com.ieumsae.assetieum.global.common.util.KstDateTime;
+
 import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.company.repository.CompanyRepository;
 import com.ieumsae.assetieum.domain.department.entity.Department;
@@ -140,7 +142,7 @@ public class TangibleAssetAssignmentService {
         validateCancelableStatus(asset);
 
         // 2. 배정 이력 해지 처리
-        LocalDateTime endedAt = LocalDateTime.now();
+        LocalDateTime endedAt = KstDateTime.now();
         TangibleAssetAssignment assignment = tangibleAssetAssignmentRepository.findByCompany_IdAndTangibleAsset_IdAndAssignmentStatus(
                 companyId,
                 assetId,
@@ -204,7 +206,7 @@ public class TangibleAssetAssignmentService {
             );
         }
 
-        LocalDateTime reassignedAt = LocalDateTime.now();
+        LocalDateTime reassignedAt = KstDateTime.now();
         currentAssignment.end(reassignedAt);
 
         // 3. 사용자 변경
@@ -256,7 +258,7 @@ public class TangibleAssetAssignmentService {
             throw new BusinessException(ErrorCode.DEPARTMENT_NOT_FOUND);
         }
 
-        LocalDateTime movedAt = LocalDateTime.now();
+        LocalDateTime movedAt = KstDateTime.now();
         LocalDateTime originalEndedAt = currentAssignment.getEndedAt();
         currentAssignment.end(movedAt);
 

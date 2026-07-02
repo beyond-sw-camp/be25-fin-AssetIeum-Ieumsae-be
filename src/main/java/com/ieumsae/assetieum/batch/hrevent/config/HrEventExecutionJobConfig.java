@@ -1,5 +1,7 @@
 package com.ieumsae.assetieum.batch.hrevent.config;
 
+import com.ieumsae.assetieum.global.common.util.KstDateTime;
+
 import com.ieumsae.assetieum.domain.hr.hrevent.service.HrEventService;
 import com.ieumsae.assetieum.domain.ticket.assetrequest.service.AssetRequestTicketService;
 import com.ieumsae.assetieum.domain.ticket.assetreturn.service.AssetReturnTicketService;
@@ -65,7 +67,7 @@ public class HrEventExecutionJobConfig {
                 .get(HR_EVENT_EXECUTION_DATE_PARAMETER);
 
         if (parameter == null) {
-            return LocalDate.now();
+            return KstDateTime.today();
         }
         return LocalDate.parse(parameter.toString());
     }

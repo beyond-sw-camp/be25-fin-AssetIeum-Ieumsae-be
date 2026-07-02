@@ -1,5 +1,7 @@
 package com.ieumsae.assetieum.domain.ticket.assetrequest.service;
 
+import com.ieumsae.assetieum.global.common.util.KstDateTime;
+
 import com.ieumsae.assetieum.domain.budget.budget.service.BudgetExecutionService;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.entity.IntangibleAsset;
 import com.ieumsae.assetieum.domain.intangibleasset.asset.repository.IntangibleAssetRepository;
@@ -104,7 +106,7 @@ public class AssetRequestAssignmentService {
 			);
 			budgetExecutionService.releaseHoldForInventoryAssignment(ticket, companyId);
 			assetRequestTicket.complete();
-			ticket.changeProcessingStatus(TicketStatus.COMPLETED, LocalDateTime.now());
+			ticket.changeProcessingStatus(TicketStatus.COMPLETED, KstDateTime.now());
 			logService.recordAuditLog(assignee, AuditLogAction.ASSIGN, LogSubjectType.TICKET, ticket.getId(), "자산 배정 완료");
 			notifyRequester(ticket, "자산 배정이 완료되었습니다.", "요청하신 자산이 배정되었습니다.");
 			return AssetRequestAssignResponse.from(
@@ -127,7 +129,7 @@ public class AssetRequestAssignmentService {
 		);
 		budgetExecutionService.releaseHoldForInventoryAssignment(ticket, companyId);
 		assetRequestTicket.complete();
-		ticket.changeProcessingStatus(TicketStatus.COMPLETED, LocalDateTime.now());
+		ticket.changeProcessingStatus(TicketStatus.COMPLETED, KstDateTime.now());
 		logService.recordAuditLog(assignee, AuditLogAction.ASSIGN, LogSubjectType.TICKET, ticket.getId(), "자산 배정 완료");
 		notifyRequester(ticket, "자산 배정이 완료되었습니다.", "요청하신 자산이 배정되었습니다.");
 		return AssetRequestAssignResponse.from(

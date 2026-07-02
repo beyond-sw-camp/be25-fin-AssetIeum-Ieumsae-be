@@ -1,5 +1,7 @@
 package com.ieumsae.assetieum.domain.inspection.followup.service;
 
+import com.ieumsae.assetieum.global.common.util.KstDateTime;
+
 import com.ieumsae.assetieum.domain.inspection.followup.dto.InspectionFollowUpResponse;
 import com.ieumsae.assetieum.domain.inspection.followup.dto.InspectionFollowUpSearchRequest;
 import com.ieumsae.assetieum.domain.inspection.followup.dto.InspectionFollowUpSearchResponse;
@@ -50,7 +52,7 @@ public class InspectionFollowUpService {
         }
 
         LocalDateTime processedAt = nextStatus == InspectionFollowUpStatus.COMPLETED
-                ? LocalDateTime.now()
+                ? KstDateTime.now()
                 : null;
 
         followUp.updateStatus(nextStatus, request.getActionDetail(), processedAt);

@@ -1,5 +1,7 @@
 package com.ieumsae.assetieum.global.common;
 
+import com.ieumsae.assetieum.global.common.util.KstDateTime;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.MappedSuperclass;
 import jakarta.persistence.PrePersist;
@@ -20,13 +22,13 @@ public abstract class BaseEntity {
 
 	@PrePersist
 	protected void onCreate() {
-		LocalDateTime now = LocalDateTime.now();
+		LocalDateTime now = KstDateTime.now();
 		this.createdAt = now;
 		this.updatedAt = now;
 	}
 
 	@PreUpdate
 	protected void onUpdate() {
-		this.updatedAt = LocalDateTime.now();
+		this.updatedAt = KstDateTime.now();
 	}
 }

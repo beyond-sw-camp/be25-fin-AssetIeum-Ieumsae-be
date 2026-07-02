@@ -1,5 +1,7 @@
 package com.ieumsae.assetieum.domain.dashboard.repository;
 
+import com.ieumsae.assetieum.global.common.util.KstDateTime;
+
 import com.ieumsae.assetieum.domain.budget.budget.entity.Budget;
 import com.ieumsae.assetieum.domain.budget.history.entity.BudgetHistory;
 import com.ieumsae.assetieum.domain.budget.history.type.BudgetHistoryType;
@@ -83,7 +85,7 @@ public class DashboardRepository {
 	}
 
 	public OwnedAssetSummaryResponse getOwnedAssetSummary(UUID companyId, UUID departmentId) {
-		LocalDateTime now = LocalDateTime.now();
+		LocalDateTime now = KstDateTime.now();
 		return OwnedAssetSummaryResponse.builder()
 			.unassigned(countAvailableTangibleAssets(companyId, departmentId) + countAvailableIntangibleAssets(companyId, departmentId))
 			.rentalScheduled(countScheduledRentalTickets(companyId, null, departmentId, now)
@@ -99,7 +101,7 @@ public class DashboardRepository {
 	}
 
 	public ExpiringAssetSummaryResponse getExpiringAssetSummary(UUID companyId, UUID departmentId) {
-		LocalDateTime now = LocalDateTime.now();
+		LocalDateTime now = KstDateTime.now();
 		LocalDateTime limit = now.plusDays(EXPIRING_DAYS);
 		return ExpiringAssetSummaryResponse.builder()
 			.tangibleAssetCount(countExpiringTangibleAssets(companyId, departmentId, now, limit))
@@ -124,7 +126,7 @@ public class DashboardRepository {
 	}
 
 	public RentalAssetSummaryResponse getEmployeeRentalAssetSummary(UUID companyId, UUID memberId) {
-		LocalDateTime now = LocalDateTime.now();
+		LocalDateTime now = KstDateTime.now();
 		return RentalAssetSummaryResponse.builder()
 			.rentalScheduled(countScheduledRentalTickets(companyId, memberId, null, now))
 			.rented(countMemberRentedTangibleAssets(companyId, memberId))
@@ -133,7 +135,7 @@ public class DashboardRepository {
 	}
 
 	public OwnedAssetSummaryResponse getEmployeeOwnedAssetSummary(UUID companyId, UUID memberId) {
-		LocalDateTime now = LocalDateTime.now();
+		LocalDateTime now = KstDateTime.now();
 		return OwnedAssetSummaryResponse.builder()
 			.unassigned(0)
 			.rentalScheduled(countScheduledRentalTickets(companyId, memberId, null, now)
@@ -145,7 +147,7 @@ public class DashboardRepository {
 	}
 
 	public ExpiringAssetSummaryResponse getEmployeeExpiringAssetSummary(UUID companyId, UUID memberId) {
-		LocalDateTime now = LocalDateTime.now();
+		LocalDateTime now = KstDateTime.now();
 		LocalDateTime limit = now.plusDays(EXPIRING_DAYS);
 		return ExpiringAssetSummaryResponse.builder()
 			.tangibleAssetCount(countMemberExpiringTangibleAssets(companyId, memberId, now, limit))
@@ -196,7 +198,7 @@ public class DashboardRepository {
 		UUID companyId,
 		ExpiringAssetDetailSearchRequest request
 	) {
-		LocalDateTime now = LocalDateTime.now();
+		LocalDateTime now = KstDateTime.now();
 		LocalDateTime limit = now.plusDays(EXPIRING_DAYS);
 		if (request.getAssetType() == null) {
 			return getAllExpiringAssetDetails(companyId, null, request.getDepartmentId(), request.getKeyword(), now, limit, request);
@@ -228,7 +230,7 @@ public class DashboardRepository {
 		UUID memberId,
 		ExpiringAssetDetailSearchRequest request
 	) {
-		LocalDateTime now = LocalDateTime.now();
+		LocalDateTime now = KstDateTime.now();
 		LocalDateTime limit = now.plusDays(EXPIRING_DAYS);
 		if (request.getAssetType() == null) {
 			return getAllExpiringAssetDetails(companyId, memberId, null, request.getKeyword(), now, limit, request);
@@ -261,7 +263,7 @@ public class DashboardRepository {
 		ExpiringAssetDetailSearchRequest request
 	) {
 		UUID departmentId = getMemberDepartmentId(companyId, memberId);
-		LocalDateTime now = LocalDateTime.now();
+		LocalDateTime now = KstDateTime.now();
 		LocalDateTime limit = now.plusDays(EXPIRING_DAYS);
 		if (request.getAssetType() == null) {
 			return getAllExpiringAssetDetails(companyId, null, departmentId, request.getKeyword(), now, limit, request);
@@ -305,7 +307,7 @@ public class DashboardRepository {
 
 	public EmployeeDepartmentBudgetResponse getEmployeeDepartmentBudget(UUID companyId, UUID memberId) {
 		Member member = findMember(companyId, memberId);
-		int year = LocalDate.now().getYear();
+		int year = KstDateTime.today().getYear();
 		List<Budget> budgets = entityManager.createQuery("""
 				select b
 				from Budget b
@@ -375,7 +377,7 @@ public class DashboardRepository {
 	}
 
 	public BudgetOverviewResponse getBudgetOverview(UUID companyId, PaginationRequest request) {
-		int year = LocalDate.now().getYear();
+		int year = KstDateTime.today().getYear();
 		BudgetOverviewResponse.CommonBudgetSummary commonBudget = findCommonBudget(companyId, year);
 		List<BudgetOverviewResponse.DepartmentBudgetSummary> departmentBudgets = findDepartmentBudgets(companyId, year);
 
@@ -386,7 +388,7 @@ public class DashboardRepository {
 	}
 
 	public PaginationResponse<LifecycleEventResponse> getLifecycleEvents(UUID companyId, PaginationRequest request) {
-		LocalDateTime now = LocalDateTime.now();
+		LocalDateTime now = KstDateTime.now();
 		LocalDateTime limit = now.plusDays(EXPIRING_DAYS);
 		List<LifecycleEventResponse> events = new ArrayList<>();
 		events.addAll(findReturnDueEvents(companyId, now, limit));
@@ -635,7 +637,7 @@ public class DashboardRepository {
 		String keyword,
 		PaginationRequest request
 	) {
-		LocalDateTime now = LocalDateTime.now();
+		LocalDateTime now = KstDateTime.now();
 		String keywordPattern = toKeywordPattern(normalizeKeyword(keyword));
 		List<Object[]> rows = entityManager.createQuery("""
 				select a.id, i.productName, a.assetCode, c.name, d.id, d.name, m.id, m.name, rt.rentalStartDate, rt.requestedDueDate
@@ -812,7 +814,7 @@ public class DashboardRepository {
 		IntangibleDetailMode mode,
 		PaginationRequest request
 	) {
-		LocalDateTime now = LocalDateTime.now();
+		LocalDateTime now = KstDateTime.now();
 		String keywordPattern = toKeywordPattern(normalizeKeyword(keyword));
 		List<Object[]> rows = entityManager.createQuery("""
 				select a.id, i.productName, a.assetCode, c.name, i.provider, d.id, d.name, m.id, m.name, a.startedAt, a.expiredAt, a.seatCount
@@ -939,7 +941,7 @@ public class DashboardRepository {
 		boolean overdueOnly,
 		PaginationRequest request
 	) {
-		LocalDateTime now = LocalDateTime.now();
+		LocalDateTime now = KstDateTime.now();
 		String keywordPattern = toKeywordPattern(normalizeKeyword(keyword));
 		List<Object[]> rows = entityManager.createQuery("""
 				select a.id, i.productName, a.assetCode, c.name, d.id, d.name, m.id, m.name, a.usedStartedAt, a.returnDueDate

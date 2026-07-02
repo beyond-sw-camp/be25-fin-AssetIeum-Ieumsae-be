@@ -1,5 +1,7 @@
 package com.ieumsae.assetieum.domain.intangibleasset.assignment.service;
 
+import com.ieumsae.assetieum.global.common.util.KstDateTime;
+
 import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.company.repository.CompanyRepository;
 import com.ieumsae.assetieum.domain.department.entity.Department;
@@ -130,7 +132,7 @@ public class IntangibleAssetAssignmentService {
         validateCancelableStatus(asset);
 
         // 2. 배정 이력 해지 처리
-        LocalDateTime endedAt = LocalDateTime.now();
+        LocalDateTime endedAt = KstDateTime.now();
         if (memberId != null) {
             // 해당 멤버만 해지 처리
             IntangibleAssetAssignment assignment = intangibleAssetAssignmentRepository
@@ -203,7 +205,7 @@ public class IntangibleAssetAssignmentService {
         }
 
         LocalDateTime originalEndedAt = currentAssignment.getEndedAt();
-        LocalDateTime reassignedAt = LocalDateTime.now();
+        LocalDateTime reassignedAt = KstDateTime.now();
         currentAssignment.end(reassignedAt);
 
         Department department = departmentRepository.findByIdAndCompany_IdAndDeletedAtIsNull(
@@ -261,7 +263,7 @@ public class IntangibleAssetAssignmentService {
             throw new BusinessException(ErrorCode.DEPARTMENT_NOT_FOUND);
         }
 
-        LocalDateTime movedAt = LocalDateTime.now();
+        LocalDateTime movedAt = KstDateTime.now();
         LocalDateTime originalEndedAt = currentAssignment.getEndedAt();
         currentAssignment.end(movedAt);
 

@@ -1,5 +1,7 @@
 package com.ieumsae.assetieum.domain.auth.service;
 
+import com.ieumsae.assetieum.global.common.util.KstDateTime;
+
 import com.ieumsae.assetieum.domain.auth.client.LoginMember;
 import com.ieumsae.assetieum.domain.auth.client.LoginMemberClient;
 import com.ieumsae.assetieum.domain.auth.dto.ChangePasswordRequest;
@@ -159,7 +161,7 @@ public class AuthService {
 		member.changePassword(passwordEncoder.encode(request.getNewPassword()));
 		return ChangePasswordResponse.builder()
 			.memberId(member.getId())
-			.updatedAt(LocalDateTime.now())
+			.updatedAt(KstDateTime.now())
 			.build();
 	}
 

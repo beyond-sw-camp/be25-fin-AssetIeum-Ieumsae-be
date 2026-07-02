@@ -1,5 +1,7 @@
 package com.ieumsae.assetieum.domain.hr.hrevent.service.handler;
 
+import com.ieumsae.assetieum.global.common.util.KstDateTime;
+
 import com.ieumsae.assetieum.domain.hr.hrevent.entity.HrEvent;
 import com.ieumsae.assetieum.domain.hr.hreventassettarget.entity.HrEventAssetTarget;
 import com.ieumsae.assetieum.domain.hr.hreventassettarget.type.HrEventAssetActionType;
@@ -61,27 +63,27 @@ public class HrEventAssetTargetProcessor {
                 throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
             }
             transferDepartment(hrEvent, target, companyId);
-            target.process(LocalDateTime.now());
+            target.process(KstDateTime.now());
             return;
         }
 
         if (actionType == HrEventAssetActionType.TRANSFER_REQUIRED) {
             transferMember(target, companyId);
-            target.process(LocalDateTime.now());
+            target.process(KstDateTime.now());
             return;
         }
 
         if (actionType == HrEventAssetActionType.RETURN_REQUIRED) {
             if (isAlreadyReturnedOrUnassigned(target, companyId)) {
-                target.complete(LocalDateTime.now());
+                target.complete(KstDateTime.now());
                 return;
             }
             if (hasOngoingReturnTicket(target, companyId)) {
-                target.process(LocalDateTime.now());
+                target.process(KstDateTime.now());
                 return;
             }
             createReturnTicket(hrEvent, target, companyId);
-            target.process(LocalDateTime.now());
+            target.process(KstDateTime.now());
             return;
         }
 

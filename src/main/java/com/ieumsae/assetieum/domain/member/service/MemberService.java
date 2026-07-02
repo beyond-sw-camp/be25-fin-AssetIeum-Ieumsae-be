@@ -1,5 +1,7 @@
 package com.ieumsae.assetieum.domain.member.service;
 
+import com.ieumsae.assetieum.global.common.util.KstDateTime;
+
 import com.ieumsae.assetieum.domain.company.entity.Company;
 import com.ieumsae.assetieum.domain.department.entity.Department;
 import com.ieumsae.assetieum.domain.department.repository.DepartmentRepository;
@@ -139,7 +141,7 @@ public class MemberService {
 		Member targetMember = findMember(memberId, authenticatedMember.companyId());
 		validateNotResigned(targetMember);
 
-		LocalDateTime resignedAt = request.getResignedAt() == null ? LocalDateTime.now() : request.getResignedAt();
+		LocalDateTime resignedAt = request.getResignedAt() == null ? KstDateTime.now() : request.getResignedAt();
 		List<TangibleAsset> tangibleAssets = findMemberTangibleAssets(targetMember);
 		List<Object[]> intangibleAssets = findMemberActiveIntangibleAssets(targetMember);
 
@@ -181,7 +183,7 @@ public class MemberService {
 			.memberId(targetMember.getId())
 			.memberName(targetMember.getName())
 			.memberStatus(targetMember.getStatus())
-			.completedAt(LocalDateTime.now())
+			.completedAt(KstDateTime.now())
 			.build();
 	}
 

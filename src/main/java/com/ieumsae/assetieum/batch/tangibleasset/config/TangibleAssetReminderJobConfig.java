@@ -1,5 +1,7 @@
 package com.ieumsae.assetieum.batch.tangibleasset.config;
 
+import com.ieumsae.assetieum.global.common.util.KstDateTime;
+
 import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.notification.service.NotificationService;
 import com.ieumsae.assetieum.domain.notification.type.NotificationTargetType;
@@ -182,7 +184,7 @@ public class TangibleAssetReminderJobConfig {
 			.get(BASE_DATE_PARAMETER);
 
 		if (parameter == null) {
-			return LocalDate.now();
+			return KstDateTime.today();
 		}
 		return LocalDate.parse(parameter.toString());
 	}
