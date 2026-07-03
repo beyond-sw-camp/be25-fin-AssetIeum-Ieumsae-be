@@ -203,11 +203,11 @@ public class AssetRequestAssignmentService {
 		UUID companyId
 	) {
 		int quantity = targetAssignees.size();
-		List<IntangibleAsset> candidates = intangibleAssetRepository.findAssignableAssetsWithLock(
+		List<IntangibleAsset> candidates = intangibleAssetRepository.findAssignableAssetsForDepartmentWithLock(
 			companyId,
 			item.getId(),
 			List.of(IntangibleAssetStatus.AVAILABLE, IntangibleAssetStatus.IN_USE),
-			PageRequest.of(0, Math.max(quantity * 5, 10))
+			ticket.getDepartment().getId()
 		);
 
 		java.util.Map<UUID, Long> remainingSeatsMap = new java.util.HashMap<>();
@@ -227,10 +227,6 @@ public class AssetRequestAssignmentService {
 		for (Member targetAssignee : targetAssignees) {
 			boolean assigned = false;
 			for (IntangibleAsset asset : candidates) {
-				if (asset.getDepartment() != null
-					&& !asset.getDepartment().getId().equals(ticket.getDepartment().getId())) {
-					continue;
-				}
 				long remaining = remainingSeatsMap.getOrDefault(asset.getId(), 0L);
 				if (remaining > 0) {
 					boolean isAlreadyAssigned = intangibleAssetAssignmentRepository

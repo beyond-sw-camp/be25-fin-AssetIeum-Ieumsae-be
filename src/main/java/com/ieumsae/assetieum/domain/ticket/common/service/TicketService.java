@@ -5,6 +5,11 @@ import com.ieumsae.assetieum.global.common.util.KstDateTime;
 import com.ieumsae.assetieum.domain.budget.budget.service.BudgetExecutionService;
 import com.ieumsae.assetieum.domain.department.entity.Department;
 import com.ieumsae.assetieum.domain.department.repository.DepartmentRepository;
+import com.ieumsae.assetieum.domain.intangibleasset.asset.entity.IntangibleAsset;
+import com.ieumsae.assetieum.domain.intangibleasset.asset.repository.IntangibleAssetRepository;
+import com.ieumsae.assetieum.domain.intangibleasset.asset.type.IntangibleAssetStatus;
+import com.ieumsae.assetieum.domain.intangibleasset.assignment.entity.IntangibleAssetAssignment;
+import com.ieumsae.assetieum.domain.intangibleasset.assignment.repository.IntangibleAssetAssignmentRepository;
 import com.ieumsae.assetieum.domain.log.service.LogService;
 import com.ieumsae.assetieum.domain.log.type.AuditLogAction;
 import com.ieumsae.assetieum.domain.log.type.LogSubjectType;
@@ -87,6 +92,8 @@ public class TicketService {
 	private final RentalTicketRepository rentalTicketRepository;
 	private final TangibleAssetRepository tangibleAssetRepository;
 	private final TangibleAssetAssignmentRepository tangibleAssetAssignmentRepository;
+	private final IntangibleAssetRepository intangibleAssetRepository;
+	private final IntangibleAssetAssignmentRepository intangibleAssetAssignmentRepository;
 	private final AssetRequestTicketRepository assetRequestTicketRepository;
 	private final PurchaseRequestTicketRepository purchaseRequestTicketRepository;
 	private final PurchaseReturnTicketRepository purchaseReturnTicketRepository;
@@ -459,15 +466,35 @@ public class TicketService {
 		AssetRequestTicket assetRequestTicket = assetRequestTicketRepository
 			.findByIdAndCompany_IdAndDeletedAtIsNull(ticket.getId(), companyId)
 			.orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
-		if (assetRequestTicket.getTangibleAssetItem() == null) {
-			return;
-		}
 
 		List<TicketAssignmentTarget> pendingTargets = ticketAssignmentTargetService.findPendingTargets(companyId, ticket);
 		if (pendingTargets.isEmpty()) {
 			return;
 		}
 
+		if (assetRequestTicket.getTangibleAssetItem() == null) {
+			assignAvailableIntangibleAssetRequestAssets(ticket, assetRequestTicket, pendingTargets, companyId);
+		} else {
+			assignAvailableTangibleAssetRequestAssets(ticket, assetRequestTicket, pendingTargets, companyId);
+		}
+
+		int remainingTargetCount = ticketAssignmentTargetService.findPendingTargets(companyId, ticket).size();
+		if (remainingTargetCount == 0) {
+			budgetExecutionService.releaseHoldForInventoryAssignment(ticket, companyId);
+			assetRequestTicket.complete();
+			ticket.changeProcessingStatus(TicketStatus.COMPLETED, KstDateTime.now());
+			return;
+		}
+
+		budgetExecutionService.reconcileHoldForAssetRequestPendingQuantity(ticket, companyId, remainingTargetCount);
+	}
+
+	private void assignAvailableTangibleAssetRequestAssets(
+		Ticket ticket,
+		AssetRequestTicket assetRequestTicket,
+		List<TicketAssignmentTarget> pendingTargets,
+		UUID companyId
+	) {
 		List<TangibleAsset> assets = tangibleAssetRepository.findAvailableAssetsWithLock(
 			companyId,
 			assetRequestTicket.getTangibleAssetItem().getId(),
@@ -503,16 +530,76 @@ public class TicketService {
 				assignment.getAssignedAt()
 			);
 		}
+	}
 
-		int remainingTargetCount = ticketAssignmentTargetService.findPendingTargets(companyId, ticket).size();
-		if (remainingTargetCount == 0) {
-			budgetExecutionService.releaseHoldForInventoryAssignment(ticket, companyId);
-			assetRequestTicket.complete();
-			ticket.changeProcessingStatus(TicketStatus.COMPLETED, KstDateTime.now());
-			return;
+	private void assignAvailableIntangibleAssetRequestAssets(
+		Ticket ticket,
+		AssetRequestTicket assetRequestTicket,
+		List<TicketAssignmentTarget> pendingTargets,
+		UUID companyId
+	) {
+		List<IntangibleAsset> candidates = intangibleAssetRepository.findAssignableAssetsForDepartmentWithLock(
+			companyId,
+			assetRequestTicket.getIntangibleAssetItem().getId(),
+			List.of(IntangibleAssetStatus.AVAILABLE, IntangibleAssetStatus.IN_USE),
+			ticket.getDepartment().getId()
+		);
+
+		java.util.Map<UUID, Long> remainingSeatsMap = new java.util.HashMap<>();
+		for (IntangibleAsset asset : candidates) {
+			long activeCount = intangibleAssetAssignmentRepository
+				.countByCompany_IdAndIntangibleAsset_IdAndAssignmentStatus(
+					companyId,
+					asset.getId(),
+					com.ieumsae.assetieum.domain.intangibleasset.assignment.type.AssignmentStatus.ACTIVE
+				);
+			remainingSeatsMap.put(asset.getId(), asset.getSeatCount() - activeCount);
 		}
 
-		budgetExecutionService.reconcileHoldForAssetRequestPendingQuantity(ticket, companyId, remainingTargetCount);
+		for (TicketAssignmentTarget target : pendingTargets) {
+			Member targetMember = target.getMember();
+			for (IntangibleAsset asset : candidates) {
+				long remainingSeats = remainingSeatsMap.getOrDefault(asset.getId(), 0L);
+				if (remainingSeats <= 0) {
+					continue;
+				}
+				boolean alreadyAssigned = intangibleAssetAssignmentRepository
+					.existsByCompany_IdAndIntangibleAsset_IdAndMember_IdAndAssignmentStatus(
+						companyId,
+						asset.getId(),
+						targetMember.getId(),
+						com.ieumsae.assetieum.domain.intangibleasset.assignment.type.AssignmentStatus.ACTIVE
+					);
+				if (alreadyAssigned) {
+					continue;
+				}
+
+				IntangibleAssetAssignment assignment = IntangibleAssetAssignment.builder()
+					.company(ticket.getCompany())
+					.intangibleAsset(asset)
+					.member(targetMember)
+					.department(targetMember.getDepartment())
+					.assignmentStatus(com.ieumsae.assetieum.domain.intangibleasset.assignment.type.AssignmentStatus.ACTIVE)
+					.build();
+				intangibleAssetAssignmentRepository.save(assignment);
+
+				if (asset.getSeatCount() == 1) {
+					asset.assignTo(targetMember, targetMember.getDepartment());
+				} else {
+					asset.markInUse();
+					asset.transferDepartment(ticket.getDepartment());
+				}
+
+				ticketAssignmentTargetService.markAssigned(
+					target,
+					AssetType.INTANGIBLE,
+					asset.getId(),
+					assignment.getAssignedAt()
+				);
+				remainingSeatsMap.put(asset.getId(), remainingSeats - 1);
+				break;
+			}
+		}
 	}
 
 	private boolean shouldStartProcessingAfterAssetApproval(Ticket ticket, UUID companyId) {
