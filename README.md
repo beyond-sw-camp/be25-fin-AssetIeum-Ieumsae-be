@@ -26,32 +26,32 @@
 
 ---
 
-## 팀원 소개
+## 이음새 팀원 소개
 <table align="center">
   <tr>
     <td align="center">
-      <img src="images/레드.jpg" width="130" height="130" alt="양준석" /><br />
+      <img src="images/준석.png" width="130" height="130" alt="양준석" /><br />
       <b>양준석</b><br />
       <a href="https://github.com/YJunSuk">
       <img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white"/>
       </a>
     </td>
     <td align="center">
-      <img src="images/블루.jpg" width="130" height="130" alt="모희주" /><br />
+      <img src="images/희주.png" width="130" height="130" alt="모희주" /><br />
       <b>모희주</b><br />
       <a href="https://github.com/heejudy">
       <img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white"/>
       </a>
     </td>
     <td align="center">
-      <img src="images/핑크.jpg" width="130" height="130" alt="이애은" /><br />
+      <img src="images/애은.png" width="130" height="130" alt="이애은" /><br />
       <b>이애은</b><br />
       <a href="https://github.com/nueeaeel">
       <img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white"/>
       </a>
     </td>
     <td align="center">
-      <img src="images/옐로우.jpg" width="130" height="130" alt="이민경" /><br />
+      <img src="images/민경.png" width="130" height="130" alt="이민경" /><br />
       <b>이민경</b><br />
       <a href="https://github.com/alskung1101">
       <img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white"/>
@@ -66,13 +66,17 @@
 1. [📍 주요 기능](#1-주요-기능)
 2. [🛠 기술 스택](#2-기술-스택)
 3. [🏗 시스템 아키텍처](#3-시스템-아키텍처)
-4. [🖥 상세 서비스 화면](#4-상세-서비스-화면)
-5. [📄 기술 문서](#5-기술-문서)
-6. [🚀 성능 테스트](#6-성능-테스트)
-7. [⚙️ 실행 방법](#7-실행-방법)
-8. [🔥 트러블 슈팅](#8-트러블-슈팅)
-9. [📝 회고](#9-회고)
-10. [📚 그 외 산출물](#10-그-외-산출물)
+4. [📋 요구사항 명세서](#4-요구사항-명세서)
+5. [🗂 테이블 명세서](#5-테이블-명세서)
+6. [🧩 ERD](#6-erd)
+7. [🎨 화면 기능 설계서](#7-화면-기능-설계서)
+8. [⚙️ 프로그램 사양서](#8-프로그램-사양서)
+9. [🖥 상세 서비스 화면](#9-상세-서비스-화면)
+10. [🧪 테스트 보고서](#10-테스트-보고서)
+11. [🔗 통합 테스트 결과서](#11-통합-테스트-결과서)
+12. [🚀 CI/CD 계획서](#12-cicd-계획서)
+13. [🔥 트러블 슈팅](#13-트러블-슈팅)
+14. [📝 회고](#14-회고)
 
 <br>
 
@@ -119,6 +123,7 @@
   <img src="https://img.shields.io/badge/docker--compose-2496ED?style=for-the-badge&logo=docker&logoColor=white">
   <img src="https://img.shields.io/badge/aws cloudfront-F38020?style=for-the-badge&logo=cloudflare&logoColor=white">
   <img src="https://img.shields.io/badge/aws-F38020?style=for-the-badge&logo=cloudflare&logoColor=white">
+  
 
 </p>
 
@@ -126,6 +131,12 @@
 <p>
   <img src="https://img.shields.io/badge/github-181717?style=for-the-badge&logo=github&logoColor=white">
   <img src="https://img.shields.io/badge/github%20actions-2088FF?style=for-the-badge&logo=githubactions&logoColor=white">
+</p>
+
+### 📊 Monitoring
+<p>
+  <img src="https://img.shields.io/badge/Prometheus-E6522C?style=for-the-badge&logo=prometheus&logoColor=white">
+  <img src="https://img.shields.io/badge/Grafana-F46800?style=for-the-badge&logo=grafana&logoColor=white">
 </p>
 
 ### 🤝 Collaboration
@@ -141,44 +152,72 @@
 <br>
 
 ## 3. 시스템 아키텍처
-<img width="1639" height="743" alt="image" src="https://github.com/user-attachments/assets/eba26bed-48a7-41b4-a64a-fa4d701748e7" />
+<img width="100%" alt="image" src="https://github.com/user-attachments/assets/eba26bed-48a7-41b4-a64a-fa4d701748e7" />
 
 
----
-
-<br>
-
-## 4. 상세 서비스 화면
-
----
 
 <br>
 
-## 5. 기술 문서
+## 4. 요구사항 명세서
 
----
+- [ 요구사항 명세서 ](https://docs.google.com/spreadsheets/d/1z-TKzG4AP284DwpEWPyhNDyRp2_YIFeRTpRxHoSSBkk/edit?gid=683579060#gid=683579060)
 
-<br>
-
-## 6. 성능 테스트
-
----
 
 <br>
 
-## 7. 실행 방법
+## 5. 테이블 명세서 
+- [ 테이블 명세서 ](https://docs.google.com/spreadsheets/d/1z-TKzG4AP284DwpEWPyhNDyRp2_YIFeRTpRxHoSSBkk/edit?gid=2140880264#gid=2140880264)
 
----
 
-<br>
-
-## 8. 트러블 슈팅
-
----
 
 <br>
 
-## 9. 회고
+## 6. ERD
+- [ERD Cloud](https://www.erdcloud.com/d/jHtNFPTxxwohPjgER)
+<img width="100%" alt="자산이음_ERD" src="https://github.com/user-attachments/assets/3d87a248-aa49-4d0a-835b-f6d44a3ca510" />
+
+<br>
+
+## 7. 화면 기능 설계서 
+- [ 화면 기능 설계서 ](https://www.figma.com/design/i5o7Xeb6cELARDILAXW309/%EC%9E%90%EC%82%B0-%EC%9D%B4%EC%9D%8C?node-id=0-1&p=f&t=1X5kLdHK34VusLdq-0)
+
+
+<br>
+
+## 8. 프로그램 사양서
+- [프로그램 사양서](https://rp3hgdqcg2.apidog.io/)
+
+<br>
+
+## 9. 상세 서비스 화면 
+- [ 상세 서비스 화면 ](https://github.com/beyond-sw-camp/be25-fin-AssetIeum-Ieumsae-be/wiki/%EC%83%81%EC%84%B8-%EC%84%9C%EB%B9%84%EC%8A%A4-%ED%99%94%EB%A9%B4)
+
+<br>
+
+## 10. 테스트 보고서 
+- [백엔드 단위 테스트 보고서](https://docs.google.com/spreadsheets/d/1z-TKzG4AP284DwpEWPyhNDyRp2_YIFeRTpRxHoSSBkk/edit?gid=481770483#gid=481770483)
+
+- [프론트엔드 단위 테스트 보고서](https://docs.google.com/spreadsheets/d/1z-TKzG4AP284DwpEWPyhNDyRp2_YIFeRTpRxHoSSBkk/edit?gid=324859763#gid=324859763)
+
+<br>
+
+## 11. 통합 테스트 결과서 
+- [통합 테스트 결과서](https://github.com/beyond-sw-camp/be25-fin-AssetIeum-Ieumsae-be/wiki/%ED%86%B5%ED%95%A9-%ED%85%8C%EC%8A%A4%ED%8A%B8-%EA%B2%B0%EA%B3%BC%EC%84%9C)
+
+<br>
+
+## 12. CI/CD 계획서 
+- [CI/CD 계획서](https://github.com/beyond-sw-camp/be25-fin-AssetIeum-Ieumsae-be/wiki/CICD-%EA%B3%84%ED%9A%8D%EC%84%9C)
+
+<br>
+
+
+## 13. 트러블 슈팅
+- [트러블 슈팅](https://github.com/beyond-sw-camp/be25-fin-AssetIeum-Ieumsae-be/wiki/%ED%8A%B8%EB%9F%AC%EB%B8%94-%EC%8A%88%ED%8C%85)
+
+<br>
+
+## 14. 회고
 
 <details>
 <summary><b>양준석</b></summary>
@@ -186,7 +225,6 @@
 
 </details>
 
----
 
 <details>
 <summary><b>모희주</b></summary>
@@ -194,41 +232,43 @@
 
 </details>
 
----
 
 <details>
 <summary><b>이애은</b></summary>
+  이번 프로젝트에서는 자산 도메인 관리, 구매 프로세스, 전수조사 기능, HR 이벤트 자동화 및 Batch 개발, 모니터링 환경 구축을 담당하였습니다. 단순히 자산을 등록하고 조회하는 기능을 구현하는 것을 넘어, 요청부터 승인, 구매, 지급, 반납까지 이어지는 자산의 전 생애주기를 시스템으로 설계하며 실제 기업 환경에서 사용될 수 있는 서비스를 구현해볼 수 있었습니다. 특히 표준·비표준·직접 구매와 같은 다양한 구매 유형과 입사, 퇴사, 부서 이동에 따른 HR 이벤트 자동화 로직을 구현하면서 복잡한 비즈니스 요구사항을 도메인 중심으로 설계하는 경험을 쌓을 수 있었습니다.
+
+또한 Spring Batch를 활용하여 반복적인 업무를 자동화하는 과정을 통해 운영 효율성을 높이는 시스템 설계의 중요성을 체감하였으며, Auto Scaling, ALB, Redis, CloudFront 등을 활용한 클라우드 환경 구성과 GitHub Actions 기반 CI/CD 파이프라인 구축, Grafana와 Prometheus를 활용한 모니터링 환경 구축을 경험하면서 기능 개발뿐만 아니라 안정적인 서비스 운영 역시 백엔드 개발자의 중요한 역할임을 배울 수 있었습니다.
+
+이번 프로젝트를 통해 단순히 기능을 구현하는 개발자를 넘어 비즈니스 요구사항을 시스템으로 설계하고 안정적으로 운영할 수 있는 백엔드 개발자로 한 단계 성장할 수 있었습니다. 앞으로도 서비스의 안정성과 운영 효율을 함께 고민하며, 실제 현업에서 활용할 수 있는 시스템을 설계하고 구현하는 개발자로 성장해 나가고자 합니다.
+
+마지막으로 약 두 달 동안 함께 고민하고 협업하며 프로젝트를 완성해낸 팀 이음새 팀원분들 모두 정말 고생 많으셨습니다. 끝까지 열심히 함께 해주셔서 감사합니다!!
 <br>
 
 </details>
 
----
 
 <details>
 <summary><b>이민경</b></summary>
+  최종 프로젝트를 진행하면서 가장 어려웠던 점은 기능을 구현하는 것보다 프로젝트의 전체 흐름을 맞춰가는 과정이었다. 처음에는 자산 관리 업무와 도메인을 이해하는 것부터 쉽지 않았고 기능이 많다 보니 각 기능이 어떤 순서로 연결되고 어떤 데이터를 주고받는지 파악하는 데도 시간이 필요했다. 팀원들과 요구사항을 계속 정리하고 의견을 맞춰가며 기능을 하나씩 구현하면서 프로젝트를 완성해 나갔다.
+
+담당 파트였던 백엔드에서는 자산 요청, 구매 계획, 자산 배정, 대여·반납, 알림 등 여러 기능이 서로 연결되어 있어 단순히 CRUD를 구현하는 것보다 상태 흐름과 데이터가 올바르게 연결되는지를 계속 확인해야 했다. 특히 자산 요청은 재고가 있으면 바로 배정하고 부족하면 구매 계획으로 이어지는 흐름을 구현하면서 예산, 재고, 배정 이력이 함께 변경되는 부분을 여러 번 수정하고 보완했다. 또한 프론트엔드와 API를 연동하는 과정에서는 응답 형식과 예외 처리, 상태값을 맞추기 위해 여러 차례 수정 작업을 진행했고 서로의 요구사항을 맞춰가는 과정의 중요성도 느낄 수 있었다.
+
+배포 과정에서는 ECR과 Auto Scaling Group 기반으로 환경을 구성하며 운영 환경을 직접 확인했고 인증 오류와 시간대 문제를 해결하면서 로컬에서 정상적으로 동작하던 기능도 운영 환경에서는 예상하지 못한 문제가 발생할 수 있다는 점을 경험했다. 특히 컨테이너가 실제로 새로 생성되었는지, 배포가 정상적으로 반영되었는지, 환경 설정이 올바르게 적용되었는지를 직접 확인하면서 기능 구현만큼 운영 환경을 점검하는 과정도 중요하다는 것을 느꼈다.
+
+이번 프로젝트를 진행하면서 기능 하나를 구현하는 것보다 여러 기능이 자연스럽게 연결되고 실제 운영 환경에서도 안정적으로 동작하도록 만드는 과정이 더 어렵다는 것을 느꼈다. 개발뿐 아니라 협업 과정에서 요구사항을 조율하고 배포 이후에도 문제를 확인하고 해결하는 경험까지 할 수 있었던 점이 가장 기억에 남았고 이번 프로젝트를 통해 백엔드 개발 전반에 대해 한 단계 더 깊게 경험할 수 있었다. 팀원분들도 그동안 정말 수고 많으셨습니다!!
+
 <br>
 
 </details>
+
+<br>
 
 ---
 
 <br>
 
-## 10. 그 외 산출물
+## 그 외 산출물
 
 ### 프로젝트 문서
 - [WBS](https://docs.google.com/spreadsheets/d/1z-TKzG4AP284DwpEWPyhNDyRp2_YIFeRTpRxHoSSBkk/edit?gid=0#gid=0)
 - [기획서](./docs/자산이음%20기획서.pdf)
-- [요구사항 명세서](https://docs.google.com/spreadsheets/d/1z-TKzG4AP284DwpEWPyhNDyRp2_YIFeRTpRxHoSSBkk/edit?gid=683579060#gid=683579060)
-- [테이블 명세서](https://docs.google.com/spreadsheets/d/1z-TKzG4AP284DwpEWPyhNDyRp2_YIFeRTpRxHoSSBkk/edit?gid=2140880264#gid=2140880264)
-- [와이어 프레임](https://www.figma.com/design/i5o7Xeb6cELARDILAXW309/%EC%9E%90%EC%82%B0-%EC%9D%B4%EC%9D%8C?node-id=399-509&t=ruWNjERUCQMxksow-0)
-
-- [프로그램 사양서](https://rp3hgdqcg2.apidog.io/)
-- [백엔드 단위테스트](https://docs.google.com/spreadsheets/d/1z-TKzG4AP284DwpEWPyhNDyRp2_YIFeRTpRxHoSSBkk/edit?gid=481770483#gid=481770483)
-- [프론트엔드 단위테스트](https://docs.google.com/spreadsheets/d/1z-TKzG4AP284DwpEWPyhNDyRp2_YIFeRTpRxHoSSBkk/edit?gid=324859763#gid=324859763)
-
-- [통합 테스트 결과서](docs/통합_테스트_결과서.pdf)
-- [CI/CD 계획서](docs/CICD_계획서.pdf)
-### ERD
-- [ERD Cloud](https://www.erdcloud.com/d/jHtNFPTxxwohPjgER)
-<img width="4940" height="2772" alt="자산이음_ERD" src="https://github.com/user-attachments/assets/3d87a248-aa49-4d0a-835b-f6d44a3ca510" />
