@@ -26,7 +26,7 @@
 
 ---
 
-## 팀원 소개
+## 이음새 팀원 소개
 <table align="center">
   <tr>
     <td align="center">
@@ -68,14 +68,15 @@
 3. [🏗 시스템 아키텍처](#3-시스템-아키텍처)
 4. [📋 요구사항 명세서](#4-요구사항-명세서)
 5. [🗂 테이블 명세서](#5-테이블-명세서)
-6. [🧩 ERD](#6-ERD)
+6. [🧩 ERD](#6-erd)
 7. [🎨 화면 기능 설계서](#7-화면-기능-설계서)
-8. [🖥 상세 서비스 화면](#8-상세-서비스-화면)
-9. [🧪 테스트 보고서](#9-테스트-보고서)
-10. [🔗 통합 테스트 결과서](#10-통합-테스트-결과서)
-11. [🚀 CI/CD 계획서](#11-cicd-계획서)
-12. [🔥 트러블 슈팅](#12-트러블-슈팅)
-13. [📝 회고](#13-회고)
+8. [⚙️ 프로그램 사양서](#8-프로그램-사양서)
+9. [🖥 상세 서비스 화면](#9-상세-서비스-화면)
+10. [🧪 테스트 보고서](#10-테스트-보고서)
+11. [🔗 통합 테스트 결과서](#11-통합-테스트-결과서)
+12. [🚀 CI/CD 계획서](#12-cicd-계획서)
+13. [🔥 트러블 슈팅](#13-트러블-슈팅)
+14. [📝 회고](#14-회고)
 
 <br>
 
@@ -183,36 +184,40 @@
 
 <br>
 
-## 8. 상세 서비스 화면 
+## 8. 프로그램 사양서
+- [프로그램 사양서](https://rp3hgdqcg2.apidog.io/)
+
+<br>
+
+## 9. 상세 서비스 화면 
 - [ 상세 서비스 화면 ](https://github.com/beyond-sw-camp/be25-fin-AssetIeum-Ieumsae-be/wiki/%EC%83%81%EC%84%B8-%EC%84%9C%EB%B9%84%EC%8A%A4-%ED%99%94%EB%A9%B4)
 
 <br>
 
-## 9. 테스트 보고서 
+## 10. 테스트 보고서 
 - [백엔드 단위 테스트 보고서](https://docs.google.com/spreadsheets/d/1z-TKzG4AP284DwpEWPyhNDyRp2_YIFeRTpRxHoSSBkk/edit?gid=481770483#gid=481770483)
 
 - [프론트엔드 단위 테스트 보고서](https://docs.google.com/spreadsheets/d/1z-TKzG4AP284DwpEWPyhNDyRp2_YIFeRTpRxHoSSBkk/edit?gid=324859763#gid=324859763)
 
 <br>
 
-## 10. 통합 테스트 결과서 
+## 11. 통합 테스트 결과서 
 - [통합 테스트 결과서](https://github.com/beyond-sw-camp/be25-fin-AssetIeum-Ieumsae-be/wiki/%ED%86%B5%ED%95%A9-%ED%85%8C%EC%8A%A4%ED%8A%B8-%EA%B2%B0%EA%B3%BC%EC%84%9C)
 
 <br>
 
-## 11. CI/CD 계획서 
+## 12. CI/CD 계획서 
 - [CI/CD 계획서](https://github.com/beyond-sw-camp/be25-fin-AssetIeum-Ieumsae-be/wiki/CICD-%EA%B3%84%ED%9A%8D%EC%84%9C)
 
 <br>
 
 
-## 12. 트러블 슈팅
+## 13. 트러블 슈팅
 - [트러블 슈팅](https://github.com/beyond-sw-camp/be25-fin-AssetIeum-Ieumsae-be/wiki/%ED%8A%B8%EB%9F%AC%EB%B8%94-%EC%8A%88%ED%8C%85)
----
 
 <br>
 
-## 13. 회고
+## 14. 회고
 
 <details>
 <summary><b>양준석</b></summary>
@@ -220,7 +225,6 @@
 
 </details>
 
----
 
 <details>
 <summary><b>모희주</b></summary>
@@ -228,7 +232,6 @@
 
 </details>
 
----
 
 <details>
 <summary><b>이애은</b></summary>
@@ -243,7 +246,6 @@
 
 </details>
 
----
 
 <details>
 <summary><b>이민경</b></summary>
@@ -259,6 +261,8 @@
 
 </details>
 
+<br>
+
 ---
 
 <br>
@@ -268,4 +272,3 @@
 ### 프로젝트 문서
 - [WBS](https://docs.google.com/spreadsheets/d/1z-TKzG4AP284DwpEWPyhNDyRp2_YIFeRTpRxHoSSBkk/edit?gid=0#gid=0)
 - [기획서](./docs/자산이음%20기획서.pdf)
-- [프로그램 사양서](https://rp3hgdqcg2.apidog.io/)
