@@ -19,10 +19,10 @@ import com.ieumsae.assetieum.domain.member.entity.Member;
 import com.ieumsae.assetieum.domain.member.repository.MemberRepository;
 import com.ieumsae.assetieum.domain.member.type.MemberRole;
 import com.ieumsae.assetieum.domain.member.type.MemberStatus;
-import com.ieumsae.assetieum.domain.intangibleasset.assignment.service.IntangibleAssetAssignmentService;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.entity.TangibleAsset;
 import com.ieumsae.assetieum.domain.tangibleasset.asset.type.TangibleAssetStatus;
-import com.ieumsae.assetieum.domain.tangibleasset.assignment.service.TangibleAssetAssignmentService;
+import com.ieumsae.assetieum.domain.ticket.common.repository.TicketRepository;
+import com.ieumsae.assetieum.domain.ticket.common.type.TicketStatus;
 import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import com.ieumsae.assetieum.global.common.page.PaginationResponse;
@@ -44,13 +44,18 @@ import org.springframework.util.StringUtils;
 public class MemberService {
 
 	private static final String ADMIN_DEPARTMENT_NAME = "관리자";
+	private static final List<TicketStatus> ONGOING_TICKET_STATUSES = List.of(
+		TicketStatus.REQUESTED,
+		TicketStatus.DEPARTMENT_APPROVED,
+		TicketStatus.ASSET_APPROVED,
+		TicketStatus.IN_PROGRESS
+	);
 
 	private final MemberRepository memberRepository;
 	private final DepartmentRepository departmentRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final EntityManager entityManager;
-	private final TangibleAssetAssignmentService tangibleAssetAssignmentService;
-	private final IntangibleAssetAssignmentService intangibleAssetAssignmentService;
+	private final TicketRepository ticketRepository;
 
 	public PaginationResponse<MemberListItemResponse> getMembers(
 		AuthenticatedMember authenticatedMember,
@@ -142,20 +147,16 @@ public class MemberService {
 		validateNotResigned(targetMember);
 
 		LocalDateTime resignedAt = request.getResignedAt() == null ? KstDateTime.now() : request.getResignedAt();
-		List<TangibleAsset> tangibleAssets = findMemberTangibleAssets(targetMember);
-		List<Object[]> intangibleAssets = findMemberActiveIntangibleAssets(targetMember);
-
-		long returnedTangibleAssetCount = returnTangibleAssets(targetMember, tangibleAssets);
-		long endedIntangibleAssignmentCount = endIntangibleAssignments(targetMember, intangibleAssets);
-		long remainingTargetCount = buildOffboardingTargets(targetMember).getRemainingTargetCount();
+		validateOffboardingCompletable(targetMember);
+		targetMember.resign();
 
 		return MemberOffboardingStartResponse.builder()
 			.memberId(targetMember.getId())
 			.memberName(targetMember.getName())
 			.memberStatus(targetMember.getStatus())
-			.returnedTangibleAssetCount(returnedTangibleAssetCount)
-			.endedIntangibleAssignmentCount(endedIntangibleAssignmentCount)
-			.remainingTargetCount(remainingTargetCount)
+			.returnedTangibleAssetCount(0)
+			.endedIntangibleAssignmentCount(0)
+			.remainingTargetCount(0)
 			.resignedAt(resignedAt)
 			.reason(request.getReason())
 			.build();
@@ -170,13 +171,7 @@ public class MemberService {
 		Member targetMember = findMember(memberId, authenticatedMember.companyId());
 		validateNotResigned(targetMember);
 
-		MemberOffboardingTargetsResponse targets = buildOffboardingTargets(targetMember);
-		if (targets.getRemainingTargetCount() > 0) {
-			throw new BusinessException(
-				ErrorCode.INVALID_INPUT_VALUE,
-				"회수되지 않은 자산 또는 진행 중인 티켓이 있어 퇴사 완료 처리할 수 없습니다."
-			);
-		}
+		validateOffboardingCompletable(targetMember);
 
 		targetMember.resign();
 		return MemberOffboardingCompleteResponse.builder()
@@ -223,35 +218,34 @@ public class MemberService {
 		}
 	}
 
+	private void validateOffboardingCompletable(Member member) {
+		MemberOffboardingTargetsResponse targets = buildOffboardingTargets(member);
+		if (targets.getRemainingTargetCount() > 0) {
+			throw new BusinessException(
+				ErrorCode.INVALID_INPUT_VALUE,
+				"사용 중이거나 회수되지 않은 자산이 있어 퇴사 처리할 수 없습니다. 자산 반납/회수 처리를 먼저 완료해주세요."
+			);
+		}
+
+		if (hasOngoingTickets(member)) {
+			throw new BusinessException(
+				ErrorCode.INVALID_INPUT_VALUE,
+				"진행 중인 티켓이 있어 퇴사 처리할 수 없습니다. 티켓 처리를 먼저 완료해주세요."
+			);
+		}
+	}
+
+	private boolean hasOngoingTickets(Member member) {
+		return ticketRepository.existsByCompany_IdAndRequester_IdAndTicketStatusInAndDeletedAtIsNull(
+			member.getCompany().getId(),
+			member.getId(),
+			ONGOING_TICKET_STATUSES
+		);
+	}
+
 	private Member findMember(UUID memberId, UUID companyId) {
 		return memberRepository.findByIdAndCompany_IdAndDeletedAtIsNull(memberId, companyId)
 			.orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
-	}
-
-	private long returnTangibleAssets(Member targetMember, List<TangibleAsset> tangibleAssets) {
-		long count = 0;
-		for (TangibleAsset asset : tangibleAssets) {
-			if (asset.getTangibleAssetStatus() != TangibleAssetStatus.IN_USE) {
-				continue;
-			}
-			tangibleAssetAssignmentService.cancelAsset(asset.getId(), targetMember.getCompany().getId());
-			count++;
-		}
-		return count;
-	}
-
-	private long endIntangibleAssignments(Member targetMember, List<Object[]> intangibleAssets) {
-		long count = 0;
-		for (Object[] row : intangibleAssets) {
-			UUID assetId = (UUID) row[0];
-			intangibleAssetAssignmentService.cancelAsset(
-				assetId,
-				targetMember.getId(),
-				targetMember.getCompany().getId()
-			);
-			count++;
-		}
-		return count;
 	}
 
 	private MemberOffboardingTargetsResponse buildOffboardingTargets(Member member) {
