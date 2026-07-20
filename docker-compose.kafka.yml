@@ -1,0 +1,17 @@
+name: assetieum-kafka
+
+services:
+  kafka:
+    image: apache/kafka:4.3.1
+    container_name: assetieum-kafka
+    ports:
+      - "127.0.0.1:9092:9092"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped

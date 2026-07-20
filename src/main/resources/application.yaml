@@ -14,6 +14,24 @@ spring:
         jdbc:
           time_zone: Asia/Seoul
 
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      acks: all
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        enable.idempotence: true
+    consumer:
+      group-id: ${KAFKA_CONSUMER_GROUP_ID:assetieum-local}
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    listener:
+      ack-mode: record
+      missing-topics-fatal: false
+
 auth:
   jwt:
     secret: ${JWT_SECRET}
@@ -39,6 +57,11 @@ cloud:
 app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  kafka:
+    topics:
+      smoke-test: ${KAFKA_SMOKE_TEST_TOPIC:assetieum.test.v1}
+    smoke-test:
+      enabled: ${KAFKA_SMOKE_TEST_ENABLED:false}
 
 management:
   endpoints:

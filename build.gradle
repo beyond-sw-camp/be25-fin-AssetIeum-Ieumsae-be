@@ -47,6 +47,9 @@ dependencies {
 	// Spring Batch
 	implementation 'org.springframework.boot:spring-boot-starter-batch'
 
+	// Kafka
+	implementation 'org.springframework.kafka:spring-kafka'
+
 	// Distributed scheduler lock
 	implementation 'net.javacrumbs.shedlock:shedlock-spring:6.9.2'
 	implementation 'net.javacrumbs.shedlock:shedlock-provider-jdbc-template:6.9.2'
@@ -106,6 +109,7 @@ dependencies {
 
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'
+	testImplementation 'org.springframework.kafka:spring-kafka-test'
 
 	testCompileOnly 'org.projectlombok:lombok'
 	testAnnotationProcessor 'org.projectlombok:lombok'
