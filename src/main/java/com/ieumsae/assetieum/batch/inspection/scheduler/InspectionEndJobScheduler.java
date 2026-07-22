@@ -24,8 +24,7 @@ public class InspectionEndJobScheduler {
     private final Job inspectionEndJob;
 
     // 매일 23:59:59에 오늘 종료일인 전수조사를 대상으로 inspectionEndJob을 실행합니다.
-//    @Scheduled(cron = "59 59 23 * * *", zone = "Asia/Seoul")
-    @Scheduled(cron = "0 * * * * *", zone = "Asia/Seoul") // cron = "59 59 23 * * *" (오후 23시 59분 설정) 테스트를 위해 현재는 매 분마다 실행되도록
+    @Scheduled(cron = "59 59 23 * * *", zone = "Asia/Seoul")
     @SchedulerLock(name = InspectionEndJobConfig.JOB_NAME, lockAtMostFor = "PT30M")
     public void run() throws Exception {
         // JobParameters가 같으면 Spring Batch가 같은 JobInstance로 판단하므로 실행 기준일을 명시합니다.
