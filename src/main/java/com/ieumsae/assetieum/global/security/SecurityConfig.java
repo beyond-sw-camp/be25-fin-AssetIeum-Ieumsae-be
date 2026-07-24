@@ -53,6 +53,7 @@ public class SecurityConfig {
 				.requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
 				.requestMatchers(HttpMethod.POST, "/api/v1/auth/reissue").permitAll()
 				.requestMatchers("/error").permitAll()
+				.requestMatchers("/ws", "/ws/**").permitAll()
 				.anyRequest().authenticated()
 			)
 			.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

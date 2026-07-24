@@ -13,6 +13,8 @@ public interface TicketRepository extends JpaRepository<Ticket, UUID>, TicketRep
 
 	Optional<Ticket> findByIdAndCompany_IdAndDeletedAtIsNull(UUID ticketId, UUID companyId);
 
+	boolean existsByIdAndCompany_IdAndDeletedAtIsNull(UUID ticketId, UUID companyId);
+
 	boolean existsByCompany_IdAndRequester_IdAndTicketStatusInAndDeletedAtIsNull(
 		UUID companyId,
 		UUID requesterId,
