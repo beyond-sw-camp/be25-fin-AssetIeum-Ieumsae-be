@@ -19,7 +19,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-@ConditionalOnExpression("${app.kafka.log.enabled:false} or ${app.kafka.notification.enabled:false}")
+@ConditionalOnExpression(
+	"${app.kafka.log.enabled:false} or "
+		+ "${app.kafka.notification.enabled:false} or "
+		+ "${app.kafka.ticket-comment.enabled:false}"
+)
 public class OutboxPublisher {
 
 	private static final int BATCH_SIZE = 100;

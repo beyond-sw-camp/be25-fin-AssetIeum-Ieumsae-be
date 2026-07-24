@@ -67,12 +67,15 @@ app:
       activity-log: ${KAFKA_ACTIVITY_LOG_TOPIC:assetieum.activity-log.v1}
       audit-log: ${KAFKA_AUDIT_LOG_TOPIC:assetieum.audit-log.v1}
       notification: ${KAFKA_NOTIFICATION_TOPIC:assetieum.notification.v1}
+      ticket-comment: ${KAFKA_TICKET_COMMENT_TOPIC:assetieum.ticket-comment.v1}
     smoke-test:
       enabled: ${KAFKA_SMOKE_TEST_ENABLED:false}
     log:
       enabled: ${KAFKA_LOG_ENABLED:false}
     notification:
       enabled: ${KAFKA_NOTIFICATION_ENABLED:false}
+    ticket-comment:
+      enabled: ${KAFKA_TICKET_COMMENT_ENABLED:false}
     dashboard-cache:
       enabled: ${KAFKA_DASHBOARD_CACHE_ENABLED:false}
       ttl-seconds: ${DASHBOARD_CACHE_TTL_SECONDS:30}

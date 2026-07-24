@@ -15,7 +15,11 @@ import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.util.backoff.FixedBackOff;
 
 @Configuration
-@ConditionalOnExpression("${app.kafka.log.enabled:false} or ${app.kafka.notification.enabled:false}")
+@ConditionalOnExpression(
+	"${app.kafka.log.enabled:false} or "
+		+ "${app.kafka.notification.enabled:false} or "
+		+ "${app.kafka.ticket-comment.enabled:false}"
+)
 public class KafkaLogConfiguration {
 
 	private static final int PARTITION_COUNT = 3;
@@ -26,15 +30,18 @@ public class KafkaLogConfiguration {
 	KafkaAdmin.NewTopics logTopics(
 		@Value("${app.kafka.topics.activity-log}") String activityLogTopic,
 		@Value("${app.kafka.topics.audit-log}") String auditLogTopic,
-		@Value("${app.kafka.topics.notification}") String notificationTopic
+		@Value("${app.kafka.topics.notification}") String notificationTopic,
+		@Value("${app.kafka.topics.ticket-comment}") String ticketCommentTopic
 	) {
 		return new KafkaAdmin.NewTopics(
 			createTopic(activityLogTopic),
 			createTopic(auditLogTopic),
 			createTopic(notificationTopic),
+			createTopic(ticketCommentTopic),
 			createTopic(activityLogTopic + DEAD_LETTER_SUFFIX),
 			createTopic(auditLogTopic + DEAD_LETTER_SUFFIX),
-			createTopic(notificationTopic + DEAD_LETTER_SUFFIX)
+			createTopic(notificationTopic + DEAD_LETTER_SUFFIX),
+			createTopic(ticketCommentTopic + DEAD_LETTER_SUFFIX)
 		);
 	}
 

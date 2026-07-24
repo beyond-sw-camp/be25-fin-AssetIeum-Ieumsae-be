@@ -8,7 +8,9 @@ import com.ieumsae.assetieum.domain.ticket.comment.dto.TicketCommentDeleteRespon
 import com.ieumsae.assetieum.domain.ticket.comment.dto.TicketCommentResponse;
 import com.ieumsae.assetieum.domain.ticket.comment.dto.TicketCommentUpdateRequest;
 import com.ieumsae.assetieum.domain.ticket.comment.entity.TicketComment;
+import com.ieumsae.assetieum.domain.ticket.comment.event.TicketCommentEventPublisher;
 import com.ieumsae.assetieum.domain.ticket.comment.repository.TicketCommentRepository;
+import com.ieumsae.assetieum.domain.ticket.comment.type.TicketCommentEventType;
 import com.ieumsae.assetieum.domain.ticket.common.entity.Ticket;
 import com.ieumsae.assetieum.domain.ticket.common.repository.TicketRepository;
 import com.ieumsae.assetieum.global.common.page.PaginationRequest;
@@ -33,6 +35,7 @@ public class TicketCommentService {
 	private final TicketCommentRepository ticketCommentRepository;
 	private final TicketRepository ticketRepository;
 	private final MemberRepository memberRepository;
+	private final TicketCommentEventPublisher ticketCommentEventPublisher;
 
 	@Transactional
 	public TicketCommentResponse createComment(
@@ -51,7 +54,11 @@ public class TicketCommentService {
 			request.getContent().trim()
 		));
 
-		return TicketCommentResponse.from(comment);
+		TicketCommentResponse response = TicketCommentResponse.from(comment);
+		ticketCommentEventPublisher.publish(
+			companyId, ticketId, TicketCommentEventType.CREATED, response
+		);
+		return response;
 	}
 
 	public PaginationResponse<TicketCommentResponse> getComments(
@@ -89,7 +96,11 @@ public class TicketCommentService {
 
 		comment.updateContent(request.getContent().trim());
 
-		return TicketCommentResponse.from(comment);
+		TicketCommentResponse response = TicketCommentResponse.from(comment);
+		ticketCommentEventPublisher.publish(
+			companyId, ticketId, TicketCommentEventType.UPDATED, response
+		);
+		return response;
 	}
 
 	@Transactional
@@ -106,7 +117,11 @@ public class TicketCommentService {
 
 		LocalDateTime deletedAt = comment.delete();
 
-		return TicketCommentDeleteResponse.from(comment.getId(), deletedAt);
+		TicketCommentDeleteResponse response = TicketCommentDeleteResponse.from(comment.getId(), deletedAt);
+		ticketCommentEventPublisher.publish(
+			companyId, ticketId, TicketCommentEventType.DELETED, response
+		);
+		return response;
 	}
 
 	private Member findActiveMember(UUID memberId, UUID companyId) {

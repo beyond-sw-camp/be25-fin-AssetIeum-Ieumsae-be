@@ -5,6 +5,8 @@ import com.ieumsae.assetieum.domain.ticket.comment.dto.TicketCommentDeleteRespon
 import com.ieumsae.assetieum.domain.ticket.comment.dto.TicketCommentEvent;
 import com.ieumsae.assetieum.domain.ticket.comment.dto.TicketCommentResponse;
 import com.ieumsae.assetieum.domain.ticket.comment.dto.TicketCommentUpdateRequest;
+import com.ieumsae.assetieum.domain.ticket.comment.event.TicketCommentEventPublisher;
+import com.ieumsae.assetieum.domain.ticket.comment.event.TicketCommentWebSocketPublisher;
 import com.ieumsae.assetieum.domain.ticket.comment.service.TicketCommentService;
 import com.ieumsae.assetieum.domain.ticket.comment.type.TicketCommentEventType;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
@@ -15,7 +17,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 
@@ -23,10 +24,9 @@ import org.springframework.stereotype.Controller;
 @RequiredArgsConstructor
 public class TicketCommentMessageController {
 
-	private static final String COMMENT_TOPIC = "/topic/tickets/%s/comments";
-
 	private final TicketCommentService ticketCommentService;
-	private final SimpMessagingTemplate messagingTemplate;
+	private final TicketCommentEventPublisher ticketCommentEventPublisher;
+	private final TicketCommentWebSocketPublisher webSocketPublisher;
 
 	@MessageMapping("/tickets/{ticketId}/comments/create")
 	public void createComment(
@@ -86,16 +86,16 @@ public class TicketCommentMessageController {
 		TicketCommentEventType eventType,
 		T payload
 	) {
+		if (ticketCommentEventPublisher.isEnabled()) {
+			return;
+		}
 		TicketCommentEvent<T> event = TicketCommentEvent.of(
 			eventType,
 			ticketId,
 			payload
 		);
 
-		messagingTemplate.convertAndSend(
-			COMMENT_TOPIC.formatted(ticketId),
-			event
-		);
+		webSocketPublisher.publish(ticketId, event);
 	}
 
 	private AuthenticatedMember getAuthenticatedMember(Principal principal) {
