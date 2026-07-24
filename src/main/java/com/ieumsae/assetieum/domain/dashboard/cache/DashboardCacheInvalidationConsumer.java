@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 public class DashboardCacheInvalidationConsumer {
 
 	private final DashboardCacheService dashboardCacheService;
+	private final DashboardCacheWarmupService dashboardCacheWarmupService;
 
 	@KafkaListener(
 		topics = "${app.kafka.topics.audit-log}",
@@ -21,7 +22,10 @@ public class DashboardCacheInvalidationConsumer {
 	public void consume(JsonNode event) {
 		JsonNode companyId = event.get("companyId");
 		if (companyId != null && !companyId.isNull()) {
-			dashboardCacheService.invalidate(UUID.fromString(companyId.asText()));
+			UUID id = UUID.fromString(companyId.asText());
+			if (dashboardCacheService.invalidate(id)) {
+				dashboardCacheWarmupService.warmUpCompanySummaries(id);
+			}
 		}
 	}
 }

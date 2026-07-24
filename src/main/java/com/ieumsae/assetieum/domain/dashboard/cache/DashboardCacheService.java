@@ -62,15 +62,17 @@ public class DashboardCacheService {
 		return value;
 	}
 
-	public void invalidate(UUID companyId) {
+	public boolean invalidate(UUID companyId) {
 		if (!enabled || companyId == null) {
-			return;
+			return false;
 		}
 		try {
 			redisTemplate.opsForValue().increment(versionKey(companyId));
 			meterRegistry.counter("dashboard.cache.invalidation.total").increment();
+			return true;
 		} catch (RuntimeException exception) {
 			log.warn("Dashboard cache invalidation failed. companyId={}", companyId, exception);
+			return false;
 		}
 	}
 
