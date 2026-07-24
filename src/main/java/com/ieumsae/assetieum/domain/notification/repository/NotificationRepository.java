@@ -12,6 +12,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
 
+	boolean existsByEventId(UUID eventId);
+
 	Page<Notification> findAllByReceiver_IdAndCompany_Id(UUID receiverId, UUID companyId, Pageable pageable);
 
 	Optional<Notification> findByIdAndReceiver_IdAndCompany_Id(Long notificationId, UUID receiverId, UUID companyId);

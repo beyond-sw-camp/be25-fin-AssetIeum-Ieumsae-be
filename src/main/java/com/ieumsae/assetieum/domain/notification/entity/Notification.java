@@ -42,6 +42,10 @@ public class Notification {
 	@Column(name = "notification_id")
 	private Long id;
 
+	@JdbcTypeCode(SqlTypes.CHAR)
+	@Column(name = "event_id", unique = true, columnDefinition = "CHAR(36)")
+	private UUID eventId;
+
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
 	@JoinColumn(name = "company_id", nullable = false)
 	private Company company;
@@ -80,6 +84,7 @@ public class Notification {
 	}
 
 	public static Notification create(
+		UUID eventId,
 		Company company,
 		Member receiver,
 		NotificationType notificationType,
@@ -89,6 +94,7 @@ public class Notification {
 		UUID targetId
 	) {
 		return Notification.builder()
+			.eventId(eventId)
 			.company(company)
 			.receiver(receiver)
 			.notificationType(notificationType)
@@ -98,6 +104,18 @@ public class Notification {
 			.targetId(targetId)
 			.isRead(false)
 			.build();
+	}
+
+	public static Notification create(
+		Company company,
+		Member receiver,
+		NotificationType notificationType,
+		String title,
+		String content,
+		NotificationTargetType targetType,
+		UUID targetId
+	) {
+		return create(null, company, receiver, notificationType, title, content, targetType, targetId);
 	}
 
 	public void markAsRead() {
