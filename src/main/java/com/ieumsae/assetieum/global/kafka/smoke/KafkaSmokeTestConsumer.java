@@ -1,6 +1,6 @@
 package com.ieumsae.assetieum.global.kafka.smoke;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ieumsae.assetieum.global.kafka.event.EventEnvelope;
@@ -22,10 +22,10 @@ public class KafkaSmokeTestConsumer {
 		topics = "${app.kafka.topics.smoke-test}",
 		groupId = "${spring.kafka.consumer.group-id}-smoke"
 	)
-	public void consume(String message) throws JsonProcessingException {
+	public void consume(JsonNode message) {
 		JavaType eventType = objectMapper.getTypeFactory()
 			.constructParametricType(EventEnvelope.class, KafkaSmokeTestPayload.class);
-		EventEnvelope<KafkaSmokeTestPayload> event = objectMapper.readValue(message, eventType);
+		EventEnvelope<KafkaSmokeTestPayload> event = objectMapper.convertValue(message, eventType);
 
 		log.info(
 			"Kafka smoke-test event consumed. eventId={}, eventType={}, message={}",
