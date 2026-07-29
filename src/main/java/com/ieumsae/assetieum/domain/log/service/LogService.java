@@ -6,6 +6,9 @@ import com.ieumsae.assetieum.domain.log.dto.AuditLogResponse;
 import com.ieumsae.assetieum.domain.log.dto.AuditLogSearchRequest;
 import com.ieumsae.assetieum.domain.log.entity.ActivityLog;
 import com.ieumsae.assetieum.domain.log.entity.AuditLog;
+import com.ieumsae.assetieum.domain.log.event.ActivityLogEvent;
+import com.ieumsae.assetieum.domain.log.event.AuditLogEvent;
+import com.ieumsae.assetieum.domain.log.event.LogEventPublisher;
 import com.ieumsae.assetieum.domain.log.repository.ActivityLogRepository;
 import com.ieumsae.assetieum.domain.log.repository.AuditLogRepository;
 import com.ieumsae.assetieum.domain.log.type.ActivityLogAction;
@@ -22,6 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +39,10 @@ public class LogService {
 	private final AuditLogRepository auditLogRepository;
 	private final ActivityLogRepository activityLogRepository;
 	private final MemberRepository memberRepository;
+	private final LogEventPublisher logEventPublisher;
+
+	@Value("${app.kafka.log.enabled:false}")
+	private boolean kafkaLogEnabled;
 
 	public PaginationResponse<AuditLogResponse> getAuditLogs(
 		AuditLogSearchRequest request,
@@ -64,8 +72,7 @@ public class LogService {
 		UUID subjectId,
 		String detail
 	) {
-		Member actor = findMember(authenticatedMember.id(), authenticatedMember.companyId());
-		recordAuditLog(actor, action, subjectType, subjectId, null, detail);
+		recordAuditLog(authenticatedMember, action, subjectType, subjectId, null, detail);
 	}
 
 	@Transactional
@@ -77,8 +84,20 @@ public class LogService {
 		String targetPath,
 		String detail
 	) {
+		if (kafkaLogEnabled) {
+			logEventPublisher.publishAuditLog(
+				authenticatedMember.companyId(),
+				authenticatedMember.id(),
+				action,
+				subjectType,
+				subjectId,
+				targetPath,
+				detail
+			);
+			return;
+		}
 		Member actor = findMember(authenticatedMember.id(), authenticatedMember.companyId());
-		recordAuditLog(actor, action, subjectType, subjectId, targetPath, detail);
+		saveAuditLog(null, actor, action, subjectType, subjectId, targetPath, detail);
 	}
 
 	@Transactional
@@ -101,7 +120,134 @@ public class LogService {
 		String targetPath,
 		String detail
 	) {
+		if (kafkaLogEnabled) {
+			logEventPublisher.publishAuditLog(
+				actor.getCompany().getId(),
+				actor.getId(),
+				action,
+				subjectType,
+				subjectId,
+				targetPath,
+				detail
+			);
+			return;
+		}
+		saveAuditLog(null, actor, action, subjectType, subjectId, targetPath, detail);
+	}
+
+	@Transactional
+	public void recordActivityLog(
+		AuthenticatedMember authenticatedMember,
+		ActivityLogAction action,
+		LogSubjectType subjectType,
+		UUID subjectId,
+		String detail
+	) {
+		recordActivityLog(authenticatedMember, action, subjectType, subjectId, null, detail);
+	}
+
+	@Transactional
+	public void recordActivityLog(
+		AuthenticatedMember authenticatedMember,
+		ActivityLogAction action,
+		LogSubjectType subjectType,
+		UUID subjectId,
+		String targetPath,
+		String detail
+	) {
+		if (kafkaLogEnabled) {
+			logEventPublisher.publishActivityLog(
+				authenticatedMember.companyId(),
+				authenticatedMember.id(),
+				action,
+				subjectType,
+				subjectId,
+				targetPath
+			);
+			return;
+		}
+		Member actor = findMember(authenticatedMember.id(), authenticatedMember.companyId());
+		saveActivityLog(null, actor, action, subjectType, subjectId, targetPath);
+	}
+
+	@Transactional
+	public void recordActivityLog(
+		Member actor,
+		ActivityLogAction action,
+		LogSubjectType subjectType,
+		UUID subjectId,
+		String detail
+	) {
+		recordActivityLog(actor, action, subjectType, subjectId, null, detail);
+	}
+
+	@Transactional
+	public void recordActivityLog(
+		Member actor,
+		ActivityLogAction action,
+		LogSubjectType subjectType,
+		UUID subjectId,
+		String targetPath,
+		String detail
+	) {
+		if (kafkaLogEnabled) {
+			logEventPublisher.publishActivityLog(
+				actor.getCompany().getId(),
+				actor.getId(),
+				action,
+				subjectType,
+				subjectId,
+				targetPath
+			);
+			return;
+		}
+		saveActivityLog(null, actor, action, subjectType, subjectId, targetPath);
+	}
+
+	@Transactional
+	public void persistAuditLogEvent(UUID eventId, UUID companyId, AuditLogEvent event) {
+		if (auditLogRepository.existsByEventId(eventId)) {
+			return;
+		}
+		Member actor = findMember(event.memberId(), companyId);
+		saveAuditLog(
+			eventId,
+			actor,
+			event.action(),
+			event.subjectType(),
+			event.subjectId(),
+			event.targetPath(),
+			event.detail()
+		);
+	}
+
+	@Transactional
+	public void persistActivityLogEvent(UUID eventId, UUID companyId, ActivityLogEvent event) {
+		if (activityLogRepository.existsByEventId(eventId)) {
+			return;
+		}
+		Member actor = findMember(event.memberId(), companyId);
+		saveActivityLog(
+			eventId,
+			actor,
+			event.action(),
+			event.subjectType(),
+			event.subjectId(),
+			event.targetPath()
+		);
+	}
+
+	private void saveAuditLog(
+		UUID eventId,
+		Member actor,
+		AuditLogAction action,
+		LogSubjectType subjectType,
+		UUID subjectId,
+		String targetPath,
+		String detail
+	) {
 		auditLogRepository.save(AuditLog.builder()
+			.eventId(eventId)
 			.company(actor.getCompany())
 			.member(actor)
 			.action(action)
@@ -113,52 +259,16 @@ public class LogService {
 			.build());
 	}
 
-	@Transactional
-	public void recordActivityLog(
-		AuthenticatedMember authenticatedMember,
-		ActivityLogAction action,
-		LogSubjectType subjectType,
-		UUID subjectId,
-		String detail
-	) {
-		Member actor = findMember(authenticatedMember.id(), authenticatedMember.companyId());
-		recordActivityLog(actor, action, subjectType, subjectId, null, detail);
-	}
-
-	@Transactional
-	public void recordActivityLog(
-		AuthenticatedMember authenticatedMember,
-		ActivityLogAction action,
-		LogSubjectType subjectType,
-		UUID subjectId,
-		String targetPath,
-		String detail
-	) {
-		Member actor = findMember(authenticatedMember.id(), authenticatedMember.companyId());
-		recordActivityLog(actor, action, subjectType, subjectId, targetPath, detail);
-	}
-
-	@Transactional
-	public void recordActivityLog(
+	private void saveActivityLog(
+		UUID eventId,
 		Member actor,
 		ActivityLogAction action,
 		LogSubjectType subjectType,
 		UUID subjectId,
-		String detail
-	) {
-		recordActivityLog(actor, action, subjectType, subjectId, null, detail);
-	}
-
-	@Transactional
-	public void recordActivityLog(
-		Member actor,
-		ActivityLogAction action,
-		LogSubjectType subjectType,
-		UUID subjectId,
-		String targetPath,
-		String detail
+		String targetPath
 	) {
 		activityLogRepository.save(ActivityLog.builder()
+			.eventId(eventId)
 			.company(actor.getCompany())
 			.member(actor)
 			.action(action)

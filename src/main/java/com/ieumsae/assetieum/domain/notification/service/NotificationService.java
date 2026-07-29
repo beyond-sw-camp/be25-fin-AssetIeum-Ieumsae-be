@@ -7,6 +7,8 @@ import com.ieumsae.assetieum.domain.notification.dto.NotificationReadAllResponse
 import com.ieumsae.assetieum.domain.notification.dto.NotificationReadResponse;
 import com.ieumsae.assetieum.domain.notification.dto.NotificationUnreadCountResponse;
 import com.ieumsae.assetieum.domain.notification.entity.Notification;
+import com.ieumsae.assetieum.domain.notification.event.NotificationCreatedEvent;
+import com.ieumsae.assetieum.domain.notification.event.NotificationEventPublisher;
 import com.ieumsae.assetieum.domain.notification.repository.NotificationRepository;
 import com.ieumsae.assetieum.domain.notification.type.NotificationTargetType;
 import com.ieumsae.assetieum.domain.notification.type.NotificationType;
@@ -18,6 +20,7 @@ import com.ieumsae.assetieum.global.exception.BusinessException;
 import com.ieumsae.assetieum.global.exception.ErrorCode;
 import com.ieumsae.assetieum.global.security.AuthenticatedMember;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -34,6 +37,10 @@ public class NotificationService {
 	private final MemberRepository memberRepository;
 	private final TicketRepository ticketRepository;
 	private final NotificationSsePublisher notificationSsePublisher;
+	private final NotificationEventPublisher notificationEventPublisher;
+
+	@Value("${app.kafka.notification.enabled:false}")
+	private boolean kafkaNotificationEnabled;
 
 	public PaginationResponse<NotificationListItemResponse> getNotifications(
 		AuthenticatedMember authenticatedMember,
@@ -97,7 +104,43 @@ public class NotificationService {
 		NotificationTargetType targetType,
 		UUID targetId
 	) {
+		if (kafkaNotificationEnabled) {
+			notificationEventPublisher.publish(
+				receiver, notificationType, title, content, targetType, targetId
+			);
+			return;
+		}
+		persistNotification(null, receiver, notificationType, title, content, targetType, targetId);
+	}
+
+	@Transactional
+	public void persistNotificationEvent(UUID eventId, UUID companyId, NotificationCreatedEvent event) {
+		if (notificationRepository.existsByEventId(eventId)) {
+			return;
+		}
+		Member receiver = findActiveMember(event.receiverId(), companyId);
+		persistNotification(
+			eventId,
+			receiver,
+			event.notificationType(),
+			event.title(),
+			event.content(),
+			event.targetType(),
+			event.targetId()
+		);
+	}
+
+	private void persistNotification(
+		UUID eventId,
+		Member receiver,
+		NotificationType notificationType,
+		String title,
+		String content,
+		NotificationTargetType targetType,
+		UUID targetId
+	) {
 		Notification notification = notificationRepository.saveAndFlush(Notification.create(
+			eventId,
 			receiver.getCompany(),
 			receiver,
 			notificationType,
@@ -107,16 +150,19 @@ public class NotificationService {
 			targetId
 		));
 		NotificationListItemResponse response = toListItemResponse(notification);
+		publishSseAfterCommit(receiver.getId(), response);
+	}
 
+	private void publishSseAfterCommit(UUID receiverId, NotificationListItemResponse response) {
 		if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-			notificationSsePublisher.publish(receiver.getId(), response);
+			notificationSsePublisher.publish(receiverId, response);
 			return;
 		}
 
 		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
 			@Override
 			public void afterCommit() {
-				notificationSsePublisher.publish(receiver.getId(), response);
+				notificationSsePublisher.publish(receiverId, response);
 			}
 		});
 	}

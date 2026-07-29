@@ -27,6 +27,10 @@ spring:
     job:
       enabled: false
 
+  kafka:
+    listener:
+      auto-startup: false
+
 logging:
   level:
     root: info

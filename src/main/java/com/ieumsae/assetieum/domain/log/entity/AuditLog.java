@@ -42,6 +42,10 @@ public class AuditLog {
 	@Column(name = "audit_log_id")
 	private Long id;
 
+	@JdbcTypeCode(SqlTypes.CHAR)
+	@Column(name = "event_id", unique = true, columnDefinition = "CHAR(36)")
+	private UUID eventId;
+
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
 	@JoinColumn(name = "company_id", nullable = false)
 	private Company company;

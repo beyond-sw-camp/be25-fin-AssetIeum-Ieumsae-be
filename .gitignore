@@ -41,6 +41,7 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+docker-compose.local.yml
 
 # Spring Boot
 application-dev.yaml

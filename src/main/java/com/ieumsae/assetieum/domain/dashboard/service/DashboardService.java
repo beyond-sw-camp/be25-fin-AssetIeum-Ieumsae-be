@@ -1,5 +1,7 @@
 package com.ieumsae.assetieum.domain.dashboard.service;
 
+import com.ieumsae.assetieum.domain.dashboard.cache.DashboardCacheService;
+
 import com.ieumsae.assetieum.domain.dashboard.dto.AssetDemandResponse;
 import com.ieumsae.assetieum.domain.dashboard.dto.BudgetLedgerResponse;
 import com.ieumsae.assetieum.domain.dashboard.dto.BudgetLedgerSearchRequest;
@@ -28,45 +30,60 @@ import org.springframework.transaction.annotation.Transactional;
 public class DashboardService {
 
 	private final DashboardRepository dashboardRepository;
+	private final DashboardCacheService dashboardCacheService;
 
 	public TicketProgressSummaryResponse getTicketProgressSummary(UUID companyId, UUID departmentId) {
-		return dashboardRepository.getTicketProgressSummary(companyId, departmentId);
+		return dashboardCacheService.getOrLoad(companyId, key("ticket", departmentId), TicketProgressSummaryResponse.class,
+			() -> dashboardRepository.getTicketProgressSummary(companyId, departmentId));
 	}
 
 	public TicketProgressSummaryResponse getDepartmentTicketProgressSummary(UUID companyId, UUID memberId) {
-		return dashboardRepository.getDepartmentTicketProgressSummary(companyId, memberId);
+		return dashboardCacheService.getOrLoad(companyId, key("department-ticket", memberId), TicketProgressSummaryResponse.class,
+			() -> dashboardRepository.getDepartmentTicketProgressSummary(companyId, memberId));
 	}
 
 	public OwnedAssetSummaryResponse getOwnedAssetSummary(UUID companyId, UUID departmentId) {
-		return dashboardRepository.getOwnedAssetSummary(companyId, departmentId);
+		return dashboardCacheService.getOrLoad(companyId, key("owned", departmentId), OwnedAssetSummaryResponse.class,
+			() -> dashboardRepository.getOwnedAssetSummary(companyId, departmentId));
 	}
 
 	public OwnedAssetSummaryResponse getDepartmentOwnedAssetSummary(UUID companyId, UUID memberId) {
-		return dashboardRepository.getDepartmentOwnedAssetSummary(companyId, memberId);
+		return dashboardCacheService.getOrLoad(companyId, key("department-owned", memberId), OwnedAssetSummaryResponse.class,
+			() -> dashboardRepository.getDepartmentOwnedAssetSummary(companyId, memberId));
 	}
 
 	public ExpiringAssetSummaryResponse getExpiringAssetSummary(UUID companyId, UUID departmentId) {
-		return dashboardRepository.getExpiringAssetSummary(companyId, departmentId);
+		return dashboardCacheService.getOrLoad(companyId, key("expiring", departmentId), ExpiringAssetSummaryResponse.class,
+			() -> dashboardRepository.getExpiringAssetSummary(companyId, departmentId));
 	}
 
 	public ExpiringAssetSummaryResponse getDepartmentExpiringAssetSummary(UUID companyId, UUID memberId) {
-		return dashboardRepository.getDepartmentExpiringAssetSummary(companyId, memberId);
+		return dashboardCacheService.getOrLoad(companyId, key("department-expiring", memberId), ExpiringAssetSummaryResponse.class,
+			() -> dashboardRepository.getDepartmentExpiringAssetSummary(companyId, memberId));
 	}
 
 	public TicketProgressSummaryResponse getEmployeeTicketProgressSummary(UUID companyId, UUID memberId) {
-		return dashboardRepository.getEmployeeTicketProgressSummary(companyId, memberId);
+		return dashboardCacheService.getOrLoad(companyId, key("employee-ticket", memberId), TicketProgressSummaryResponse.class,
+			() -> dashboardRepository.getEmployeeTicketProgressSummary(companyId, memberId));
 	}
 
 	public RentalAssetSummaryResponse getEmployeeRentalAssetSummary(UUID companyId, UUID memberId) {
-		return dashboardRepository.getEmployeeRentalAssetSummary(companyId, memberId);
+		return dashboardCacheService.getOrLoad(companyId, key("employee-rental", memberId), RentalAssetSummaryResponse.class,
+			() -> dashboardRepository.getEmployeeRentalAssetSummary(companyId, memberId));
 	}
 
 	public OwnedAssetSummaryResponse getEmployeeOwnedAssetSummary(UUID companyId, UUID memberId) {
-		return dashboardRepository.getEmployeeOwnedAssetSummary(companyId, memberId);
+		return dashboardCacheService.getOrLoad(companyId, key("employee-owned", memberId), OwnedAssetSummaryResponse.class,
+			() -> dashboardRepository.getEmployeeOwnedAssetSummary(companyId, memberId));
 	}
 
 	public ExpiringAssetSummaryResponse getEmployeeExpiringAssetSummary(UUID companyId, UUID memberId) {
-		return dashboardRepository.getEmployeeExpiringAssetSummary(companyId, memberId);
+		return dashboardCacheService.getOrLoad(companyId, key("employee-expiring", memberId), ExpiringAssetSummaryResponse.class,
+			() -> dashboardRepository.getEmployeeExpiringAssetSummary(companyId, memberId));
+	}
+
+	private String key(String name, UUID scopeId) {
+		return name + ":" + (scopeId == null ? "all" : scopeId);
 	}
 
 	public PaginationResponse<OwnedAssetDetailResponse> getOwnedAssetDetails(
