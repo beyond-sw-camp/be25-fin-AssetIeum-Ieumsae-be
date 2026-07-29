@@ -1,0 +1,146 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "type": "stat",
+      "title": "평균 응답시간",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "avg by (test_mode) (k6_http_req_duration_avg{test_mode=~\"$test_mode\"})", "legendFormat": "{{test_mode}}", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "s", "decimals": 2}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "area", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+      "gridPos": {"h": 5, "w": 6, "x": 0, "y": 0}
+    },
+    {
+      "type": "stat",
+      "title": "p95 응답시간",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "avg by (test_mode) (k6_http_req_duration_p95{test_mode=~\"$test_mode\"})", "legendFormat": "{{test_mode}}", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "s", "decimals": 2}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "area", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+      "gridPos": {"h": 5, "w": 6, "x": 6, "y": 0}
+    },
+    {
+      "type": "stat",
+      "title": "처리량 (요청/초)",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "sum by (test_mode) (rate(k6_http_reqs_total{test_mode=~\"$test_mode\"}[30s]))", "legendFormat": "{{test_mode}}", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "reqps", "decimals": 1}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "area", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+      "gridPos": {"h": 5, "w": 6, "x": 12, "y": 0}
+    },
+    {
+      "type": "stat",
+      "title": "요청 실패율",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "avg by (test_mode) (k6_http_req_failed_rate{test_mode=~\"$test_mode\"})", "legendFormat": "{{test_mode}}", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "percentunit", "decimals": 2}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "area", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+      "gridPos": {"h": 5, "w": 6, "x": 18, "y": 0}
+    },
+    {
+      "type": "timeseries",
+      "title": "응답시간 추이 — 평균 / p90 / p95 / p99",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"expr": "avg by (test_mode) (k6_http_req_duration_avg{test_mode=~\"$test_mode\"})", "legendFormat": "{{test_mode}} avg", "refId": "A"},
+        {"expr": "avg by (test_mode) (k6_http_req_duration_p90{test_mode=~\"$test_mode\"})", "legendFormat": "{{test_mode}} p90", "refId": "B"},
+        {"expr": "avg by (test_mode) (k6_http_req_duration_p95{test_mode=~\"$test_mode\"})", "legendFormat": "{{test_mode}} p95", "refId": "C"},
+        {"expr": "avg by (test_mode) (k6_http_req_duration_p99{test_mode=~\"$test_mode\"})", "legendFormat": "{{test_mode}} p99", "refId": "D"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "gridPos": {"h": 9, "w": 16, "x": 0, "y": 5}
+    },
+    {
+      "type": "timeseries",
+      "title": "초당 처리 요청 수",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "sum by (test_mode) (rate(k6_http_reqs_total{test_mode=~\"$test_mode\"}[15s]))", "legendFormat": "{{test_mode}}", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "reqps"}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "gridPos": {"h": 9, "w": 8, "x": 16, "y": 5}
+    },
+    {
+      "type": "timeseries",
+      "title": "대시보드 Redis 캐시 요청",
+      "description": "hit가 miss보다 충분히 많을수록 DB 조회를 잘 줄이고 있는 상태입니다.",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "sum by (result) (rate(dashboard_cache_requests_total[1m]))", "legendFormat": "{{result}}", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "ops"}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 14}
+    },
+    {
+      "type": "timeseries",
+      "title": "JVM CPU 사용률",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"expr": "process_cpu_usage{job=\"spring-boot\"}", "legendFormat": "프로세스", "refId": "A"},
+        {"expr": "system_cpu_usage{job=\"spring-boot\"}", "legendFormat": "시스템", "refId": "B"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "percentunit", "min": 0, "max": 1}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 14}
+    },
+    {
+      "type": "timeseries",
+      "title": "JVM 힙 메모리",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"expr": "sum(jvm_memory_used_bytes{job=\"spring-boot\",area=\"heap\"})", "legendFormat": "사용", "refId": "A"},
+        {"expr": "sum(jvm_memory_max_bytes{job=\"spring-boot\",area=\"heap\"})", "legendFormat": "최대", "refId": "B"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "bytes"}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 14}
+    },
+    {
+      "type": "timeseries",
+      "title": "DB 커넥션 풀",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"expr": "hikaricp_connections_active{job=\"spring-boot\"}", "legendFormat": "사용 중", "refId": "A"},
+        {"expr": "hikaricp_connections_idle{job=\"spring-boot\"}", "legendFormat": "대기", "refId": "B"},
+        {"expr": "hikaricp_connections_pending{job=\"spring-boot\"}", "legendFormat": "획득 대기", "refId": "C"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "short", "min": 0}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 22}
+    },
+    {
+      "type": "timeseries",
+      "title": "HTTP 요청 처리시간 (Spring)",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "sum(rate(http_server_requests_seconds_sum{job=\"spring-boot\"}[1m])) / sum(rate(http_server_requests_seconds_count{job=\"spring-boot\"}[1m]))", "legendFormat": "전체 평균", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 22}
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 39,
+  "tags": ["assetieum", "kafka", "redis", "k6"],
+  "templating": {
+    "list": [
+      {
+        "name": "test_mode",
+        "type": "custom",
+        "label": "비교 대상",
+        "query": "baseline,improved",
+        "current": {"text": ["baseline", "improved"], "value": ["baseline", "improved"]},
+        "includeAll": true,
+        "multi": true,
+        "options": []
+      }
+    ]
+  },
+  "time": {"from": "now-30m", "to": "now"},
+  "timezone": "browser",
+  "title": "Kafka & Redis 성능 비교",
+  "uid": "assetieum-kafka-redis",
+  "version": 2
+}

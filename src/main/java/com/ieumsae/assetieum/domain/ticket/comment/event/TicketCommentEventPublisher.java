@@ -1,6 +1,7 @@
 package com.ieumsae.assetieum.domain.ticket.comment.event;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ieumsae.assetieum.domain.ticket.comment.dto.TicketCommentEvent;
 import com.ieumsae.assetieum.domain.ticket.comment.type.TicketCommentEventType;
 import com.ieumsae.assetieum.global.kafka.event.EventEnvelope;
 import com.ieumsae.assetieum.global.kafka.outbox.OutboxService;
@@ -17,6 +18,7 @@ public class TicketCommentEventPublisher {
 
 	private final OutboxService outboxService;
 	private final ObjectMapper objectMapper;
+	private final TicketCommentWebSocketPublisher webSocketPublisher;
 
 	@Value("${app.kafka.topics.ticket-comment}")
 	private String ticketCommentTopic;
@@ -31,6 +33,10 @@ public class TicketCommentEventPublisher {
 		Object payload
 	) {
 		if (!enabled) {
+			webSocketPublisher.publish(
+				ticketId,
+				TicketCommentEvent.of(eventType, ticketId, objectMapper.valueToTree(payload))
+			);
 			return;
 		}
 		EventEnvelope<TicketCommentChangedEvent> event = EventEnvelope.of(

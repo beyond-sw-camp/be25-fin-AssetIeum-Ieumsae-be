@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ieumsae.assetieum.global.common.util.KstDateTime;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,7 +15,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Component
@@ -26,37 +26,63 @@ import org.springframework.transaction.annotation.Transactional;
 )
 public class OutboxPublisher {
 
-	private static final int BATCH_SIZE = 100;
+	private static final int BATCH_SIZE = 500;
 
 	private final OutboxEventRepository outboxEventRepository;
 	private final ObjectMapper objectMapper;
 	private final KafkaTemplate<String, Object> kafkaTemplate;
 
-	@Scheduled(fixedDelayString = "${app.kafka.outbox.publish-interval-ms:1000}")
+	@Scheduled(fixedDelayString = "${app.kafka.outbox.publish-interval-ms:200}")
 	@SchedulerLock(name = "kafkaOutboxPublisher", lockAtMostFor = "PT30S")
-	@Transactional
 	public void publishPending() {
 		List<OutboxEvent> events = outboxEventRepository.findPublishable(
 			KstDateTime.now(),
 			PageRequest.of(0, BATCH_SIZE)
 		);
-		for (OutboxEvent event : events) {
-			publish(event);
+		List<PendingPublish> pendingPublishes = events.stream()
+			.map(this::send)
+			.toList();
+
+		for (PendingPublish pendingPublish : pendingPublishes) {
+			complete(pendingPublish);
+		}
+		if (!events.isEmpty()) {
+			outboxEventRepository.saveAll(events);
 		}
 	}
 
-	private void publish(OutboxEvent event) {
+	private PendingPublish send(OutboxEvent event) {
 		try {
 			JsonNode payload = objectMapper.readTree(event.getPayload());
-			kafkaTemplate.send(event.getTopic(), event.getEventKey(), payload).get(10, TimeUnit.SECONDS);
-			event.markPublished();
+			return new PendingPublish(
+				event,
+				kafkaTemplate.send(event.getTopic(), event.getEventKey(), payload)
+			);
 		} catch (JsonProcessingException exception) {
 			event.markFailed(exception.getMessage());
 			log.error("Invalid outbox payload. eventId={}", event.getEventId(), exception);
+			return new PendingPublish(event, CompletableFuture.completedFuture(null));
+		}
+	}
+
+	private void complete(PendingPublish pendingPublish) {
+		OutboxEvent event = pendingPublish.event();
+		if (event.getStatus() != OutboxStatus.PENDING) {
+			return;
+		}
+		try {
+			pendingPublish.future().get(10, TimeUnit.SECONDS);
+			event.markPublished();
 		} catch (Exception exception) {
 			event.markFailed(exception.getMessage());
 			log.warn("Outbox publish failed; it will be retried. eventId={}, retryCount={}",
 				event.getEventId(), event.getRetryCount(), exception);
 		}
+	}
+
+	private record PendingPublish(
+		OutboxEvent event,
+		CompletableFuture<?> future
+	) {
 	}
 }
