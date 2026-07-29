@@ -138,9 +138,9 @@
       }
     ]
   },
-  "time": {"from": "now-30m", "to": "now"},
+  "time": {"from": "now-12h", "to": "now"},
   "timezone": "browser",
   "title": "Kafka & Redis 성능 비교",
   "uid": "assetieum-kafka-redis",
-  "version": 2
+  "version": 3
 }
