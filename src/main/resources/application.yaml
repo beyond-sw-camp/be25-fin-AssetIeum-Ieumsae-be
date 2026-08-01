@@ -81,7 +81,7 @@ app:
       ttl-seconds: ${DASHBOARD_CACHE_TTL_SECONDS:30}
       warmup-enabled: ${DASHBOARD_CACHE_WARMUP_ENABLED:true}
     outbox:
-      publish-interval-ms: ${KAFKA_OUTBOX_PUBLISH_INTERVAL_MS:1000}
+      publish-interval-ms: ${KAFKA_OUTBOX_PUBLISH_INTERVAL_MS:200}
 
 management:
   endpoints:

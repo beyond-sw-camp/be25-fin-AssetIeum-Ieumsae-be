@@ -17,8 +17,10 @@ import org.springframework.test.util.ReflectionTestUtils;
 class TicketCommentEventPublisherTest {
 
 	private final OutboxService outboxService = mock(OutboxService.class);
+	private final TicketCommentWebSocketPublisher webSocketPublisher =
+		mock(TicketCommentWebSocketPublisher.class);
 	private final TicketCommentEventPublisher publisher = new TicketCommentEventPublisher(
-		outboxService, new ObjectMapper()
+		outboxService, new ObjectMapper(), webSocketPublisher
 	);
 
 	@Test
@@ -43,13 +45,21 @@ class TicketCommentEventPublisherTest {
 	}
 
 	@Test
-	void doesNotEnqueueWhenFeatureIsDisabled() {
+	void publishesDirectlyToWebSocketWhenFeatureIsDisabled() {
 		ReflectionTestUtils.setField(publisher, "enabled", false);
+		UUID ticketId = UUID.randomUUID();
 
 		publisher.publish(
-			UUID.randomUUID(), UUID.randomUUID(), TicketCommentEventType.CREATED, "comment"
+			UUID.randomUUID(), ticketId, TicketCommentEventType.CREATED, "comment"
 		);
 
 		verifyNoInteractions(outboxService);
+		verify(webSocketPublisher).publish(
+			org.mockito.ArgumentMatchers.eq(ticketId),
+			org.mockito.ArgumentMatchers.argThat(event ->
+				event.eventType() == TicketCommentEventType.CREATED
+					&& event.ticketId().equals(ticketId)
+			)
+		);
 	}
 }

@@ -34,6 +34,7 @@ class OutboxPublisherTest {
 		publisher.publishPending();
 
 		verify(kafkaTemplate).send(eq(event.getTopic()), eq(event.getEventKey()), any());
+		verify(repository).saveAll(List.of(event));
 		assertThat(event.getStatus()).isEqualTo(OutboxStatus.PUBLISHED);
 		assertThat(event.getPublishedAt()).isNotNull();
 	}
@@ -47,6 +48,7 @@ class OutboxPublisherTest {
 
 		publisher.publishPending();
 
+		verify(repository).saveAll(List.of(event));
 		assertThat(event.getStatus()).isEqualTo(OutboxStatus.PENDING);
 		assertThat(event.getRetryCount()).isEqualTo(1);
 		assertThat(event.getNextRetryAt()).isNotNull();

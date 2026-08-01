@@ -1,0 +1,107 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "type": "stat",
+      "title": "평균 응답시간",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "avg by (feature, test_mode) (last_over_time(k6_http_req_duration_avg{feature=~\"$feature\",run_id=\"optimized-final\",test_mode=\"baseline\"}[$__range]) or last_over_time(k6_http_req_duration_avg{feature=~\"$feature\",run_id=\"isolated-final\",test_mode=\"improved\"}[$__range]))", "legendFormat": "{{feature}} {{test_mode}}", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "s", "decimals": 3}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "area", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+      "gridPos": {"h": 6, "w": 6, "x": 0, "y": 0}
+    },
+    {
+      "type": "stat",
+      "title": "p95 응답시간",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "avg by (feature, test_mode) (last_over_time(k6_http_req_duration_p95{feature=~\"$feature\",run_id=\"optimized-final\",test_mode=\"baseline\"}[$__range]) or last_over_time(k6_http_req_duration_p95{feature=~\"$feature\",run_id=\"isolated-final\",test_mode=\"improved\"}[$__range]))", "legendFormat": "{{feature}} {{test_mode}}", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "s", "decimals": 3}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "area", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+      "gridPos": {"h": 6, "w": 6, "x": 6, "y": 0}
+    },
+    {
+      "type": "stat",
+      "title": "초당 요청 수",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "sum by (feature, test_mode) (rate(k6_http_reqs_total{feature=~\"$feature\",run_id=\"optimized-final\",test_mode=\"baseline\"}[15s]) or rate(k6_http_reqs_total{feature=~\"$feature\",run_id=\"isolated-final\",test_mode=\"improved\"}[15s]))", "legendFormat": "{{feature}} {{test_mode}}", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "reqps", "decimals": 2}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "area", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+      "gridPos": {"h": 6, "w": 6, "x": 12, "y": 0}
+    },
+    {
+      "type": "stat",
+      "title": "요청 실패율",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "avg by (feature, test_mode) (last_over_time(k6_http_req_failed_rate{feature=~\"$feature\",run_id=\"optimized-final\",test_mode=\"baseline\"}[$__range]) or last_over_time(k6_http_req_failed_rate{feature=~\"$feature\",run_id=\"isolated-final\",test_mode=\"improved\"}[$__range]))", "legendFormat": "{{feature}} {{test_mode}}", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "percentunit", "decimals": 2}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "area", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+      "gridPos": {"h": 6, "w": 6, "x": 18, "y": 0}
+    },
+    {
+      "type": "timeseries",
+      "title": "평균 응답시간 추이",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "avg by (feature, test_mode) (k6_http_req_duration_avg{feature=~\"$feature\",run_id=\"optimized-final\",test_mode=\"baseline\"} or k6_http_req_duration_avg{feature=~\"$feature\",run_id=\"isolated-final\",test_mode=\"improved\"})", "legendFormat": "{{feature}} {{test_mode}}", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "gridPos": {"h": 9, "w": 12, "x": 0, "y": 6}
+    },
+    {
+      "type": "timeseries",
+      "title": "p90 / p95 / p99 응답시간",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"expr": "avg by (feature, test_mode) (k6_http_req_duration_p90{feature=~\"$feature\",run_id=\"optimized-final\",test_mode=\"baseline\"} or k6_http_req_duration_p90{feature=~\"$feature\",run_id=\"isolated-final\",test_mode=\"improved\"})", "legendFormat": "{{feature}} {{test_mode}} p90", "refId": "A"},
+        {"expr": "avg by (feature, test_mode) (k6_http_req_duration_p95{feature=~\"$feature\",run_id=\"optimized-final\",test_mode=\"baseline\"} or k6_http_req_duration_p95{feature=~\"$feature\",run_id=\"isolated-final\",test_mode=\"improved\"})", "legendFormat": "{{feature}} {{test_mode}} p95", "refId": "B"},
+        {"expr": "avg by (feature, test_mode) (k6_http_req_duration_p99{feature=~\"$feature\",run_id=\"optimized-final\",test_mode=\"baseline\"} or k6_http_req_duration_p99{feature=~\"$feature\",run_id=\"isolated-final\",test_mode=\"improved\"})", "legendFormat": "{{feature}} {{test_mode}} p99", "refId": "C"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "gridPos": {"h": 9, "w": 12, "x": 12, "y": 6}
+    },
+    {
+      "type": "timeseries",
+      "title": "처리량 추이",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "sum by (feature, test_mode) (rate(k6_http_reqs_total{feature=~\"$feature\",run_id=\"optimized-final\",test_mode=\"baseline\"}[15s]) or rate(k6_http_reqs_total{feature=~\"$feature\",run_id=\"isolated-final\",test_mode=\"improved\"}[15s]))", "legendFormat": "{{feature}} {{test_mode}}", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "reqps"}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "gridPos": {"h": 9, "w": 12, "x": 0, "y": 15}
+    },
+    {
+      "type": "timeseries",
+      "title": "API별 응답시간",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "avg by (name, test_mode) (k6_http_req_duration_avg{feature=~\"$feature\",run_id=\"optimized-final\",test_mode=\"baseline\"} or k6_http_req_duration_avg{feature=~\"$feature\",run_id=\"isolated-final\",test_mode=\"improved\"})", "legendFormat": "{{name}} {{test_mode}}", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "gridPos": {"h": 9, "w": 12, "x": 12, "y": 15}
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 39,
+  "tags": ["assetieum", "kafka", "k6"],
+  "templating": {
+    "list": [
+      {
+        "name": "feature",
+        "type": "custom",
+        "label": "기능",
+        "query": "log,comment,notification",
+        "current": {"text": ["log", "comment", "notification"], "value": ["log", "comment", "notification"]},
+        "includeAll": true,
+        "multi": true,
+        "options": []
+      }
+    ]
+  },
+  "time": {"from": "now-3h", "to": "now"},
+  "timezone": "browser",
+  "title": "Kafka 로그·알림·댓글 성능 비교",
+  "uid": "assetieum-kafka-features",
+  "version": 3
+}
